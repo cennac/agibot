@@ -1,0 +1,15 @@
+# Large binary files
+*.img
+*.img.xz
+*.img.gz
+*.img.sha
+
+# Build artifacts
+output/
+.tmp/
+*.log
+
+# Editor
+*.swp
+*.swo
+*~
