@@ -332,6 +332,46 @@ dmesg | grep -iE "mali|rknn|gpu"      # GPU / NPU
 
 ---
 
+## 10. 桌面版（XFCE desktop）
+
+除 minimal 外，再编译一个带 xfce 桌面的版本。
+
+**★ 关键：必须用 noble（24.04），不能用 jammy。** armbian 的桌面包列表（`common.yaml`）含 `pipewire-libcamera`、`gstreamer1.0-libcamera`、`glmark2-es2-x11` 等较新的包，jammy（22.04）仓库没有，安装会在 `create_new_rootfs_cache` 阶段报 `Unable to locate package` 失败。其中 camera 包在 **minimal tier（所有 tier 都装）**，所以换 tier 无用，必须换 release 到 noble。
+
+创建 `userpatches/config-agibot-desktop.conf`：
+
+```bash
+BOARD=agibot
+BRANCH=vendor
+BUILD_DESKTOP=yes
+BUILD_MINIMAL=no
+DESKTOP_ENVIRONMENT=xfce      # 也可 gnome / kde-plasma / cinnamon / mate / i3-wm
+DESKTOP_TIER=mid              # minimal (~500MB) / mid (~1GB) / full (~2.5GB)
+KERNEL_CONFIGURE=no
+COMPRESS_OUTPUTIMAGE=sha,img
+RELEASE=noble                 # ★ 必须 noble，jammy 缺 libcamera/glmark2 包
+```
+
+编译（命名 config 机制：`./compile.sh agibot-desktop` 自动读 `config-agibot-desktop.conf`）：
+
+```bash
+./compile.sh agibot-desktop EXPERT=yes   # 同样带代理 env（坑③）
+```
+
+产物：`Armbian_..._Agibot_noble_vendor_6.1.115_xfce_desktop.img`（~5.4G）
+- kernel/u-boot 缓存命中，只重跑 noble rootfs（从头 mmdebstrap）+ 装 xfce
+- customize-image.sh 的 overlay 注入对桌面版同样生效（dtb/firmware/service/hostname 都进镜像）
+- 首启后 lightdm 自动登录进 xfce 桌面
+
+> 备选桌面环境（jammy+arm64 全支持）：`gnome`、`kde-plasma`、`cinnamon`、`mate`、`i3-wm`。注意 `DESKTOP_ENVIRONMENT_CONFIG_NAME` 已废弃，改用 `DESKTOP_TIER`；不存在 `lxqt`。
+
+两版对照：
+
+| 版本 | release | 大小 | 用途 |
+|------|---------|------|------|
+| minimal | jammy (22.04) | ~1.7G | 服务器 / AI 推理，无 GUI |
+| desktop (xfce) | noble (24.04) | ~5.4G | 带 GUI，接显示器键鼠直接用 |
+
 ## 附:文件清单
 
 | 文件 | 作用 |
