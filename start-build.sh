@@ -23,6 +23,9 @@ case "$(uname -s)" in
 	Darwin*) PLATFORM=macos ;;
 	*)       PLATFORM=unknown ;;
 esac
+# 容器内按 linux:代理走继承(docker-build.sh 经 host.docker.internal 传入),
+# PREFER_DOCKER=no(容器内原生编,不嵌套),且不 setsid 后台(见下方容器前台分支)
+[ -f /.dockerenv ] && PLATFORM=linux
 
 mkdir -p output
 rm -f output/build.log
@@ -81,7 +84,18 @@ git config --global http.postBuffer 1048576000
 git config --global http.version HTTP/1.1
 git config --global --add safe.directory '*'
 
-# ---- 后台编译(macOS 无 setsid → 回退 nohup;日志写 output/build.log)----
+# ---- 容器内:前台编译(容器 PID1 退出会杀后台进程,不能 setsid)----
+if [ -f /.dockerenv ]; then
+	echo "===== [容器] 前台编译(实时输出 + 写 output/build.log)====="
+	set +e
+	./compile.sh agibot EXPERT=yes DOWNLOAD_MIRROR=china 2>&1 | tee output/build.log
+	rc=${PIPESTATUS[0]}
+	echo "FINISHED_EXIT=$rc" >> output/build.log
+	echo "===== [容器] 编译结束 exit=$rc ====="
+	exit $rc
+fi
+
+# ---- 后台编译(host:macOS 无 setsid → 回退 nohup;日志写 output/build.log)----
 if command -v setsid >/dev/null 2>&1; then
 	setsid bash -c './compile.sh agibot EXPERT=yes DOWNLOAD_MIRROR=china > output/build.log 2>&1; echo "FINISHED_EXIT=$?" >> output/build.log' \
 		< /dev/null > /dev/null 2>&1 &

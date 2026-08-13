@@ -18,13 +18,16 @@ SUB="armbian-build"
 
 # 平台检测(决定是否 apply WSL2 专用 patch)
 detect_platform() {
+	# 容器内一律按 linux 处理:卷映射走 ext4/virtiofs,无 WSL2 的 9p 坑,
+	# 那 5 处 WSL2 patch(尤其 fchmod)在 ext4 上反而有害 → 不 apply。
+	[ -f /.dockerenv ] && { echo linux; return; }
 	case "$(uname -s)" in
 		Linux*)  grep -qi microsoft /proc/version 2>/dev/null && echo wsl || echo linux ;;
 		Darwin*) echo macos ;;
 		*)       echo unknown ;;
 	esac
 }
-PLATFORM="$(detect_platform)"
+PLATFORM="${PLATFORM:-$(detect_platform)}"
 echo ">>> 检测到平台: $PLATFORM"
 
 # 0. 关键依赖自检(git 用于 submodule;其余编译依赖见 scripts/install-deps.sh)

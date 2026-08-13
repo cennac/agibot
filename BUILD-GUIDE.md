@@ -461,6 +461,45 @@ bash start-build.sh                          # 自动设 PREFER_DOCKER=yes
 
 ---
 
+## 12. 附录:Docker 容器编译(可选,统一三平台)
+
+不想在 host 装 apt 依赖 / 注册 binfmt,或要统一三平台编译环境,可用 Docker:一个 Ubuntu 容器,仓库 `-v` 挂进去编译。**容器内文件系统是 ext4/virtiofs(非 WSL2 的 9p),自动避开 fsync hang / fchmod EPERM 坑**,setup.sh 也不会 apply 那 5 处 WSL2 patch。
+
+### 前置(一次性,Windows 端)
+1. 启动 **Docker Desktop**(本机已装,`docker.exe` 29.x)
+2. 开 WSL 集成:Docker Desktop → Settings → Resources → **WSL Integration → 开启 Ubuntu**
+
+### 工作目录(关键:放 ext4)
+仓库必须 clone 到 **WSL2 ext4** 内(不是 `E:\` Windows 盘,否则 Docker 映射仍过 9p,坑还在)。WSL Ubuntu 内:
+
+```bash
+cd ~
+git clone --recursive https://github.com/cennac/agibot.git docker-agibot-armbian
+cd docker-agibot-armbian
+```
+
+> `~/docker-agibot-armbian` 在 Windows 可经 `\\wsl.localhost\Ubuntu\home\<user>\docker-agibot-armbian` 查看,但**只读 / 轻量编辑**:内核源码有大量仅大小写不同的文件名,从 Windows 端做 git clone / 编译会冲突丢文件。clone 与编译务必留在 WSL / 容器内。
+
+### 编译
+
+```bash
+bash docker-build.sh            # WSL 内:build 镜像 + 进容器 setup + 前台编译
+bash docker-build.sh --shell    # 进容器交互 shell(调试 / 手动跑 setup.sh / compile.sh)
+PROXY_PORT=7890 bash docker-build.sh   # 代理端口非默认 7897 时
+```
+
+`docker-build.sh` 依次做:
+- `docker build` 造 builder 镜像(`Dockerfile`:ubuntu:22.04 + armbian host 依赖;不 COPY 仓库,运行时挂载)
+- binfmt 检查(Docker Desktop 自带 / 已注册则跳过,否则 `tonistiigi/binfmt --install arm64`)
+- `docker run --privileged -v ~/docker-agibot-armbian:/docker-agibot-armbian`,代理经 `--add-host host.docker.internal:host-gateway` + `-e http_proxy=host.docker.internal:7897` 传入(三平台统一)
+- 容器内前台跑 `setup.sh` + `start-build.sh`(检测到 `/.dockerenv` → 前台编译不 setsid、代理走继承、跳过 WSL2 patch)
+
+`--privileged` 是必须的:armbian rootfs 阶段要 losetup / mount / chroot。产物仍在 `armbian-build/output/images/`(ext4 卷内,持久,Windows 经 `\\wsl.localhost\...` 可见)。
+
+> 当前环境已就绪两项:binfmt `qemu-aarch64` 持久有效 ✓、Docker Desktop 已装 ✓。首次只需启动 Docker Desktop + 开 WSL 集成即可。
+
+---
+
 ## 附:文件清单
 
 | 文件 | 作用 |
@@ -474,7 +513,8 @@ bash start-build.sh                          # 自动设 PREFER_DOCKER=yes
 | `.gitmodules` + `armbian-build/` | armbian/build 官方框架(submodule @ 70a242f) |
 | `patches/wsl2-build-hacks.patch` | ★ 5 处 WSL2 框架 hack(§2) |
 | `setup.sh` | ★ 装配自动化:init submodule + apply patch + 装 userpatches(§3) |
-| `start-build.sh` | ★ 编译入口:代理 / NO_HOST_RELEASE_CHECK / git resilience / 后台(§6) |
+| `start-build.sh` | ★ 原生编译入口:代理 / NO_HOST_RELEASE_CHECK / git resilience / 后台(§6);容器内自动转前台 |
+| `Dockerfile` + `docker-build.sh` + `.dockerignore` | ★ Docker 编译:ubuntu:22.04 builder 镜像 + 入口(§12) |
 | `flash/` | 刷机:loader + gen-armbian-cfg.py + dump-cfg-any.py + postflash-test + npu_test + README(§8) |
 | `scripts/` | 辅助脚本:install-deps / preflight / build-status / verify-image(见 [scripts/README.md](scripts/README.md)) |
 | `BUILD-GUIDE.md` | 本文档 |

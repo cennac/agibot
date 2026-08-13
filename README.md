@@ -19,7 +19,10 @@
 ├── patches/
 │   └── wsl2-build-hacks.patch  # 5 处 WSL2 框架 hack(仅 WSL2 apply;sync/git/mmdebstrap/fchmod/9p)
 ├── setup.sh                    # 装配:init submodule + apply patch + 装 userpatches(跨平台)
-├── start-build.sh              # 编译入口:代理 / NO_HOST_RELEASE_CHECK / git resilience / 后台(跨平台)
+├── start-build.sh              # 原生编译入口:代理 / NO_HOST_RELEASE_CHECK / git resilience / 后台(跨平台)
+├── Dockerfile                  # Docker 编译:ubuntu:22.04 builder 镜像(§12)
+├── docker-build.sh             # Docker 编译入口:WSL 内跑,挂载 ext4 仓库进容器(§12)
+├── .dockerignore               # docker build context 排除大目录
 ├── config-agibot.conf          # 主编译配置(jammy minimal)
 ├── config-agibot-desktop.conf  # 桌面版配置(noble + xfce)
 ├── config-example.conf         # 示例配置
@@ -68,6 +71,9 @@ tail -f armbian-build/output/build.log        # 或 bash scripts/build-status.sh
 产物:`armbian-build/output/images/Armbian_..._Agibot_jammy_vendor_6.1.115_minimal.img`(~1.7G)
 
 桌面版:`./compile.sh agibot-desktop`(见 [BUILD-GUIDE §10](BUILD-GUIDE.md))。
+
+### Docker 编译(可选,[§12](BUILD-GUIDE.md#12-附录docker-容器编译可选统一三平台))
+不想在 host 装 apt 依赖 / 统一三平台环境?仓库 clone 到 WSL ext4(`~/docker-agibot-armbian`),`bash docker-build.sh` 起容器编译——容器内 ext4 自动避开 WSL2 的 9p 坑(fsync/fchmod),无需那 5 处 patch。前置:启动 Docker Desktop + 开 WSL 集成。
 
 ## 刷机(写入 eMMC)
 见 **[flash/README.md](flash/README.md)**。要点:RKDevTool「下载镜像」页加两项执行——

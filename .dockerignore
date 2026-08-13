@@ -1,0 +1,16 @@
+# build context 排除:Dockerfile 不 COPY 仓库(运行时 -v 挂载),
+# context 实际只需 Dockerfile 本身;排除大目录避免 docker build 扫描/传输 GB 级 context
+armbian-build/
+output/
+*.img
+*.img.*
+*.img.xz
+*.img.gz
+*.img.sha
+.git/
+__pycache__/
+*.pyc
+*.log
+flash/armbian-head.img
+flash/armbian-rootfs.img
+flash/config.cfg
