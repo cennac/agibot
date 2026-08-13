@@ -39,11 +39,13 @@ wsl --set-default Ubuntu-22.04
 
 资源建议:**20+ 核 CPU、16G+ RAM、60G+ 磁盘**(源码 + 工具链 + 缓存约 20G,首次编译占满 CPU 1~2 小时)。
 
-进入 WSL 后安装基础依赖(armbian 会自动装大部分,但提前装好 git/curl/build 必备):
+进入 WSL 后安装编译依赖。本仓库有一键脚本(跨平台,装 git/curl/build-essential/qemu-user-static/binfmt-support/device-tree-compiler,并注册 binfmt + systemd override —— 即下文坑①的两步一次性做完):
 
 ```bash
-sudo apt update && sudo apt install -y git curl ca-certificates
+bash scripts/install-deps.sh      # 跨平台;每台机器跑一次即可
 ```
+
+> 不想用脚本也可手动 `sudo apt install -y git curl ca-certificates`,但 binfmt(坑①)还得单独配。
 
 ---
 
@@ -284,6 +286,8 @@ done
 bash start-build.sh
 # 跟踪日志(另开终端)
 tail -f armbian-build/output/build.log
+# 或用仓库脚本:去色 + 进程 + images/ 产物 + kernel clone 进度,一步到位
+bash scripts/build-status.sh
 ```
 
 `start-build.sh` 替你做了(见 [`start-build.sh`](start-build.sh)):
@@ -303,6 +307,8 @@ tail -f armbian-build/output/build.log
 ---
 
 ## 7. 验证镜像(无需启动板子)
+
+> ★ 已脚本化:`bash scripts/verify-image.sh` 一键跑完下面全部检查(自动找最新 img,打印 OK/FAIL 汇总)。下面是手动原理,排查具体问题时用。
 
 镜像 rootfs 在 offset 16MB(sector 32768)。用 `debugfs` 直接读 ext4(WSL2 losetup 不可靠,debugfs 最稳):
 
@@ -344,6 +350,8 @@ ip link                               # eth0 / eth1
 lspci                                 # WiFi(14c3:0608)/USB3(VL805)
 dmesg | grep -iE "mali|rknn|gpu"      # GPU / NPU
 ```
+
+> 仓库回归脚本,刷完跑全套:**`flash/postflash-test.sh`**(CAN/UART/GPIO/watchdog/NPU/温度,非破坏性,日志写 `/var/log`)和 **`flash/npu_test.py`**(RKNN resnet18 smoke + FPS 采样)。用法见 [flash/README.md](flash/README.md)。
 
 ### 写入 eMMC
 
@@ -467,5 +475,6 @@ bash start-build.sh                          # 自动设 PREFER_DOCKER=yes
 | `patches/wsl2-build-hacks.patch` | ★ 5 处 WSL2 框架 hack(§2) |
 | `setup.sh` | ★ 装配自动化:init submodule + apply patch + 装 userpatches(§3) |
 | `start-build.sh` | ★ 编译入口:代理 / NO_HOST_RELEASE_CHECK / git resilience / 后台(§6) |
-| `flash/` | 刷机:loader + gen-armbian-cfg.py + dump-cfg-any.py + README(§8) |
+| `flash/` | 刷机:loader + gen-armbian-cfg.py + dump-cfg-any.py + postflash-test + npu_test + README(§8) |
+| `scripts/` | 辅助脚本:install-deps / preflight / build-status / verify-image(见 [scripts/README.md](scripts/README.md)) |
 | `BUILD-GUIDE.md` | 本文档 |

@@ -27,6 +27,16 @@ detect_platform() {
 PLATFORM="$(detect_platform)"
 echo ">>> 检测到平台: $PLATFORM"
 
+# 0. 关键依赖自检(git 用于 submodule;其余编译依赖见 scripts/install-deps.sh)
+if ! command -v git >/dev/null 2>&1; then
+	echo ">>> [!] 缺 git。先装依赖: bash scripts/install-deps.sh"
+	exit 1
+fi
+if [ "$PLATFORM" != macos ] && [ ! -f /proc/sys/fs/binfmt_misc/qemu-aarch64 ]; then
+	echo ">>> [提醒] qemu-aarch64 binfmt 未注册 —— 编译到 rootfs 阶段会报 'Exec format error'"
+	echo "         首次请先跑: bash scripts/install-deps.sh"
+fi
+
 # 1. 初始化 submodule(armbian/build @ 70a242f)
 if [ ! -d "$SUB/.git" ]; then
 	echo ">>> [1/3] 初始化 submodule $SUB(首次会从 github clone,约 15G 源码/工具链)..."

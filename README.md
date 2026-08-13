@@ -2,7 +2,7 @@
 
 为 **AGIBOT MB0002 V2**(RK3588)打造的可复现 **Armbian** 编译 + 刷机工具链。
 
-`git clone --recursive` → `bash setup.sh` → `bash start-build.sh` → 刷机。板级配置与 WSL2 框架 hack 已全部入库,**干净 clone 即可编译,无需手动改框架源码**;脚本自动适配 Linux / WSL2 / macOS。
+`git clone --recursive` → `bash scripts/install-deps.sh` → `bash setup.sh` → `bash start-build.sh` → 刷机。板级配置与 WSL2 框架 hack 已全部入库,**干净 clone 即可编译,无需手动改框架源码**;脚本自动适配 Linux / WSL2 / macOS。
 
 > 完整步骤(WSL2 四大坑、5 处框架 hack、镜像验证、刷机、跨平台):见 **[BUILD-GUIDE.md](BUILD-GUIDE.md)**。
 
@@ -31,11 +31,15 @@
 │   ├── etc/{hostname, systemd/system/resize-rootfs.service}
 │   ├── boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb   # 设备树,5.10 → 6.1 适配
 │   └── lib/firmware/           # Mali / DP / RTL8821CU / BT / regulatory
-├── flash/                      # eMMC 刷机工具
+├── flash/                      # eMMC 刷机 + 板端回归测试
 │   ├── rk3588_spl_loader_v1.16.113.bin   # ★ 正确的 RK3588 loader(别用 RKDevTool 自带的 MiniLoaderAll)
 │   ├── gen-armbian-cfg.py      # 拆分 img → head/rootfs + 生成 config.cfg
 │   ├── dump-cfg-any.py         # config.cfg 查看
+│   ├── postflash-test.sh       # 板端回归测试(CAN/UART/GPIO/watchdog/NPU/温度)
+│   ├── npu_test.py             # RKNN resnet18 smoke + FPS
 │   └── README.md               # 完整刷机方案
+├── scripts/                    # 辅助脚本(install-deps / preflight / build-status / verify-image)
+│   └── README.md               # 各脚本用法
 ├── wsl-binfmt-setup.sh         # WSL2 qemu binfmt 注册
 ├── ADAPT-NOTES.md              # 设备树 5.10 → 6.1 适配记录
 ├── BUILD-GUIDE.md              # ★ 完整编译教程
@@ -51,12 +55,15 @@
 git clone --recursive https://github.com/cennac/agibot.git
 cd agibot
 
-# 2. 装配:init submodule +(仅 WSL2)apply 框架 hack + 装 userpatches
+# 2. 装依赖(每台机器一次,跨平台:WSL2 / Linux / macOS)
+bash scripts/install-deps.sh
+
+# 3. 装配:init submodule +(仅 WSL2)apply 框架 hack + 装 userpatches
 bash setup.sh                   # 加 --reuse-cache 可复用平级 armbian-build/cache
 
-# 3. 编译(代理 / NO_HOST_RELEASE_CHECK / 后台日志均已内置,按平台自动适配)
+# 4. 编译(代理 / NO_HOST_RELEASE_CHECK / 后台日志均已内置,按平台自动适配)
 bash start-build.sh
-tail -f armbian-build/output/build.log
+tail -f armbian-build/output/build.log        # 或 bash scripts/build-status.sh
 ```
 产物:`armbian-build/output/images/Armbian_..._Agibot_jammy_vendor_6.1.115_minimal.img`(~1.7G)
 
