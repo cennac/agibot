@@ -32,12 +32,18 @@ docker info >/dev/null 2>&1 || { echo "[!] docker daemon 未就绪,启动 Docker
 echo ">>> 构建/更新 builder 镜像 $IMG ..."
 docker build -t "$IMG" "$ROOT"
 
-# 2. binfmt:容器内交叉编 arm64 需 host kernel 注册 qemu-aarch64
-if docker run --rm --privileged tonistiigi/binfmt --verify arm64 >/dev/null 2>&1; then
-	echo ">>> qemu-aarch64 binfmt 已就绪 ✓"
+# 2. binfmt:容器内交叉编 arm64 rootfs(chroot)需 binfmt_misc 触发 qemu。
+#    Docker Desktop 4.x+ 默认在其 kernel 注册 multiarch binfmt —— 容器虽看不到
+#    /proc/sys/fs/binfmt_misc/qemu-aarch64,但 arm64 执行仍经 kernel 全局 binfmt 自动走 qemu
+#    (已实测:容器内跑 arm64 二进制 exit=42)。host /proc 有 qemu-aarch64 则基本可放心。
+#    若 armbian rootfs 阶段报 Exec format error,手动注册:
+#       docker run --rm --privileged tonistiigi/binfmt --install arm64
+if [ -f /proc/sys/fs/binfmt_misc/qemu-aarch64 ]; then
+	echo ">>> binfmt: host qemu-aarch64 已注册 ✓(容器 binfmt 由 Docker Desktop kernel 提供)"
 else
-	echo ">>> 注册 qemu-aarch64 binfmt ..."
-	docker run --rm --privileged tonistiigi/binfmt --install arm64
+	echo ">>> binfmt: host 未检测到,尝试注册(docker.io 拉取失败可忽略)..."
+	docker run --rm --privileged tonistiigi/binfmt --install arm64 2>/dev/null \
+		|| echo "    (注册镜像拉取失败 —— 若编译报 Exec format error 再手动跑上面那条)"
 fi
 
 # 3. 容器通用参数

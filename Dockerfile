@@ -12,13 +12,20 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
 
 # armbian/build host 编译依赖(核心集;compile.sh 启动会自查并补全其余,需容器可联网 apt)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# USE_CN_MIRROR=1(默认)换清华 apt 源,国内 build 不依赖代理即快;国外 build 传 --build-arg USE_CN_MIRROR=0
+ARG USE_CN_MIRROR=1
+RUN if [ "$USE_CN_MIRROR" = 1 ]; then \
+		echo "deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy main restricted universe multiverse" > /etc/apt/sources.list && \
+		echo "deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
+		echo "deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-security main restricted universe multiverse" >> /etc/apt/sources.list; \
+	fi && \
+	apt-get update && apt-get install -y --no-install-recommends \
 		ca-certificates gnupg fakeroot curl wget git \
 		grep unzip lz4 xz-utils zstd \
 		python3 python3-distutils \
 		build-essential gcc make bc bison flex \
 		libssl-dev ncurses-dev \
-		udev fdisk mount kmod losetup \
+		util-linux fdisk kmod udev \
 		device-tree-compiler qemu-user-static binfmt-support \
 		sudo less procps iproute2 \
 	&& rm -rf /var/lib/apt/lists/*
