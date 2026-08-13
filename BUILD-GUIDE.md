@@ -21,7 +21,7 @@
 ## 0. 选型说明
 
 - **框架**:armbian/build(官方构建系统,可重复、可缓存)
-- **基板**:rock-5b(Armbian 对 RK3588 支持最成熟的板,AGIBOT 硬件与之高度兼容)
+- **基板**:rock-5b(Armbian 对 RK3588 支持最成熟的板,AGIBOT 硬件与之高度兼容)。**选型佐证**:AGIBOT 核心板兼容 Firefly ITX-3588J(RK3588J 工业级),而 Armbian 的 `firefly-itx-3588j.csc` 与本板 `agibot.conf` 在 7 个关键字段里**仅 `BOOT_FDT_FILE` 不同**——`BOARDFAMILY` / `BOOTCONFIG`(`rock-5b-rk3588_defconfig`)/ `BOOT_SCENARIO`(spl-blobs)/ `KERNEL_TARGET`(vendor)全部一致。即连 Firefly 官方板都共用 rock-5b 的 u-boot defconfig → **u-boot / loader / 刷机方案通用,dtb 板级专属**(继续用本板自适配的 `rk3588-agibot-mb0002-v2.dtb`)
 - **内核分支**:`vendor`(Rockchip 6.1 BSP,带 NPU/GPU/MPP;Armbian 已于 2024 年弃用 5.10 BSP,改用 6.1 vendor)
 - **不用 Docker**:WSL2 里 Docker Desktop + armbian docker 模式坑更多,直接原生跑
 

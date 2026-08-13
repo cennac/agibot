@@ -19,3 +19,10 @@
 ## 验证基准
 对比 armbian 官方 6.1 BSP 的 rock-5b dtb(linux-dtb-vendor-rk35xx 6.1.115)
 两者 168 个 compatible 中 ~85% 相同,差异点已全部处理。
+
+## 核心板兼容性(备选参考)
+
+AGIBOT 核心板兼容 **Firefly ITX-3588J**(RK3588**J** 工业级,-40~85°C,核心配置同 RK3588)。Armbian 的 `firefly-itx-3588j.csc` 与本板 `agibot.conf` 在 7 个关键字段里**仅 `BOOT_FDT_FILE` 不同**(详见 BUILD-GUIDE §0 选型佐证)。
+
+- **u-boot / loader / 刷机方案通用**:共用 `rock-5b-rk3588_defconfig`,当前 `flash/rk3588_spl_loader_v1.16.113.bin` 对该核心板适用
+- **设备树板级专属**:本表的自适配 dtb(`rk3588-agibot-mb0002-v2.dtb`)是正解;但若某节点适配卡壳,内核自带的 `rk3588-firefly-itx-3588j.dtb`(`arch/arm64/boot/dts/rockchip/`)可作为**核心板部分(DDR / PMIC / clock)的有效对照基准**
