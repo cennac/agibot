@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# setup.sh — 把 cennac/agibot 装配成可编译状态。
+# setup.sh — 把 cennac/agibot 装配成可编译状态(跨平台:WSL2 / Linux / macOS)。
 #
 # 做三件事:
 #   1. 初始化 armbian-build submodule(若未初始化)
-#   2. apply WSL2 框架 hack 补丁(patches/wsl2-build-hacks.patch,幂等)
+#   2. 框架 hack 补丁 —— 仅 WSL2 需 apply;原生 Linux / macOS 用干净框架(见下)
 #   3. 把仓库根的板级配置装配到 armbian-build/userpatches/
 #
 # 之后直接跑 `bash start-build.sh` 编译。
@@ -16,6 +16,17 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 SUB="armbian-build"
 
+# 平台检测(决定是否 apply WSL2 专用 patch)
+detect_platform() {
+	case "$(uname -s)" in
+		Linux*)  grep -qi microsoft /proc/version 2>/dev/null && echo wsl || echo linux ;;
+		Darwin*) echo macos ;;
+		*)       echo unknown ;;
+	esac
+}
+PLATFORM="$(detect_platform)"
+echo ">>> 检测到平台: $PLATFORM"
+
 # 1. 初始化 submodule(armbian/build @ 70a242f)
 if [ ! -d "$SUB/.git" ]; then
 	echo ">>> [1/3] 初始化 submodule $SUB(首次会从 github clone,约 15G 源码/工具链)..."
@@ -24,12 +35,18 @@ else
 	echo ">>> [1/3] submodule $SUB 已存在,跳过 init"
 fi
 
-# 2. 幂等 apply 框架 hack 补丁
-#    先把 tracked 文件重置回 70a242f(清掉之前 apply 的改动),再重新 apply,
-#    保证反复跑 setup.sh 结果一致。
-echo ">>> [2/3] apply WSL2 框架 hack 补丁..."
-git -C "$SUB" checkout -- . 2>/dev/null || true
-git -C "$SUB" apply "$ROOT/patches/wsl2-build-hacks.patch"
+# 2. 框架 hack 补丁(平台分流)
+#    5 处 hack(sync/git/mmdebstrap/fchmod/9p)是 WSL2 的 9p 文件系统 + 代理特化的。
+#    原生 Linux(ext4)/ macOS(apfs)文件系统正常,其中 fchmod hack 反而有害 → 仅 WSL2 apply。
+echo ">>> [2/3] 框架 hack 补丁..."
+if [ "$PLATFORM" = wsl ]; then
+	echo "    [WSL2] apply patches/wsl2-build-hacks.patch(5 处 9p/sync/代理 hack)"
+	git -C "$SUB" checkout -- . 2>/dev/null || true   # 幂等:先重置回 70a242f 再 apply
+	git -C "$SUB" apply "$ROOT/patches/wsl2-build-hacks.patch"
+else
+	echo "    [$PLATFORM] 用干净 armbian/build @ 70a242f,跳过 WSL2 patch"
+	echo "             (9p/sync/fchmod hack 在 ext4/apfs 不需要,部分有害)"
+fi
 
 # 3. 装配 userpatches(板级配置 → armbian-build/userpatches/)
 #    这些文件在本仓库根,userpatches/ 被 armbian/build 自身 .gitignore,不会污染 submodule。

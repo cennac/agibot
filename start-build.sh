@@ -1,53 +1,99 @@
-#!/bin/bash
-# start-build.sh — Armbian 编译入口(WSL2)。
-# 已内置:代理(Clash Verge 经 WSL 网关)、NO_HOST_RELEASE_CHECK、git resilience、后台运行。
-# 前置:先跑过 `bash setup.sh`(装配 submodule + apply patch + 装 userpatches)。
+#!/usr/bin/env bash
+# start-build.sh — Armbian 编译入口(跨平台:WSL2 / Linux / macOS)。
 #
-# 用法(在 WSL Ubuntu 内):
-#   cd /mnt/e/AIPorject/101/agibot-armbian
+# 按平台自动适配:
+#   - 代理:WSL2 自动走 Windows 网关 Clash(7897);Linux/macOS 继承 http_proxy 或检测本地 7897
+#   - Docker:macOS 走 Docker(binfmt/qemu 在 macOS 上不工作);WSL/Linux 原生编译
+#   - NO_HOST_RELEASE_CHECK、git resilience、后台运行(setsid 或 macOS 回退 nohup)
+#
+# 前置:先跑 `bash setup.sh`(装配 submodule + patch + userpatches)。
+# 用法:
 #   bash setup.sh && bash start-build.sh
 #   tail -f armbian-build/output/build.log
 set -e
 
-# 脚本相对定位 armbian-build submodule
-cd "$(dirname "$(readlink -f "$0")")/armbian-build" \
+# 脚本相对定位(POSIX,三平台兼容;不用 readlink -f 因 macOS 无)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/armbian-build" \
 	|| { echo "FATAL: armbian-build/ 不存在或未 init,先跑 bash setup.sh"; exit 1; }
+
+# 平台检测
+case "$(uname -s)" in
+	Linux*)  if grep -qi microsoft /proc/version 2>/dev/null; then PLATFORM=wsl; else PLATFORM=linux; fi ;;
+	Darwin*) PLATFORM=macos ;;
+	*)       PLATFORM=unknown ;;
+esac
 
 mkdir -p output
 rm -f output/build.log
 
-# PREFER_DOCKER=no:WSL2 里直接原生编译,不走 docker(更省坑)
-export PREFER_DOCKER=no
-# WSL Ubuntu 是 noble(24.04,armbian 支持),但 host-release gate 会误拦,显式跳过
-export NO_HOST_RELEASE_CHECK=yes
+# ---- Docker 策略:macOS 必须用 Docker;WSL/Linux 原生编译 ----
+if [ "$PLATFORM" = macos ]; then
+	export PREFER_DOCKER=yes
+	if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then
+		echo "FATAL: macOS 需要 Docker Desktop 运行(交叉编译 arm64 rootfs 靠 docker 内的 qemu)。" >&2
+		echo "       装好 Docker Desktop 并启动后重试。" >&2
+		exit 1
+	fi
+	echo "===== macOS: PREFER_DOCKER=yes(Docker 已就绪)====="
+else
+	export PREFER_DOCKER=no
+fi
+export NO_HOST_RELEASE_CHECK=yes   # host-release gate 对 WSL noble / 各发行版偶发误拦
 
-# 代理:Clash Verge mixed-port 7897 在 Windows host,WSL2 经 NAT 网关可达(allow-lan 已开)
-GW=$(ip route show default | awk '{print $3; exit}')
-export http_proxy="http://${GW}:7897" https_proxy="http://${GW}:7897" \
-	ftp_proxy="http://${GW}:7897" all_proxy="http://${GW}:7897"
-# github.armbian.com 直连 200、走代理 502,必须排除;其余是国内镜像,直连更快
-export no_proxy="localhost,127.0.0.1,::1,192.168.0.0/16,10.0.0.0/8,.tuna.tsinghua.edu.cn,.bfsu.edu.cn,.aliyun.com,.ustc.edu.cn,github.armbian.com"
-echo "===== proxy via ${GW}:7897 (Clash Verge) ====="
+# ---- 代理策略 ----
+setup_proxy() {
+	if [ "$PLATFORM" = wsl ]; then
+		# WSL2:Clash Verge mixed-port 7897 在 Windows host,经 NAT 网关可达(allow-lan 已开)
+		GW=$(ip route show default | awk '{print $3; exit}')
+		export http_proxy="http://${GW}:7897" https_proxy="http://${GW}:7897" \
+			ftp_proxy="http://${GW}:7897" all_proxy="http://${GW}:7897"
+		# github.armbian.com 直连 200、走代理 502,必须排除;其余国内镜像直连更快
+		export no_proxy="localhost,127.0.0.1,::1,192.168.0.0/16,10.0.0.0/8,.tuna.tsinghua.edu.cn,.bfsu.edu.cn,.aliyun.com,.ustc.edu.cn,github.armbian.com"
+		echo "===== proxy: WSL 网关 ${GW}:7897 (Clash Verge) ====="
+	else
+		# Linux / macOS:优先用用户已有的 http_proxy;否则检测本地 7897;否则直连
+		if [ -n "${http_proxy:-}" ]; then
+			echo "===== proxy: 继承环境 http_proxy=$http_proxy ====="
+		elif curl -s --max-time 1 -o /dev/null http://127.0.0.1:7897 2>/dev/null; then
+			export http_proxy="http://127.0.0.1:7897" https_proxy="http://127.0.0.1:7897"
+			export no_proxy="localhost,127.0.0.1,::1,github.armbian.com"
+			echo "===== proxy: 检测到本地 127.0.0.1:7897 ====="
+		else
+			echo "===== proxy: 无(直连)。国内下 kernel 慢可 export http_proxy=... 后重跑 ====="
+		fi
+	fi
+}
+setup_proxy
 
-# Git resilience:大 kernel clone 经代理时 TLS 握手会偶发丢包,放宽超时避免长传输中断
+# ---- binfmt 预检(Linux 原生;qemu 没装会在 chroot 阶段 Exec format error)----
+if [ "$PLATFORM" = linux ]; then
+	if [ ! -f /proc/sys/fs/binfmt_misc/qemu-aarch64 ]; then
+		echo "⚠️  qemu-aarch64 binfmt 未注册,chroot 阶段会报 Exec format error。装一下:"
+		echo "    sudo apt install -y qemu-user-static binfmt-support && sudo systemctl restart systemd-binfmt"
+	fi
+fi
+
+# ---- git resilience:大 kernel clone 经代理偶发 TLS 中断,放宽超时 ----
 git config --global http.lowSpeedLimit 0
 git config --global http.lowSpeedTime 999999
 git config --global http.postBuffer 1048576000
 git config --global http.version HTTP/1.1
-# /mnt/e 是 Windows mount 混合所有权,让 root 能操作缓存的 git 仓库
 git config --global --add safe.directory '*'
 
-# 后台编译(setsid 脱离会话,WSL 退出不被清理);日志写 output/build.log
-setsid bash -c './compile.sh agibot EXPERT=yes DOWNLOAD_MIRROR=china > output/build.log 2>&1; echo "FINISHED_EXIT=$?" >> output/build.log' \
-	< /dev/null > /dev/null 2>&1 &
-disown
+# ---- 后台编译(macOS 无 setsid → 回退 nohup;日志写 output/build.log)----
+if command -v setsid >/dev/null 2>&1; then
+	setsid bash -c './compile.sh agibot EXPERT=yes DOWNLOAD_MIRROR=china > output/build.log 2>&1; echo "FINISHED_EXIT=$?" >> output/build.log' \
+		< /dev/null > /dev/null 2>&1 &
+else
+	nohup bash -c './compile.sh agibot EXPERT=yes DOWNLOAD_MIRROR=china > output/build.log 2>&1; echo "FINISHED_EXIT=$?" >> output/build.log' \
+		< /dev/null > /dev/null 2>&1 &
+fi
+disown 2>/dev/null || true
 
 sleep 6
-echo "===== launched @ $(date) EUID=$(id -u) ====="
+echo "===== launched @ $(date)  EUID=$(id -u)  PLATFORM=$PLATFORM  DOCKER=${PREFER_DOCKER} ====="
 echo "===== build.log 前 25 行 ====="
 head -25 output/build.log 2>/dev/null
 echo ""
-echo "===== 编译进程 ====="
-ps -ef | grep -iE 'compile.sh|make|mmdebstrap|gcc' | grep -v grep | head -8
-echo ""
-echo "跟踪日志:tail -f $(pwd)/output/build.log"
+echo "跟踪日志: tail -f $(pwd)/output/build.log"

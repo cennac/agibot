@@ -43,7 +43,7 @@ Reproducible **Armbian** build + flash toolchain for the **AGIBOT MB0002 V2** (R
 ```
 
 ## Build
-Requires WSL2 Ubuntu 22.04+ (see BUILD-GUIDE §1 for setup).
+Requires **Linux / WSL2 / macOS** (Ubuntu 22.04+ or Debian 12+ on Linux; Docker Desktop on macOS). The scripts auto-detect the platform — see BUILD-GUIDE §1 (WSL2) / §11 (Linux & macOS).
 ```bash
 # 1. Clone with submodule
 git clone --recursive https://github.com/cennac/agibot.git

@@ -2,7 +2,7 @@
 
 在 **WSL2 Ubuntu** 上为 AGIBOT MB0002 V2(RK3588)编译 Armbian 固件的完整流程。本文档重点记录 **WSL2 环境的四个坑**(binfmt / fsync / 代理 / overlay 注入)及其解决方案——这些是官方文档没有、但实际会卡住你的地方。方法对其他 RK3588 板同样适用。
 
-> 本仓库(`cennac/agibot`)即这份教程的完整产物,`git clone` 后按本文操作即可复现。
+> 本仓库(`cennac/agibot`)即这份教程的完整产物。本文以 **WSL2** 为主线(坑最多);`setup.sh` / `start-build.sh` 已自动适配 **Linux 原生 / macOS**(见 [§11](#11-附录在-linux-原生--macos-上编译))。流程:`git clone --recursive` → `bash setup.sh` → `bash start-build.sh`。
 
 ---
 
@@ -155,7 +155,7 @@ armbian 把 `userpatches/overlay` **只读 bind-mount 到 chroot 的 `/tmp/overl
 本仓库已把 armbian/build 纳为 **git submodule**(锁定 commit `70a242f`),5 处框架 hack 打成 patch,板级配置放仓库根。一条命令装配:
 
 ```bash
-# 在 WSL,仓库根(cennac/agibot, 即本目录)
+# 在编译主机(WSL/Linux/macOS),仓库根(cennac/agibot, 即本目录)
 bash setup.sh
 ```
 
@@ -274,6 +274,8 @@ done
 ---
 
 ## 6. 编译
+
+> `start-build.sh` 按平台自动适配(WSL2 / Linux / macOS,差异见 [§11](#11-附录在-linux-原生--macos-上编译))。
 
 装配完(§3)直接跑编译入口脚本——已内置代理 / `NO_HOST_RELEASE_CHECK` / git resilience / 后台日志,**不用手 export 任何 env**:
 
@@ -414,6 +416,42 @@ RELEASE=noble                 # ★ 必须 noble，jammy 缺 libcamera/glmark2 �
 |------|---------|------|------|
 | minimal | jammy (22.04) | ~1.7G | 服务器 / AI 推理，无 GUI |
 | desktop (xfce) | noble (24.04) | ~5.4G | 带 GUI，接显示器键鼠直接用 |
+
+## 11. 附录:在 Linux 原生 / macOS 上编译
+
+`setup.sh` / `start-build.sh` 已自动检测平台(`uname` + `/proc/version`),三平台都能跑。与 WSL2 主线(§1–§10)的差异:
+
+| | WSL2(主线) | Linux 原生 | macOS |
+|---|---|---|---|
+| 框架 hack patch | apply 5 处(§2) | **不 apply**(ext4 正常,fchmod hack 有害) | **不 apply** |
+| binfmt(qemu) | `wsl-binfmt-setup.sh`(坑①) | `apt install qemu-user-static` + `systemctl restart systemd-binfmt` | 不需要(Docker 内) |
+| Docker | `PREFER_DOCKER=no` | `PREFER_DOCKER=no` | **`PREFER_DOCKER=yes`**(macOS 无 binfmt) |
+| 代理 | 自动走 Windows 网关 7897 | 继承 `http_proxy` 或检测本地 7897(脚本自动) | 同 Linux |
+| 后台 | `setsid` | `setsid` | `nohup`(脚本自动回退) |
+| 路径定位 | `readlink -f` | `readlink -f` | POSIX `cd`+`pwd`(脚本已兼容) |
+
+### Linux 原生(Ubuntu 22.04+ / Debian 12+)
+```bash
+sudo apt install -y git curl ca-certificates qemu-user-static binfmt-support
+sudo systemctl restart systemd-binfmt      # 注册 qemu-aarch64(start-build.sh 会预检)
+bash setup.sh                               # 自动跳过 WSL patch
+bash start-build.sh                         # 代理:先 export http_proxy=... 或脚本检测本地 7897
+```
+> 若脚本检测不到 `http_proxy` 也没本地 7897,会直连(国内下 kernel 慢,建议 `export http_proxy=http://127.0.0.1:7897` 后再跑)。
+
+### macOS
+- **必须装 Docker Desktop 并启动**——交叉编译 arm64 rootfs 靠 Docker 内的 qemu,macOS 本机跑不了 binfmt。`start-build.sh` 检测不到 Docker 会直接退出提示。
+- 仓库若放在**大小写不敏感**的卷(APFS 默认),部分内核源码可能冲突;建议放 case-sensitive 卷或 Docker volume。
+```bash
+bash setup.sh                                # 自动跳过 WSL patch
+bash start-build.sh                          # 自动设 PREFER_DOCKER=yes
+```
+> macOS 首次编译在 Docker 内进行,拉镜像 + 工具链较慢。
+
+### 三平台共用
+产物路径 `armbian-build/output/images/`、刷机(`flash/`,§8)、镜像验证(§7)三平台完全一致。`setup.sh --reuse-cache` 也都可用(复用平级 `armbian-build/cache`)。
+
+---
 
 ## 附:文件清单
 
