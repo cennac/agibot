@@ -75,6 +75,12 @@ tail -f armbian-build/output/build.log        # 或 bash scripts/build-status.sh
 ### Docker 编译(可选,[§12](BUILD-GUIDE.md#12-附录docker-容器编译可选统一三平台))
 不想在 host 装 apt 依赖 / 统一三平台环境?仓库 clone 到 WSL ext4(`~/docker-agibot-armbian`),`bash docker-build.sh` 起容器编译——容器内 ext4 自动避开 WSL2 的 9p 坑(fsync/fchmod),无需那 5 处 patch。前置:启动 Docker Desktop + 开 WSL 集成。
 
+```bash
+bash docker-build.sh                   # 编 minimal(agibot / jammy,默认)
+bash docker-build.sh agibot-desktop    # 编桌面版(noble + xfce)
+bash docker-build.sh --shell           # 进容器交互 shell 调试
+```
+
 ## 刷机(写入 eMMC)
 见 **[flash/README.md](flash/README.md)**。要点:RKDevTool「下载镜像」页加两项执行——
 - **Loader** `@0xCCCCCCCC` → `flash/rk3588_spl_loader_v1.16.113.bin`

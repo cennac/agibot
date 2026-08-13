@@ -8,7 +8,8 @@
 #
 # 前置:先跑 `bash setup.sh`(装配 submodule + patch + userpatches)。
 # 用法:
-#   bash setup.sh && bash start-build.sh
+#   bash setup.sh && bash start-build.sh                  # 默认编 minimal(agibot / jammy)
+#   bash setup.sh && bash start-build.sh agibot-desktop   # 编桌面版(noble + xfce)
 #   tail -f armbian-build/output/build.log
 set -e
 
@@ -16,6 +17,11 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR/armbian-build" \
 	|| { echo "FATAL: armbian-build/ 不存在或未 init,先跑 bash setup.sh"; exit 1; }
+
+# 编译目标:agibot(minimal,jammy)或 agibot-desktop(noble + xfce 桌面)
+BOARD="${1:-agibot}"
+export BOARD   # setsid/nohup 子 shell 是单引号串,内层从环境取 $BOARD
+echo "===== 目标: $BOARD ====="
 
 # 平台检测
 case "$(uname -s)" in
@@ -88,7 +94,7 @@ git config --global --add safe.directory '*'
 if [ -f /.dockerenv ]; then
 	echo "===== [容器] 前台编译(实时输出 + 写 output/build.log)====="
 	set +e
-	./compile.sh agibot EXPERT=yes DOWNLOAD_MIRROR=china 2>&1 | tee output/build.log
+	./compile.sh "$BOARD" EXPERT=yes DOWNLOAD_MIRROR=china 2>&1 | tee output/build.log
 	rc=${PIPESTATUS[0]}
 	echo "FINISHED_EXIT=$rc" >> output/build.log
 	echo "===== [容器] 编译结束 exit=$rc ====="
@@ -97,10 +103,10 @@ fi
 
 # ---- 后台编译(host:macOS 无 setsid → 回退 nohup;日志写 output/build.log)----
 if command -v setsid >/dev/null 2>&1; then
-	setsid bash -c './compile.sh agibot EXPERT=yes DOWNLOAD_MIRROR=china > output/build.log 2>&1; echo "FINISHED_EXIT=$?" >> output/build.log' \
+	setsid bash -c './compile.sh "$BOARD" EXPERT=yes DOWNLOAD_MIRROR=china > output/build.log 2>&1; echo "FINISHED_EXIT=$?" >> output/build.log' \
 		< /dev/null > /dev/null 2>&1 &
 else
-	nohup bash -c './compile.sh agibot EXPERT=yes DOWNLOAD_MIRROR=china > output/build.log 2>&1; echo "FINISHED_EXIT=$?" >> output/build.log' \
+	nohup bash -c './compile.sh "$BOARD" EXPERT=yes DOWNLOAD_MIRROR=china > output/build.log 2>&1; echo "FINISHED_EXIT=$?" >> output/build.log' \
 		< /dev/null > /dev/null 2>&1 &
 fi
 disown 2>/dev/null || true

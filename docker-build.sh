@@ -9,7 +9,8 @@
 # 必须在 WSL Ubuntu 内跑(Windows 端跑会让 -v 过 9p,慢且有 fsync/fchmod 坑)。
 # 用法:
 #   cd ~/docker-agibot-armbian              # 仓库 clone 到 ext4 的位置(见 BUILD-GUIDE §Docker)
-#   bash docker-build.sh                    # 构建镜像 + 进容器:setup.sh + start-build.sh(前台)
+#   bash docker-build.sh                    # 构建镜像 + 进容器:编 minimal(agibot / jammy)
+#   bash docker-build.sh agibot-desktop     # 编桌面版(noble + xfce);默认 agibot(minimal)
 #   bash docker-build.sh --shell            # 只进容器开交互 shell(调试/手动跑)
 #   PROXY_PORT=7890 bash docker-build.sh    # 改代理端口(默认 7897 = Clash Verge mixed-port)
 set -euo pipefail
@@ -63,13 +64,16 @@ COMMON=(
 )
 
 # 4. 进容器
-if [ "${1:-}" = "--shell" ]; then
+ARG="${1:-}"
+if [ "$ARG" = "--shell" ]; then
 	echo ">>> 进容器交互 shell($MNT),手动操作..."
 	exec docker run "${COMMON[@]}" "$IMG"
 fi
 
-echo ">>> 启动容器编译:挂载 $ROOT → $MNT"
-echo ">>> 容器内执行 setup.sh + start-build.sh(前台编译,日志实时输出)..."
-docker run "${COMMON[@]}" "$IMG" bash -c "bash setup.sh && bash start-build.sh"
+# 目标:agibot(minimal,jammy)或 agibot-desktop(noble + xfce);默认 agibot
+TARGET="${ARG:-agibot}"
+echo ">>> 启动容器编译 [$TARGET]:挂载 $ROOT → $MNT"
+echo ">>> 容器内执行 setup.sh + start-build.sh $TARGET(前台编译,日志实时输出)..."
+docker run "${COMMON[@]}" "$IMG" bash -c "bash setup.sh && bash start-build.sh $TARGET"
 echo ""
 echo ">>> 完成。产物:$ROOT/armbian-build/output/images/"
