@@ -1,0 +1,121 @@
+# wsl2-build-hacks.patch
+# 让 armbian/build (@ 70a242f) 在 WSL2 + 代理 + 9p(drvfs) 下编译通过的 5 个框架源码改动。
+# 用法: cd armbian-build && git apply ../patches/wsl2-build-hacks.patch
+# (setup.sh 会自动 apply;幂等——apply 前先 git checkout -- . 重置)
+#
+# 改动清单:
+#   1. lib/functions/host/host-utils.sh
+#      wait_for_disk_sync() 首行 return 0 —— WSL2 sync() 偶发 hang(D-state 杀不掉)
+#   2. lib/functions/general/git.sh
+#      improved_git 重试 3→8 次、延迟 10→15s;fetch_from_repo 的 SHA1 查询改走
+#      improved_git + grep 过滤 —— 代理下 TLS 握手丢包导致 ls-remote 拉空
+#   3. lib/functions/rootfs/rootfs-create.sh
+#      mmdebstrap 源 gitlab.mister-muffin.de → salsa.debian.org;branch main → upstream
+#      —— 原源经代理不可达,且 salsa 无 main 分支
+#   4. lib/functions/rootfs/distro-specific.sh
+#      注入 APT::Sandbox::User "root" —— 9p 上 _apt 用户 fchmod 报 EPERM
+#   5. lib/functions/rootfs/apt-install.sh
+#      apt-get update 前打印 SDCARD 文件系统类型 —— 9p workaround 诊断告警
+diff --git a/lib/functions/general/git.sh b/lib/functions/general/git.sh
+index 5c5042c..4f4000a 100644
+--- a/lib/functions/general/git.sh
++++ b/lib/functions/general/git.sh
+@@ -26,8 +26,8 @@ function git_parse_ref() {
+ function improved_git() {
+ 	local real_git
+ 	real_git="$(command -v git)"
+-	local retries=3
+-	local delay=10
++	local retries=8
++	local delay=15
+ 	local count=0
+ 	while [ $count -lt $retries ]; do
+ 		run_host_command_logged_raw "$real_git" --no-pager "$@" && return 0 # this gobbles up errors, but returns if OK, so everything after is error
+@@ -199,18 +199,20 @@ function fetch_from_repo() {
+ 		case $ref_type in
+ 			branch)
+ 				# TODO: grep refs/heads/$name
+-				remote_hash=$(git ls-remote -h "${url}" "$ref_name" | head -1 | cut -f1)
++				# improved_git retries the lookup (flaky proxy drops TLS handshakes);
++				# grep keeps only real ref lines (improved_git merges stderr into stdout on retry).
++				remote_hash=$(improved_git ls-remote -h "${url}" "$ref_name" | grep -aE '^[0-9a-f]{7,64}[[:space:]]' | head -1 | cut -f1)
+ 				[[ -z $local_hash || "${local_hash}" != "a${remote_hash}" ]] && changed=true
+ 				;;
+ 			tag)
+-				remote_hash=$(git ls-remote -t "${url}" "$ref_name" | cut -f1)
++				remote_hash=$(improved_git ls-remote -t "${url}" "$ref_name" | grep -aE '^[0-9a-f]{7,64}[[:space:]]' | cut -f1)
+ 				if [[ -z $local_hash || "${local_hash}" != "${remote_hash}" ]]; then
+-					remote_hash=$(git ls-remote -t "${url}" "$ref_name^{}" | cut -f1)
++					remote_hash=$(improved_git ls-remote -t "${url}" "$ref_name^{}" | grep -aE '^[0-9a-f]{7,64}[[:space:]]' | cut -f1)
+ 					[[ -z $remote_hash || "${local_hash}" != "${remote_hash}" ]] && changed=true
+ 				fi
+ 				;;
+ 			head)
+-				remote_hash=$(git ls-remote "${url}" HEAD | cut -f1)
++				remote_hash=$(improved_git ls-remote "${url}" HEAD | grep -aE '^[0-9a-f]{7,64}[[:space:]]' | cut -f1)
+ 				[[ -z $local_hash || "${local_hash}" != "${remote_hash}" ]] && changed=true
+ 				;;
+ 			commit)
+diff --git a/lib/functions/host/host-utils.sh b/lib/functions/host/host-utils.sh
+index 6c31ed7..7e24500 100644
+--- a/lib/functions/host/host-utils.sh
++++ b/lib/functions/host/host-utils.sh
+@@ -378,6 +378,7 @@ function get_descendants_of_pid_array() {
+ # So run sync under "timeout" in a loop, until it completes successfully.
+ # call: wait_for_disk_sync "after writing a huge file to disk"
+ function wait_for_disk_sync() {
++    return 0  # WSL2 sync bug workaround
+ 	declare -i timeout_seconds=30
+ 	declare -i sync_worked=0
+ 	declare -i sync_timeout_count=0
+diff --git a/lib/functions/rootfs/apt-install.sh b/lib/functions/rootfs/apt-install.sh
+index cd3b73a..0c9c45d 100644
+--- a/lib/functions/rootfs/apt-install.sh
++++ b/lib/functions/rootfs/apt-install.sh
+@@ -64,6 +64,7 @@ function apt_lists_copy_from_host_to_image_and_update() {
+ 	# Attention: this is NOT using `chroot_sdcard_apt_get_update` or any `chroot_sdcard_apt_get` variant,
+ 	#            since would actually mount the lists from the host, which is not what we want.
+ 	display_alert "Updating apt lists in image" "apt-get update and clean" "info"
++	display_alert "SDCARD fs type (9p→fchmod workaround active)" "$(df -T "${SDCARD}" 2>/dev/null | tail -1)" "wrn"
+ 	chroot_sdcard apt-get -y -o "APT::Get::List-Cleanup=1" -o "APT::Clean-Installed=1" update
+ 	chroot_sdcard apt-get -y -o "APT::Get::List-Cleanup=1" -o "APT::Clean-Installed=1" clean
+ 
+diff --git a/lib/functions/rootfs/distro-specific.sh b/lib/functions/rootfs/distro-specific.sh
+index 897ae1a..137c7a9 100644
+--- a/lib/functions/rootfs/distro-specific.sh
++++ b/lib/functions/rootfs/distro-specific.sh
+@@ -187,6 +187,12 @@ function create_sources_list_and_deploy_repo_key() {
+ 	# Drop deboostrap sources leftovers
+ 	rm -f "${basedir}/etc/apt/sources.list"
+ 
++	# WSL2/9p workaround: apt's http method drops to the _apt user, which cannot
++	# fchmod its temp files on the 9p (drvfs) rootfs build dir → EPERM. Run apt
++	# methods as root instead (root can fchmod on 9p). Harmless on real filesystems.
++	mkdir -p "${basedir}/etc/apt/apt.conf.d"
++	printf 'APT::Sandbox::User "root";\n' > "${basedir}/etc/apt/apt.conf.d/99-9p-fchmod-workaround"
++
+ 	# Add upstream (Debian/Ubuntu) APT repository
+ 	case $release in
+ 		buster | bullseye | bookworm | trixie | forky)
+diff --git a/lib/functions/rootfs/rootfs-create.sh b/lib/functions/rootfs/rootfs-create.sh
+index e2036ec..3aa2ea8 100644
+--- a/lib/functions/rootfs/rootfs-create.sh
++++ b/lib/functions/rootfs/rootfs-create.sh
+@@ -51,7 +51,7 @@ function create_new_rootfs_cache_tarball() {
+ # setup and cleanup (policy diverts, qemu-binfmt handling, resolvconf,
+ # machine-id masking), and prepares the rootfs for packaging & caching.
+ function create_new_rootfs_cache_via_debootstrap() {
+-	declare mmdebstrap_branch="branch:main"
++	declare mmdebstrap_branch="branch:upstream"
+ 	[[ ! -d "${SDCARD:?}" ]] && exit_with_error "create_new_rootfs_cache_via_debootstrap: ${SDCARD} is not a directory"
+ 
+ 	# this is different between debootstrap and regular apt-get; here we use acng as a prefix to the real repo
+@@ -82,7 +82,7 @@ function create_new_rootfs_cache_via_debootstrap() {
+ 	declare debootstrap_name="mmdebstrap-debian-devel"
+ 	#FIXME: branch should be a variable eventually
+ 	GIT_FIXED_WORKDIR="${debootstrap_name}" \
+-		fetch_from_repo "https://gitlab.mister-muffin.de/josch/mmdebstrap" "${debootstrap_name}" "${mmdebstrap_branch}"
++		fetch_from_repo "https://salsa.debian.org/debian/mmdebstrap" "${debootstrap_name}" "${mmdebstrap_branch}"
+ 	debootstrap_wanted_dir="${SRC}/cache/sources/${debootstrap_name}"
+ 	debootstrap_version="$(sed 's/^## \[\([^]]*\)\].*/\1/; q' "${debootstrap_wanted_dir}/CHANGELOG.md")"
+ 	debootstrap_bin="${debootstrap_wanted_dir}/mmdebstrap"

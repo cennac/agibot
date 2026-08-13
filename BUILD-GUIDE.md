@@ -49,6 +49,23 @@ sudo apt update && sudo apt install -y git curl ca-certificates
 
 ## 2. ★ WSL2 四大坑(核心,先解决再编译)
 
+> **★ 框架预处理(5 处 hack,已固化为 patch)**
+>
+> 除下面四个环境坑外,armbian/build 框架源码本身在 WSL2 + 9p + 代理下还有 **5 处必须改**,否则编到中途必挂(均为实战踩过的失败点):
+>
+> | # | 文件 | 问题 | 改法 |
+> |---|------|------|------|
+> | 1 | `host/host-utils.sh` | `wait_for_disk_sync()` 调 sync 命中 WSL2 hang,D-state 卡死(即坑②) | 函数直接 `return 0` |
+> | 2 | `general/git.sh` | git clone 大仓库(kernel)经代理偶发 SHA1/EOF | 失败重试 + 放宽超时 |
+> | 3 | `rootfs/rootfs-create.sh` | mmdebstrap 默认源在 WSL 偶发 403 | 切 salsa.debian.org |
+> | 4 | `rootfs/distro-specific.sh` | apt 在 9p 上 `fchmod` 报 EPERM 中断 | 绕过该 fchmod |
+> | 5 | `rootfs/apt-install.sh` | 9p 的 fchmod 告警刷屏干扰日志 | 告警降级 |
+>
+> 这 5 处已打成 **`patches/wsl2-build-hacks.patch`**(基于 submodule 锁定的 commit `70a242f`)。**不用手改**——`bash setup.sh`(第 3 节)自动 `git apply`。仅脱离 setup.sh 手工装配时才需:
+> ```bash
+> cd armbian-build && git apply ../patches/wsl2-build-hacks.patch
+> ```
+
 ### 坑 ①:binfmt_misc —— qemu 交叉编译无法注册
 
 armbian 在 x86 上构建 arm64 rootfs,靠 qemu-user-static + binfmt_misc。但 **WSL2 的 systemd-binfmt 被 `ConditionVirtualization=!wsl` 禁用**,`update-binfmts --enable qemu-aarch64` 会失败,导致 rootfs 阶段 chroot 执行 arm64 二进制时报 `Exec format error`。
@@ -85,7 +102,7 @@ ls /proc/sys/fs/binfmt_misc/qemu-aarch64   # 应存在
 
 WSL2 的 `sync` 偶发不返回(脏页已为 0,但 syscall 挂起,进程进入 D 态无法 kill)。armbian 的 `wait_for_disk_sync()` 在每个磁盘写入阶段循环调用 `sync`,一旦命中就**无限卡**(日志显示 `fsync taking more than 300s...`)。
 
-**解决:patch 掉 wait_for_disk_sync:**
+**解决:patch 掉 wait_for_disk_sync** ★ 此步即框架预处理 #1,已含在 `patches/wsl2-build-hacks.patch`,`bash setup.sh` 自动 apply。下面 sed 仅供理解原理 / 脱离 setup.sh 手工装配时参考:
 
 ```bash
 cd armbian-build
@@ -133,20 +150,31 @@ armbian 把 `userpatches/overlay` **只读 bind-mount 到 chroot 的 `/tmp/overl
 
 ---
 
-## 3. 获取 armbian/build
+## 3. 装配仓库(submodule + patch + userpatches)
+
+本仓库已把 armbian/build 纳为 **git submodule**(锁定 commit `70a242f`),5 处框架 hack 打成 patch,板级配置放仓库根。一条命令装配:
 
 ```bash
-git clone --depth=1 https://github.com/armbian/build armbian-build
-cd armbian-build
+# 在 WSL,仓库根(cennac/agibot, 即本目录)
+bash setup.sh
 ```
 
-> 首次运行 `compile.sh` 时 armbian 会自动下载工具链 + 源码(~15G),需稳定网络(走代理)。
+`setup.sh` 做三件事(**幂等**,可重复跑,见 [`setup.sh`](setup.sh)):
+1. `git submodule update --init --recursive armbian-build` —— 拉官方 armbian/build @ 70a242f(首次约 15G 源码+工具链,走代理)
+2. `git apply patches/wsl2-build-hacks.patch` —— 打 5 处 WSL2 框架 hack(见 §2 框架预处理;先 `git checkout -- .` 重置再 apply,保证可重复)
+3. 把 `config-*.conf` / `config/` / `customize-image.sh` / `overlay/` 装进 `armbian-build/userpatches/`
+
+> 首次装配下载耗时长。若平级目录有旧副本 `../armbian-build/cache`,`bash setup.sh --reuse-cache` 可复用约 15G 缓存省下载。
+>
+> 装完即可跳到 [第 6 节](#6-编译)编译。userpatches 的具体内容见第 4 节(原理说明,setup.sh 已自动装好)。
 
 ---
 
-## 4. 配置 userpatches
+## 4. 配置 userpatches(原理;setup.sh 已自动装配)
 
-本仓库的文件直接覆盖到 `armbian-build/userpatches/` 下:
+> `bash setup.sh`(§3)已把下列文件自动装进 `armbian-build/userpatches/`。本节仅说明各文件作用,正常编译无需手动操作。
+
+本仓库根的这些文件,对应装进 `armbian-build/userpatches/` 下:
 
 ```
 userpatches/
@@ -247,25 +275,28 @@ done
 
 ## 6. 编译
 
+装配完(§3)直接跑编译入口脚本——已内置代理 / `NO_HOST_RELEASE_CHECK` / git resilience / 后台日志,**不用手 export 任何 env**:
+
 ```bash
-cd armbian-build
-
-# 带代理 env(坑③)
-export http_proxy=http://<你的代理>:7897
-export https_proxy=$http_proxy HTTP_PROXY=$http_proxy HTTPS_PROXY=$https_proxy
-export no_proxy=localhost,127.0.0.1,::1,192.168.0.0/16,10.0.0.0/8,pypi.org,files.pythonhosted.org
-export NO_PROXY=$no_proxy
-
-./compile.sh agibot EXPERT=yes
+# 仓库根
+bash start-build.sh
+# 跟踪日志(另开终端)
+tail -f armbian-build/output/build.log
 ```
+
+`start-build.sh` 替你做了(见 [`start-build.sh`](start-build.sh)):
+- **代理 env**:自动探测 WSL 网关 → `http://<网关>:7897`(Clash Verge mixed-port);`no_proxy` 排除 `github.armbian.com`(该域直连 200、走代理 502)及国内镜像
+- **`NO_HOST_RELEASE_CHECK=yes`**:WSL Ubuntu 实为 noble(24.04,armbian 支持),但框架的 host-release gate 会误拦,显式跳过
+- **git resilience**:`http.lowSpeedLimit=0` / `postBuffer=1G` / `HTTP/1.1`,避免大 kernel clone 经代理时 TLS 中断(配合框架预处理 #2)
+- **`setsid` 后台 + `output/build.log`**:脱离 WSL 会话,关终端不被清理
 
 **预期时间(20 核):**
 - 首次:下载工具链+源码 ~30min,编译内核+u-boot+rootfs ~1.5h
-- 增量(kernel/u-boot/rootfs 都缓存命中):~10–20min
+- 增量(kernel/u-boot/rootfs 缓存命中):~10–20min
 
-**产物**:`output/images/Armbian_..._Agibot_jammy_vendor_6.1.115_minimal.img`
+**产物**:`armbian-build/output/images/Armbian_..._Agibot_jammy_vendor_6.1.115_minimal.img`
 
-> ⚠️ **不要用 `nohup ./compile.sh &` 后台跑**——WSL 会话退出时后台进程会被清理。要么前台跑,要么用终端复用器(tmux/screen),或保持宿主进程存活。
+> 桌面版见 [第 10 节](#10-桌面版xfce-desktop);编译中途的 5 类失败见 §2 框架预处理 + §9 故障排查。
 
 ---
 
@@ -298,7 +329,7 @@ debugfs -R "cat boot/armbianEnv.txt" /tmp/v.ext4   # fdtfile=rockchip/rk3588-agi
 
 ## 8. 刷机
 
-**建议先烧 SD 卡测试**(不动原 eMMC,零风险):
+### 先烧 SD 卡测试(零风险,不动 eMMC)
 
 1. 用 [balenaEtcher](https://etcher.balena.io/) / Rufus / `dd` 把 `.img` 写入 SD 卡
 2. 插卡上电。若板子默认从 eMMC 启动,需通过 boot 选择跳线/按键切到 SD,或先擦除 eMMC 前 16MB(原厂 idbloader 所在)
@@ -312,7 +343,14 @@ lspci                                 # WiFi(14c3:0608)/USB3(VL805)
 dmesg | grep -iE "mali|rknn|gpu"      # GPU / NPU
 ```
 
-确认全功能后,可用 RKDevTool(Loader 模式)把镜像烧到 eMMC(有原厂 update.img 备份兜底)。
+### 写入 eMMC
+
+SD 卡上功能正常后,把镜像烧进板载 eMMC。**完整方案见 [`flash/README.md`](flash/README.md)**,要点:
+
+- **主推:整盘写**。RKDevTool「下载镜像」页加两项 —— Loader `@0xCCCCCCCC`(用本仓库 `flash/rk3588_spl_loader_v1.16.113.bin`)+ 整盘 img `@0x00000000`,一次执行。等同整盘 dd,**不必拆分**。
+- **备选:拆分写**(整盘单文件写报错时)。`python flash/gen-armbian-cfg.py` 自动从 img 拆 head/rootfs + 生成 config.cfg,导入 RKDevTool。
+- ⚠️ **必须用正确的 RK3588 loader**(`flash/rk3588_spl_loader_v1.16.113.bin`,SHA256 `4cc43c2f...`)。**别用 RKDevTool 自带的 `MiniLoaderAll.bin`**——多为 RK356x,会报「下载 boot 失败 / Sent(0)」,这是刷不动的头号原因(不是 USB 线)。
+- 刷 eMMC 前确保有原厂 update.img 备份兜底。
 
 ---
 
@@ -329,6 +367,11 @@ dmesg | grep -iE "mali|rknn|gpu"      # GPU / NPU
 | `Package manager running in background` | 残留 apt/dpkg 锁 | `fuser -k` dpkg 锁;`pkill mmdebstrap` |
 | 重启 WSL 后 binfmt 失效 | binfmt 非持久 | 每次启动重跑 `wsl-binfmt-setup.sh` |
 | D-state 进程杀不掉 | fsync hang 残留 | Windows 端 `wsl --shutdown` |
+| git clone kernel 报 SHA1 / EOF 中断 | 代理 TLS 握手丢包 | 框架预处理 #2(patch)+ start-build.sh git resilience |
+| mmdebstrap 源 403 / 下载失败 | WSL 里默认 debian 源不稳 | 框架预处理 #3(patch,切 salsa) |
+| apt 阶段 `Operation not permitted`(fchmod) | 9p 不支持 fchmod | 框架预处理 #4(patch,绕过) |
+| `github.armbian.com` 502 | 该域走代理会 502 | `no_proxy` 含 github.armbian.com(start-build.sh 已带) |
+| host release gate 拦截 / `Unsupported host` | 框架误判 WSL noble | `NO_HOST_RELEASE_CHECK=yes`(start-build.sh 已带) |
 
 ---
 
@@ -382,4 +425,9 @@ RELEASE=noble                 # ★ 必须 noble，jammy 缺 libcamera/glmark2 �
 | `overlay/` | 要注入 rootfs 的 dtb/firmware/service/hostname |
 | `wsl-binfmt-setup.sh` | WSL2 qemu binfmt 注册脚本 |
 | `ADAPT-NOTES.md` | dtb 5.10→6.1 适配记录 |
+| `.gitmodules` + `armbian-build/` | armbian/build 官方框架(submodule @ 70a242f) |
+| `patches/wsl2-build-hacks.patch` | ★ 5 处 WSL2 框架 hack(§2) |
+| `setup.sh` | ★ 装配自动化:init submodule + apply patch + 装 userpatches(§3) |
+| `start-build.sh` | ★ 编译入口:代理 / NO_HOST_RELEASE_CHECK / git resilience / 后台(§6) |
+| `flash/` | 刷机:loader + gen-armbian-cfg.py + dump-cfg-any.py + README(§8) |
 | `BUILD-GUIDE.md` | 本文档 |

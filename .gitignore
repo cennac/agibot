@@ -13,3 +13,8 @@ output/
 *.swp
 *.swo
 *~
+
+# flash/ 生成产物(gen-armbian-cfg.py 现场产出,不入库;loader .bin 仍入库)
+flash/config.cfg
+flash/armbian-head.img
+flash/armbian-rootfs.img
