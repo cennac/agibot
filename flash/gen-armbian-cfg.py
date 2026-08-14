@@ -52,24 +52,32 @@ def find_img(cli_arg):
     return os.path.abspath(cands[-1]) if cands else None
 
 def split_img(img):
-    """整盘 img 拆成 head(前 16MiB) + rootfs(剩余), 分块写, 不整块读入内存。"""
-    want_root = os.path.getsize(img) - HEAD_BYTES
-    if (os.path.isfile(HEAD) and os.path.isfile(ROOTFS)
-            and os.path.getsize(HEAD) == HEAD_BYTES and os.path.getsize(ROOTFS) == want_root):
-        print('拆分文件已存在且大小匹配, 跳过拆分')
-        return
+    """整盘 img 拆成 head(前 16MiB) + rootfs(剩余), 完成后原子替换旧文件。
+
+    不得仅按文件大小复用旧拆分结果:不同构建的镜像通常大小相同,这样会把旧
+    U-Boot 继续交给 RKDevTool,导致源码已更新但板上行为完全没变。
+    """
     print(f'拆分 {os.path.basename(img)} -> head(16MiB) + rootfs ...')
     bs = 4 * 1024 * 1024
-    with open(img, 'rb') as fi, open(HEAD, 'wb') as fh, open(ROOTFS, 'wb') as fr:
-        left = HEAD_BYTES
-        while left > 0:
-            chunk = fi.read(min(bs, left))
-            if not chunk: sys.exit('img 小于 16MiB, 文件异常')
-            fh.write(chunk); left -= len(chunk)
-        while True:
-            chunk = fi.read(bs)
-            if not chunk: break
-            fr.write(chunk)
+    head_tmp = HEAD + '.tmp'
+    rootfs_tmp = ROOTFS + '.tmp'
+    try:
+        with open(img, 'rb') as fi, open(head_tmp, 'wb') as fh, open(rootfs_tmp, 'wb') as fr:
+            left = HEAD_BYTES
+            while left > 0:
+                chunk = fi.read(min(bs, left))
+                if not chunk: sys.exit('img 小于 16MiB, 文件异常')
+                fh.write(chunk); left -= len(chunk)
+            while True:
+                chunk = fi.read(bs)
+                if not chunk: break
+                fr.write(chunk)
+        os.replace(head_tmp, HEAD)
+        os.replace(rootfs_tmp, ROOTFS)
+    finally:
+        for tmp in (head_tmp, rootfs_tmp):
+            if os.path.exists(tmp):
+                os.remove(tmp)
     print(f'  head   = {os.path.getsize(HEAD):,} bytes')
     print(f'  rootfs = {os.path.getsize(ROOTFS):,} bytes')
 

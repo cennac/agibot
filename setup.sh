@@ -57,6 +57,9 @@ echo ">>> [2/3] 框架 hack 补丁..."
 if [ "$PLATFORM" = wsl ]; then
 	echo "    [WSL2] apply patches/wsl2-build-hacks.patch(5 处 9p/sync/代理 hack)"
 	git -C "$SUB" checkout -- . 2>/dev/null || true   # 幂等:先重置回 70a242f 再 apply
+	# Windows Git/DrvFS 可能将 mode 120000 的链接检出为仅含目标路径的普通文件,
+	# mmdebstrap 随后会把该文本当错误的相对路径。按 Git 索引恢复真实链接。
+	bash "$ROOT/scripts/repair-wsl-symlinks.sh" "$ROOT/$SUB"
 	git -C "$SUB" apply "$ROOT/patches/wsl2-build-hacks.patch"
 else
 	echo "    [$PLATFORM] 用干净 armbian/build @ 70a242f,跳过 WSL2 patch"
