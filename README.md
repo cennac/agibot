@@ -12,6 +12,7 @@
 > 完整步骤(WSL2 四大坑、5 处框架 hack、镜像验证、刷机、跨平台):见 **[BUILD-GUIDE.md](BUILD-GUIDE.md)**。
 > OpenWrt/LEDE 路线见 **[§13 / openwrt/README.md](openwrt/README.md)**。
 > 板子怎么进 Maskrom/Loader、怎么刷、按键干嘛的、调试怎么不崩板……常见操作问答见 **[FAQ.md](FAQ.md)**。
+> 镜像 SHA、离线/实机验收状态及废弃版本见 **[RELEASES.md](RELEASES.md)**。
 > 显示 DTB 实验事故、当前板端恢复步骤和后续 HDMI/DP 分阶段规则见 **[DISPLAY-DTB-INCIDENT.md](DISPLAY-DTB-INCIDENT.md)**。
 
 ## 板子规格
@@ -62,6 +63,7 @@
 ├── ADAPT-NOTES.md              # 设备树 5.10 → 6.1 适配记录
 ├── BUILD-GUIDE.md              # ★ 完整编译教程
 ├── FAQ.md                      # ★ 板子操作问答(进 Maskrom/刷机/按键/调试安全)
+├── RELEASES.md                 # ★ 镜像 SHA/验收状态/废弃版本
 ├── DISPLAY-DTB-INCIDENT.md     # ★ 显示 DTB 事故记录/U-Boot 恢复/后续规则
 └── README.md
 ```

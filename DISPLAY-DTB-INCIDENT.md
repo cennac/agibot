@@ -18,9 +18,14 @@ DTB 并重启;显示 v5 实验与本板 vendor 6.1 驱动不兼容,内核启动�
 - 稳定 overlay DTB:
   `overlay/boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb`
   - SHA-256:`007b1b76dc3c221da437e321581423ab889291ef831b042b4aae886943a6f133`
-- 已验证启动镜像:
+- 已验证启动镜像(实机回滚基线):
   `armbian-build/output/images/Armbian-unofficial_26.08.0-trunk_Agibot_jammy_vendor_6.1.115_minimal.img`
   - SHA-256:`2dc05ed4e388cb8187d2c4a92f8cc1de45926c70cd0a4b3a11c6b8cac411da91`
+  - 已归档:`E:\AIPorject\101\agibot-releases\stable-v3-2dc05ed4\`
+- 当前重新打包版(离线验收通过,尚待实机冷启动):
+  - SHA-256:`f850f7e82845b9d93522081f9884e62635bd5e88d107492ec1663644fef27165`
+  - 已归档:`E:\AIPorject\101\agibot-releases\stable-v3-rebuild-f850f7e8\`
+  - 与稳定 overlay/U-Boot 组合一致;详见 [RELEASES.md](RELEASES.md)。
 - 失败的显示 v4/v5 二进制和手术脚本已从工作区删除,没有 commit/push。
 - `git status` 除 armbian/build submodule 的 WSL 符号链接噪声外应为干净。
 
