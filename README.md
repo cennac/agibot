@@ -1,10 +1,16 @@
 # agibot
 
-为 **AGIBOT MB0002 V2**(RK3588)打造的可复现 **Armbian** 编译 + 刷机工具链。
+为 **AGIBOT MB0002 V2**(RK3588,双千兆)打造的可复现编译 + 刷机工具链,含两条并列路线:
+
+- **Armbian**(通用 Linux / 桌面,vendor 6.1 BSP 内核)—— 本 README 主体
+- **OpenWrt / LEDE**(路由 / 网关,主线 6.12 内核 + 双 GbE)—— 见 **[`openwrt/README.md`](openwrt/README.md)**
+
+两条路线刷机方式相同(RKDevTool 整盘写 eMMC,复用 `flash/`)。
 
 `git clone --recursive` → `bash scripts/install-deps.sh` → `bash setup.sh` → `bash start-build.sh` → 刷机。板级配置与 WSL2 框架 hack 已全部入库,**干净 clone 即可编译,无需手动改框架源码**;脚本自动适配 Linux / WSL2 / macOS。
 
 > 完整步骤(WSL2 四大坑、5 处框架 hack、镜像验证、刷机、跨平台):见 **[BUILD-GUIDE.md](BUILD-GUIDE.md)**。
+> OpenWrt/LEDE 路线见 **[§13 / openwrt/README.md](openwrt/README.md)**。
 
 ## 板子规格
 - **SoC**:Rockchip RK3588
@@ -43,6 +49,13 @@
 │   └── README.md               # 完整刷机方案
 ├── scripts/                    # 辅助脚本(install-deps / preflight / build-status / verify-image)
 │   └── README.md               # 各脚本用法
+├── openwrt/                    # 【另一条路线】OpenWrt/LEDE 路由固件(主线 6.12 内核 + 双 GbE)
+│   ├── lede/                   #   coolsnowwolf/lede git submodule
+│   ├── files/.../rk3588-agibot-mb0002-v2.dts   #   主线精简路由 DTS
+│   ├── patches/                #   armv8.mk DEVICE 块 + generic-rk3588 u-boot
+│   ├── config-agibot-openwrt   #   .config 种子(全功能:LuCI/docker/passwall/sqm)
+│   ├── Dockerfile-lede / docker-lede-build.sh / setup-openwrt.sh
+│   └── README.md               #   LEDE 编译/刷机/验证
 ├── wsl-binfmt-setup.sh         # WSL2 qemu binfmt 注册
 ├── ADAPT-NOTES.md              # 设备树 5.10 → 6.1 适配记录
 ├── BUILD-GUIDE.md              # ★ 完整编译教程
@@ -94,6 +107,18 @@ bash docker-build.sh --shell           # 进容器交互 shell 调试
 sudo bash wsl-binfmt-setup.sh      # 每次 WSL 重启后重跑
 ```
 其余三个 WSL2 坑(fsync 卡死、代理、overlay 注入)+ 5 处框架 hack 已由 `setup.sh` / `start-build.sh` 处理,见 [BUILD-GUIDE §2](BUILD-GUIDE.md)。Linux 原生 / macOS 见 [§11](BUILD-GUIDE.md#11-附录在-linux-原生--macos-上编译)。
+
+## OpenWrt / LEDE 构建(另一条路线)
+
+除上面的 armbian 路线,本仓库还为这块**双千兆**板子提供了一条 **OpenWrt/LEDE 路由固件**路线(主线 6.12 内核 + LuCI + passwall/openclash/docker 全家桶)。完整步骤见 **[openwrt/README.md](openwrt/README.md)**,要点:
+
+```bash
+cd openwrt
+bash docker-lede-build.sh                       # Docker 完整编译(推荐)
+bash docker-lede-build.sh target/linux/compile  # 只验证 DTS 能否编出 .dtb(快速)
+```
+
+产物 `openwrt/lede/bin/targets/rockchip/armv8/*agibot*sysupgrade.img.gz` 是整盘镜像,**刷机方式与 armbian 完全相同**(RKDevTool Loader@0xCCCCCCCC + image@0,复用 `flash/`)。与 armbian 的本质差异:用**主线内核 + 可编译主线 .dts**(armbian 用 vendor 6.1 BSP + 二进制 dtb)。
 
 ## 备份
 板子原厂备份为 RKFW `update.img`(8.73G),可用 RKDevTool 一键刷回。

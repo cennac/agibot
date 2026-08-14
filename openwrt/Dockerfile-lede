@@ -1,0 +1,27 @@
+# Dockerfile-lede — LEDE/OpenWrt 编译器镜像(ubuntu:22.04)。
+# LEDE 是纯交叉编译(自带工具链 + 自带 dtc + 用 ptgen 打镜像),
+# 故无需 qemu-user-static/binfmt、无需 device-tree-compiler、无需 host /dev(无 losetup)。
+# 必须在 WSL Ubuntu 内 build(让 -v 挂 ext4 而非 9p)。
+FROM ubuntu:22.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG MIRROR=mirrors.tuna.tsinghua.edu.cn
+
+# 清华 http 源(https 在 ca-certificates 装上前 apt update 会失败)+ 开 universe
+RUN set -eux; \
+	sed -i -E \
+		-e "s@(//)([^/]*archive\.ubuntu\.com|security\.ubuntu\.com)@\1${MIRROR}@g" \
+		/etc/apt/sources.list; \
+	sed -i -E 's/^# *deb (\[[^]]*\] )?http/deb \1http/g' /etc/apt/sources.list; \
+	apt-get update; \
+	apt-get install -y --no-install-recommends \
+		build-essential gcc g++ binutils make bc bison flex \
+		libncurses-dev libssl-dev zlib1g-dev \
+		gawk python3 python3-distutils python3-setuptools python3-dev python-is-python3 python3-pyelftools \
+		git curl wget rsync unzip xz-utils zstd ca-certificates \
+		perl patch diffutils file e2fsprogs \
+		sudo; \
+	rm -rf /var/lib/apt/lists/*
+
+WORKDIR /lede
+CMD ["/bin/bash"]

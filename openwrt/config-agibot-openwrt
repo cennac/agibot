@@ -1,0 +1,86 @@
+#
+# AGIBOT MB0002 V2 (RK3588) — LEDE/OpenWrt .config 种子(全功能路由)
+#
+# 用法:setup-openwrt.sh 会把它 cp 成 lede/.config 后跑 `make defconfig` 补全依赖。
+# 缺失或不存在的包 defconfig 会自动丢弃(不报错);想精简首次 bring-up 可注释掉
+# 代理/docker 段,只留 Target + LuCI 基础包编一个最小 squashfs img 先验证能启动。
+#
+# 板子:双千兆 RGMII(gmac0/gmac1) + eMMC(HS400-ES) + UART2 控制台(1.5Mbps)。
+# 刷机:整盘 sysupgrade.img.gz,RKDevTool「Loader@0xCC..CC + image@0」,复用 flash/。
+#
+
+# ===== Target =====
+CONFIG_TARGET_rockchip=y
+CONFIG_TARGET_rockchip_armv8=y
+CONFIG_TARGET_rockchip_armv8_DEVICE_agibot_mb0002-v2=y
+
+# ===== 镜像格式:squashfs(可恢复出厂 + sysupgrade)=====
+CONFIG_TARGET_ROOTFS_SQUASHFS=y
+# rootfs 给大点:docker 镜像/容器占空间(eMMC 通常 ≥8G)
+CONFIG_TARGET_ROOTFS_PARTSIZE=2048
+CONFIG_TARGET_KERNEL_PARTSIZE=64
+
+# ===== LuCI(Web 界面 + 中文)=====
+CONFIG_PACKAGE_luci=y
+CONFIG_PACKAGE_luci-base=y
+CONFIG_PACKAGE_luci-mod-admin-full=y
+# LEDE 中文:符号是 zh_Hans(luci.mk 把 zh-cn 映射成 zh_Hans)。coolsnowwolf 默认就开中文。
+CONFIG_LUCI_LANG_zh_Hans=y
+CONFIG_PACKAGE_luci-theme-argon=y
+CONFIG_PACKAGE_luci-app-firewall=y
+CONFIG_PACKAGE_luci-app-upnp=y
+
+# ===== 代理全家桶(openclash + homeproxy + passwall)=====
+# openclash(Clash)+ homeproxy(sing-box)在 coolsnowwolf/luci feed,自带核心,直接可用。
+# passwall 的代理核心(shadowsocks-rust / v2ray-plugin / ipt2socks / simple-obfs …)在
+#   fw876/helloworld feed。⚠ 该 feed 不能用 src-git 拉(git+gnutls 过 Clash 代理握手崩),
+#   须用 curl 下 tarball + feeds.conf 里 `src-link` 喂入(setup-openwrt.sh 自动)。
+#   defconfig 验证:启用 helloworld 后 passwall 的 shadowsocks-rust-sslocal 等核心全部
+#   解析成 =y,可正常编译安装。passwall 默认关 hysteria/naiveproxy/tuic 等可选核心(够用省事)。
+#   注:helloworld 的 ssr-plus 需 shadowsocks-libev(本环境缺)故不选 ssr-plus,只用 passwall。
+CONFIG_PACKAGE_luci-app-openclash=y
+CONFIG_PACKAGE_luci-app-homeproxy=y
+CONFIG_PACKAGE_luci-app-passwall=y
+
+# ===== 显式关掉 ssr-plus =====
+# coolsnowwolf/lede 的 defconfig 默认把 luci-app-ssr-plus 选成 =y。它会拖进
+# shadowsocksr-libev(在 GCC13 下 -Werror=use-after-free 编译失败)且依赖本环境缺失的
+# shadowsocks-libev。passwall 已覆盖 SSR/SS/V2Ray 全部场景,ssr-plus 冗余,故显式关掉。
+# (若日后确需 ssr-plus:给 shadowsocksr-libev 加 TARGET_CFLAGS += -Wno-error=use-after-free
+#  并补 shadowsocks-libev 包,再放开此行。)
+# CONFIG_PACKAGE_luci-app-ssr-plus is not set
+# CONFIG_PACKAGE_shadowsocksr-libev is not set
+# CONFIG_PACKAGE_shadowsocksr-libev-server is not set
+
+# ===== Docker(需内核开 cgroup/namespace/overlay;lede 默认满足)=====
+CONFIG_PACKAGE_dockerd=y
+CONFIG_PACKAGE_docker-compose=y
+CONFIG_PACKAGE_luci-app-dockerman=y
+CONFIG_PACKAGE_luci-i18n-dockerman-zh=y
+
+# ===== QoS / 流控 =====
+CONFIG_PACKAGE_luci-app-sqm=y
+CONFIG_PACKAGE_sqm-scripts=y
+
+# ===== 常用工具 / 文件系统 / 存储 =====
+CONFIG_PACKAGE_htop=y
+CONFIG_PACKAGE_tcpdump=y
+CONFIG_PACKAGE_curl=y
+CONFIG_PACKAGE_wget-ssl=y
+CONFIG_PACKAGE_nano=y
+CONFIG_PACKAGE_coreutils-nohup=y
+CONFIG_PACKAGE_openssh-sftp-server=y
+CONFIG_PACKAGE_block-mount=y
+CONFIG_PACKAGE_e2fsprogs=y
+CONFIG_PACKAGE_partx-utils=y
+CONFIG_PACKAGE_kmod-fs-exfat=y
+CONFIG_PACKAGE_kmod-fs-vfat=y
+CONFIG_PACKAGE_kmod-usb-storage=y
+CONFIG_PACKAGE_kmod-usb-storage-uas=y
+CONFIG_PACKAGE_kmod-nls-cp936=y
+CONFIG_PACKAGE_kmod-nls-utf8=y
+
+# ===== IPv6(家庭宽带常用)=====
+CONFIG_PACKAGE_ip6tables=y
+CONFIG_PACKAGE_odhcp6c=y
+CONFIG_PACKAGE_odhcpd-ipv6only=y

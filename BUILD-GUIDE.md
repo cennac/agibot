@@ -500,6 +500,52 @@ PROXY_PORT=7890 bash docker-build.sh   # 代理端口非默认 7897 时
 
 ---
 
+## 13. 附录:OpenWrt / LEDE 构建(另一条路线)
+
+本仓库除 armbian 路线外,还为这块**双千兆**板子提供一条 **OpenWrt/LEDE 路由固件**路线(主线 6.12 内核 + LuCI + passwall/openclash/docker)。完整说明见 **[openwrt/README.md](openwrt/README.md)**;本节列要点与差异。
+
+### 13.1 与 armbian 路线的本质差异
+
+| | armbian(本文档主体) | OpenWrt/LEDE(openwrt/) |
+|---|---|---|
+| 用途 | 通用 Linux / 桌面 | 路由 / 网关(双 GbE LAN/WAN) |
+| 内核 | vendor 6.1 BSP(rk-6.1-rkr5.1) | **主线 6.12** |
+| 设备树 | 二进制 dtb(`fdtput` 改,§5) | **可编译主线 `.dts`**(`openwrt/files/.../rk3588-agibot-mb0002-v2.dts`) |
+| U-Boot | armbian 框架构建 | LEDE `generic-rk3588`(rkbin blob,运行时加载板级 DTS) |
+| 交叉编译 | 需 qemu/binfmt(chroot arm64 rootfs) | **纯交叉编译**,无 qemu/binfmt、无 host `/dev` |
+| 刷机 | RKDevTool Loader+image@0 | **完全相同**(整盘 sysupgrade.img.gz,复用 `flash/`) |
+
+### 13.2 DTS 移植要点
+
+主线 `.dts` 移植自 5.10 BSP,电源拓扑与 LEDE 自带的 **seewo srcm3588-io**(RK806@SPI2 + rk860x@i2c0/i2c1)**同构**,故电源树/cpu-supply/sdhci/uart2 直接照搬其已验证写法;双 RGMII GMAC 节点结构参考 LEDE **nanopi-r6**(同为双千兆 RK3588),值取自 BSP:phy-mode `rgmii-rxid`、tx_delay `0x43`(gmac0)/`0x42`(gmac1)、PHY reset GPIO4_D5/D4、PHY reg 1/0。丢弃机器人外设(CSI/PWM/HDMI/PCIe),只留路由所需。
+
+- **U-Boot 用 `generic-rk3588`**:`UBOOT_DEVICE_NAME := generic-rk3588`,并把本板追加进 `U-Boot/generic-rk3588` 的 `BUILD_DEVICES`(patch 002)——无需专用 u-boot defconfig,风险最低。
+- **DEVICE_DTS 显式设** `rk3588-agibot-mb0002-v2`,与 armbian 路线的 `BOOT_FDT_FILE` 同名。
+
+### 13.3 编译(Docker 推荐)
+
+```bash
+cd openwrt
+bash docker-lede-build.sh                       # 完整编译(装配 + make -jN)
+bash docker-lede-build.sh target/linux/compile  # 只验证 DTS 能否编出 .dtb(bring-up 快速验证)
+bash docker-lede-build.sh --shell               # 进容器调试
+DIRECT=1 bash docker-lede-build.sh              # 不传代理(feeds 已装 / cache 齐时)
+```
+
+容器镜像 `agibot-lede-builder`(ubuntu:22.04 + 清华源 + LEDE 依赖,**无 qemu/binfmt**)。注意与 armbian 容器(§12)的差异:无需 `-v /dev:/dev`(LEDE 自带 ptgen 打镜像,不依赖 host losetup)、无需 `--privileged`。
+
+### 13.4 刷机 / 验证
+
+刷机与 armbian 完全相同(§8):RKDevTool「下载镜像」页 Loader@`0xCCCCCCCC` → `flash/rk3588_spl_loader_v1.16.113.bin`;image@`0x00000000` → 解压后的 `*agibot*sysupgrade.img`。
+
+验证:UART2(1500000)串口看启动 → `ip link` 见 eth0/eth1 载波 → 浏览器访问 LuCI(192.168.1.1)→ passwall/openclash/docker 插件可用。
+
+### 13.5 bring-up 风险与回退
+
+RK806@SPI2 略少见(PMIC 多在 I2C),电源树已照搬同构板;console 改主线 uart2 —— 串口看早期日志是关键。板子 eMMC-only(无 SD 救援启动),失败走 **Maskrom + RKDevTool 回刷**(不损坏,与 armbian 一致)。若 DTS 编译报某 `&label` 未定义,`docker-lede-build.sh target/linux/compile` 会明确指出,改用对应节点即可。
+
+---
+
 ## 附:文件清单
 
 | 文件 | 作用 |
@@ -517,4 +563,5 @@ PROXY_PORT=7890 bash docker-build.sh   # 代理端口非默认 7897 时
 | `Dockerfile` + `docker-build.sh` + `.dockerignore` | ★ Docker 编译:ubuntu:22.04 builder 镜像 + 入口(§12) |
 | `flash/` | 刷机:loader + gen-armbian-cfg.py + dump-cfg-any.py + postflash-test + npu_test + README(§8) |
 | `scripts/` | 辅助脚本:install-deps / preflight / build-status / verify-image(见 [scripts/README.md](scripts/README.md)) |
+| `openwrt/` | 【另一条路线】OpenWrt/LEDE 路由固件(主线 6.12 + 双 GbE):lede submodule + 主线 DTS + 补丁 + Dockerfile-lede + setup/docker 脚本(见 [openwrt/README.md](openwrt/README.md)、§13) |
 | `BUILD-GUIDE.md` | 本文档 |

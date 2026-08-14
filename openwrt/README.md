@@ -1,0 +1,153 @@
+# OpenWrt / LEDE for AGIBOT MB0002 V2 (RK3588)
+
+为 **AGIBOT MB0002 V2**(RK3588,双千兆)构建的 **LEDE(Lean's OpenWrt)** 固件,与本仓库的 armbian 路线并列。
+
+底子是 [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede)(自带 LuCI + passwall/openclash/homeproxy/docker 全家桶)。与 armbian 的本质区别:**用主线内核(6.12)+ rkbin blob 的 ATF**,因此需要一份可编译的主线风格 `.dts`(本目录已提供),而 armbian 用 vendor 6.1 BSP 内核 + 二进制 dtb。
+
+> **关于 ssr-plus**:LEDE 默认把 `luci-app-ssr-plus` 选中 =y,但它硬依赖 `shadowsocks-libev`(本环境所有 feed 均无此包)+ `shadowsocksr-libev`(GCC13 `-Werror=use-after-free` 编译失败)。passwall 已覆盖 SSR/SS/V2Ray/Trojan 全部场景,**故显式关闭 ssr-plus,只用 passwall**。若日后确需 ssr-plus:补 `shadowsocks-libev` 源 + 给 shadowsocksr-libev 加 `TARGET_CFLAGS += -Wno-error=use-after-free`,并放开 config 里对应开关。
+
+## 板级事实(DTS 移植依据,源自 5.10 BSP)
+
+| 项 | 值 |
+|---|---|
+| SoC | Rockchip RK3588 |
+| 以太网 | **双千兆 RGMII**:gmac0(reset GPIO4_D5,tx_delay 0x43,PHY reg 1)+ gmac1(reset GPIO4_D4,tx_delay 0x42,PHY reg 0);PHY 通用 `ethernet-phy-ieee802.3-c22`(无厂商串,主线自动识别) |
+| 存储 | 仅 **eMMC**(`sdhci`,8-bit HS400-ES);SD 在 BSP 里 disabled(机器人板无 SD 槽) |
+| PMIC | **RK806 在 SPI2**(IRQ GPIO0_A7,少见 —— 多数板在 I2C),完整 21 路电源树;CPU big0/big1 走 i2c0 的 rk8602@42/rk8603@43,NPU 走 i2c1 rk8602@42 |
+| 控制台 | **UART2 @ 1.5Mbps**(丢 BSP 的 fiq-debugger,主线用标准 8250) |
+| U-Boot | 复用 LEDE 自带 **generic-rk3588** 变体(运行时从 boot 分区加载板级 DTS,无需专用 defconfig) |
+
+## 目录结构
+
+```
+openwrt/
+├── lede/                      # coolsnowwolf/lede git submodule(锁 commit)
+├── files/
+│   └── arch/arm64/boot/dts/rockchip/
+│       └── rk3588-agibot-mb0002-v2.dts   # ★ 主线精简路由 DTS(电源树照搬 seewo srcm3588-io,双 GMAC 参考 nanopi-r6)
+├── patches/
+│   ├── 001-rockchip-add-agibot-mb0002-v2-image.patch   # armv8.mk 加 DEVICE 块(UBOOT=generic-rk3588)
+│   └── 002-uboot-rockchip-build-generic-rk3588-agibot.patch  # generic-rk3588 的 BUILD_DEVICES 追加本板
+├── config-agibot-openwrt      # .config 种子(Target/Profile + 全功能选包:LuCI/docker/passwall/sqm)
+├── Dockerfile-lede            # LEDE builder 镜像(ubuntu:22.04,纯交叉编译,无 qemu/binfmt)
+├── docker-lede-build.sh       # 容器编译入口(WSL 内跑,挂 ext4 仓库;无 -v /dev:/dev)
+├── setup-openwrt.sh           # 装配:init submodule + apply patch + 装 DTS + feeds + defconfig
+└── README.md                  # 本文件
+```
+
+## 编译
+
+支持 **Docker(推荐,三平台统一)/ WSL2 原生 / Linux 原生**。脚本自动检测平台。LEDE 是纯交叉编译 —— 无需 qemu/binfmt、无需 host `/dev`(自带 ptgen 打镜像)。
+
+### Docker 编译(推荐)
+
+```bash
+# 1. clone(含 submodule)
+git clone --recursive https://github.com/cennac/agibot.git
+cd agibot/openwrt
+
+# 2. 启动 Docker Desktop → Settings → Resources → WSL Integration → 开 Ubuntu
+#    (编译须在 WSL Ubuntu 内跑,让 -v 挂 ext4 而非 9p)
+
+# 3. 完整编译(装配 + make -jN)
+bash docker-lede-build.sh
+
+#    只验证 DTS 能否编出 .dtb(快速,bring-up 用):
+bash docker-lede-build.sh target/linux/compile
+```
+
+产物:`openwrt/lede/bin/targets/rockchip/armv8/*agibot*sysupgrade.img.gz`
+
+### 原生编译(WSL2 / Linux)
+
+```bash
+cd openwrt
+bash setup-openwrt.sh                 # 装配:submodule + patch + DTS + feeds + defconfig
+cd lede && make -j$(nproc) V=s
+```
+
+代理:WSL2 自动走 Windows 网关 Clash(7897);Linux 检测本地 7897 或继承 `http_proxy`。
+Docker 下 `DIRECT=1 bash docker-lede-build.sh` 不传代理(feeds 已装 / cache 齐时更稳)。
+
+## 已构建产物(2026-08-14,含 passwall)
+
+| 镜像 | 大小(gz) | 解压 | sha256 |
+|---|---|---|---|
+| `openwrt-rockchip-armv8-agibot_mb0002-v2-squashfs-sysupgrade.img.gz` | 127 MB | 2.13 GiB | `795d5d1f6ad7d60ad48319576b143cb38e787de1d21554d53e819314add8ca25` |
+| `openwrt-rockchip-armv8-agibot_mb0002-v2-ext4-sysupgrade.img.gz` | 163 MB | 2.13 GiB | `79cf5852b5b072a77c75750019066a516723d60c52a3532efc595fd8748f46f5` |
+
+**推荐 squashfs**(官方惯例:支持 sysupgrade + 恢复出厂;rootfs 用 squashfs xz 实际仅 ~112 MB,剩余空间给 overlay/docker)。ext4 为可扩容全盘分区(2 GB),两者分区布局一致。
+
+**已含(352 包,见同目录 `.manifest`)**:`luci-app-passwall 26.4.6`(+shadowsocks-rust-sslocal/ssserver 1.17.1 + ipt2socks + v2ray-plugin + simple-obfs)+ `luci-app-openclash 0.47.075` + `luci-app-homeproxy` + `dockerd/docker-compose` + LuCI 中文 + `luci-app-sqm` 等。
+
+## 从零重建(2026-08-14 实测,代理环境)
+
+`setup-openwrt.sh` 只做装配;本环境(国内 + Windows Clash 代理 + WSL)还有 **3 个必须的手动前置**,顺序如下:
+
+```bash
+# 0. 装配(submodule + patch + DTS + feeds)
+bash setup-openwrt.sh
+
+# 1. helloworld feed 必须用 src-link(不能用 src-git:git+gnutls 过 Clash 代理握手崩)
+bash _helloworld_srclink.sh
+#    —— curl 下 tarball → 解压到 /home/cennac/helloworld-feed → feeds.conf 写 src-link
+#      → feeds update/install(passwall 核心 shadowsocks-rust/ipt2socks 等来自这里)
+
+# 2. docker/dockerd 的 git-short-commit.sh 网络校验会卡死/失败,打补丁跳过
+python3 _patch_dockerd.py
+
+# 3. 编译(内置代理 env + GOPROXY=goproxy.cn;GOPROXY 不设会走 proxy.golang.org 国内挂)
+bash _build_make.sh
+```
+
+`_build_make.sh` 内部还会:剥掉 WSL 继承的 Windows PATH(含括号,否则 u-boot binman `bash -c` 报 syntax error)、`make defconfig` 落 .config、`make -j$(nproc)`、拷 sysupgrade 回本目录。**注意** `_build_make.sh` 依赖 `~/lede` 软链(本机 `~/lede → /home/cennac/lede`),从零 clone 时改成实际路径。
+
+## 刷机(写 eMMC,复用 `flash/`)
+
+实测镜像布局(MBR 整盘,自包含可启动):
+
+| 位置 | 内容 | 证据 |
+|---|---|---|
+| 32 KB | idbloader | `RKNS` 魔数 |
+| 8 MB | u-boot.itb (FIT) | `d00dfeed` 魔数 |
+| 32 MB | boot 分区 (ext4,卷名 `kernel`,64 MB) | MBR p1 + superblock |
+| 128 MB | rootfs (2 GB,squashfs 或 ext4) | MBR p2 + `hsqs`/`53ef` |
+
+RKDevTool「下载镜像」页加两项(**两项都要,只加 image 会报「固件中存在分区定义过小,镜像过大」**):
+
+1. **Loader** `@0xCCCCCCCC` → `flash/rk3588_spl_loader_v1.16.113.bin`
+2. **image** `@0x00000000` → `gzip -dk openwrt-...-squashfs-sysupgrade.img.gz` 解压后的 `.img`(整盘)
+
+⚠️ 别用 RKDevTool 自带的 `MiniLoaderAll.bin`(多半是 RK356x loader,会报「下载 boot 失败」);完整方案见 [`flash/README.md`](../flash/README.md)。eMMC ≥ 4 GB 即可(镜像 2.13 GiB)。
+
+### 启动后
+
+- **串口**:UART2 `1500000` 波特率,`console=ttyS2`。首启见 U-Boot → OpenWrt 内核日志。
+- **网络**:默认 LAN `192.168.1.1`(eth0/eth1 由 dts 的 ethernet0/1 alias 决定),LuCI 访问 `http://192.168.1.1`。
+- **LAN/WAN 规划**:两个 gmac 均在 dts 里 enable,`/etc/config/network` 里把 wan 指到第二个口即可。
+
+## 验证(成功标准)
+
+1. **串口**:UART2 接 USB-TTL(`console=ttyS2,1500000`),见 U-Boot → 内核 → OpenWrt 启动日志。
+2. **网络**:`ip link` 见 eth0/eth1,载波 up;WAN 口 DHCP 拿到地址能上网。
+3. **LuCI**:浏览器访问 `192.168.1.1`(默认 LAN),Web 界面 + 中文主题。
+4. **全功能**:LuCI 里 passwall2 / openclash / docker / SQM 插件可用。
+
+## DTS bring-up 风险与回退
+
+- **首要风险是 PMIC/console**。RK806 在 SPI2 略少见,电源树已照搬同构的 seewo;console 改主线 uart2。串口看早期日志是关键。
+- **eMMC-only**:无 SD 救援启动;失败走 **Maskrom + RKDevTool 回刷**(不损坏,与 armbian 一致)。
+- **PHY 通用无厂商串**:主线自动识别,几乎无风险;若某口起不来,启动后 `ls /sys/bus/mdio_devices` 读 PHY ID 补 `ethernet-phy-idXXXX` compatible。
+- 若 DTS 编译报某个 `&label` 未定义(如 `&mdio0`),编译会明确指出,在 DTS 里改用对应节点即可 —— 单独验证用 `docker-lede-build.sh target/linux/compile`。
+
+## 与 armbian 路线对比
+
+| | armbian 路线 | LEDE 路线(本目录) |
+|---|---|---|
+| 用途 | 通用 Linux(开发/桌面) | 路由/网关(双 GbE) |
+| 内核 | vendor 6.1 BSP(rk-6.1-rkr5.1) | **主线 6.12** |
+| 设备树 | 二进制 dtb(fdtput 改) | **可编译主线 .dts** |
+| U-Boot | armbian 框架构建 | LEDE generic-rk3588(rkbin blob) |
+| 产物 | Armbian .img(整盘) | LEDE sysupgrade.img.gz(整盘) |
+| 刷机 | RKDevTool Loader+image@0 | **同左**(复用 flash/) |
+| 编译 | docker-build.sh | docker-lede-build.sh |
