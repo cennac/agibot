@@ -12,6 +12,7 @@ DDR 和 BL31，但在 BL31 跳转 BL33 (`0x00200000`) 后没有可见 U-Boot 输
 - U-Boot DTB: `rk3588-agibot-mb0002-v2.dtb`
 - UART: UART2 M0, `0xfeb50000`, 1500000 baud
 - eMMC: `0xfe2e0000`, 8-bit, HS400, enhanced strobe
+- Loader 键: SW9200, SARADC channel 1, 按住启动进入 RockUSB Loader
 - 启动等待: 3 秒，控制台保持开启
 
 ## 原厂依据
@@ -23,6 +24,7 @@ SHA-256 为 `511E6A45561056D3FF7B1B7C2868F351FEDDDF48D1CFFFCB390AA525FAB66C42`�
 |---|---|---|
 | 调试串口 | FIQ debugger `serial-id = 2`, UART2 M0 | 明确选择 `uart2m0_xfer` |
 | eMMC | `mmc@fe2e0000`, 8-bit HS400 ES | 在 `&sdhci` 中保持相同能力 |
+| SW9200 | `adc-keys`, SARADC ch1, `KEY_VOLUMEUP`, 1750 uV | U-Boot `setup_download_mode()` 执行 `download` |
 | 主输入 | 12 V always-on | `vcc12v_dcin` |
 | 系统电源 | 5 V always-on, 由 12 V 输入 | `vcc5v0_sys` |
 | PMIC | SPI2 上单颗 RK806 | 不在最小 U-Boot DTS 重复编程，由 preloader 初始化 |
@@ -96,6 +98,26 @@ ext4ls mmc 0:1 /boot
 
 只有 U-Boot 能稳定访问 eMMC 和 rootfs 后，才继续验证 Linux DTB、网络、USB、
 HDMI 和其他外设。
+
+### SW9200 Loader 验收
+
+U-Boot proper 自带下载键检测：`setup_download_mode()` 读取 `KEY_VOLUMEUP`，按下时
+执行 `download` 并进入 RockUSB。AGIBOT 专用 DTS 按原厂 DTB 恢复了 SW9200 的
+`adc-keys` 定义，因此不需要修改闭源 rkbin TPL/SPL。
+
+源码补丁已通过 ARM64 交叉编译，生成 DTB 的通道、键码和电压阈值也已核对；下面
+步骤仍须在实机上完成，不能以编译成功代替 Loader USB 枚举验收。
+
+1. 断电后按住 SW9200。
+2. 保持按住并重新加电，直到串口出现下载键提示。
+3. 串口预期包含 `download key pressed... entering download mode...`。
+4. RKDevTool 应显示“发现一个 LOADER 设备”，此时可以松开 SW9200。
+5. 不按 SW9200 冷启动一次，确认仍正常进入 Armbian。
+
+这里的“按住加电进入 Loader”由 U-Boot proper 实现，不是 BootROM 在上电瞬间直接
+识别按键；按键必须保持到 U-Boot 执行 `board_late_init()`。如果串口出现下载键提示
+但电脑没有枚举 Loader，应继续检查 J2600 刷机 Type-C 的数据线、VBUS 和 USB gadget
+控制器，而不是调整 ADC 阈值。
 
 ## 回滚
 

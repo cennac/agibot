@@ -57,9 +57,11 @@ GPT 是**单分区**,p1=rootfs,`boot` 目录与 rootfs 同分区——见 `confi
 
 ## 刷机方法汇总(loader / maskrom)
 
-本板两个 U-Boot(OpenWrt 主线版、Armbian vendor 版)对 SW9200 按钮均无响应,进下载
-模式统一走 U-Boot 命令或擦 idbloader。**真 Maskrom 比 Loader 稳**(RKDevTool 标准
-BROM+loader 协议,不会「读取 flash 信息失败」)。
+OpenWrt 主线版 U-Boot 尚未接入 SW9200；AGIBOT Armbian vendor U-Boot 源码已按
+原厂 DTB 接入 SW9200 下载键（交叉编译已通过，实机待验收）。仍可通过 U-Boot
+命令或擦 idbloader 进入下载模式。
+**真 Maskrom 比 Loader 稳**(RKDevTool 标准 BROM+loader 协议,不会「读取 flash
+信息失败」)。
 
 ### 进 Loader(U-Boot 命令,快)
 
@@ -93,14 +95,18 @@ BROM+loader 协议,不会「读取 flash 信息失败」)。
 - **Loader** `@0xCCCCCCCC` → `flash/rk3588_spl_loader_v1.16.113.bin`
 - **image** `@0x00000000` → 整盘 `.img`(armbian 或 openwrt)
 
-### SW9200 按钮进 loader(状态)
+### SW9200 按钮进 Loader
 
-- 该功能在 **rkbin 的 TPL/SPL 二进制**里决定(读 SARADC ch1),不在 U-Boot 这层。
-- 内核启动后 SW9200 已被识别为 `adc-keys` 输入设备(`input: adc-keys`),但那是
-  Linux 层的按键,不触发下载模式。
-- 要让 SW9200 在启动早期进 loader,需改 rkbin TPL/SPL(二进制 blob)或给 U-Boot 加
-  saradc 检测 + 设 boot-mode 寄存器——**待后续单独处理**,当前用 U-Boot 命令 / 擦
-  idbloader 进 Maskrom 已足够刷机。
+- 原厂 DTB 已确认 SW9200 为 `adc-keys`：SARADC ch1、`KEY_VOLUMEUP`、按下阈值
+  `1750 uV`、松开阈值 `1800000 uV`。
+- Radxa vendor U-Boot 的 `setup_download_mode()` 已有标准逻辑：读取
+  `KEY_VOLUMEUP`，命中后执行 `download`，无需修改闭源 rkbin TPL/SPL。
+- AGIBOT U-Boot 专用 DTS 已恢复该节点。断电后按住 SW9200 再加电，并保持到串口
+  显示 `download key pressed... entering download mode...`，RKDevTool 应枚举 LOADER。
+- 当前状态：补丁应用、U-Boot 链接和最终 DTB 属性检查均已通过，尚需按上述步骤
+  在板上确认 USB 枚举与正常冷启动两条路径。
+- Linux 启动后仍会把 SW9200 注册为 `adc-keys` 输入设备；这是独立的内核运行时
+  功能，不影响 U-Boot 的冷启动检测。
 
 ## 附:本次调试的关键命令(复用)
 

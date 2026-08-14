@@ -3,7 +3,7 @@ new file mode 100644
 index 00000000000..9063293157f
 --- /dev/null
 +++ b/arch/arm/dts/rk3588-agibot-mb0002-v2.dts
-@@ -0,0 +1,55 @@
+@@ -0,0 +1,73 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * U-Boot device tree for the AGIBOT MB0002 V2 carrier and RK3588 module.
@@ -15,10 +15,28 @@ index 00000000000..9063293157f
 +/dts-v1/;
 +#include "rk3588.dtsi"
 +#include "rk3588-u-boot.dtsi"
++#include <dt-bindings/input/input.h>
 +
 +/ {
 +	model = "AGIBOT MB0002 V2";
 +	compatible = "agibot,mb0002-v2", "rockchip,rk3588";
++
++	/* Factory SW9200 loader key: SARADC channel 1, active near 0 V. */
++	adc-keys {
++		compatible = "adc-keys";
++		io-channels = <&saradc 1>;
++		io-channel-names = "buttons";
++		keyup-threshold-microvolt = <1800000>;
++		u-boot,dm-pre-reloc;
++		status = "okay";
++
++		loader-key {
++			u-boot,dm-pre-reloc;
++			linux,code = <KEY_VOLUMEUP>;
++			label = "SW9200 loader";
++			press-threshold-microvolt = <1750>;
++		};
++	};
 +
 +	vcc12v_dcin: vcc12v-dcin {
 +		u-boot,dm-pre-reloc;
