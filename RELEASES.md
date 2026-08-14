@@ -3,7 +3,29 @@
 本文只记录可追溯的整盘镜像。大文件不提交 Git;以 SHA-256、构建 commit 和验收状态
 识别版本。本地归档位于 `E:\AIPorject\101\agibot-releases\`。
 
-## stable-v3-rebuild-f850f7e8(当前重新打包版)
+## OpenWrt/LEDE 固件(openwrt/ 路线)
+
+### 2026-08-15 完善版(398 包)
+
+- squashfs:`77660b980df2e184679ff3caaea4c206860b2fa5bf005c2f948957a96f262c56`(136 MB gz / 2.13 GiB)
+- ext4:`cb306ccea1fe361bde4ed05dafb1a7cd8a46e10576656a5d42c34e295709d974`(174 MB gz / 2.13 GiB)
+- 增补:ttyd/netdata/nlbwmon/statistics/smartdns/ddns/watchcat/wol/autoreboot/
+  advanced-reboot/ramfree/iperf3/ethtool/bash/jq/bc/lsof/strace/lm-sensors/
+  smartmontools/rsync/uuid
+- 修复:strace 6.6+musl 编译失败(patches/003,--enable-bundled=yes)
+- 状态:构建成功、manifest 抽查 21/21 新包在镜像、解压盘结构(RKNS/FIT/ext4)验证;
+  **未实机刷入**(板子等待显示 v5 事故后物理复位恢复)
+
+### 2026-08-14 初版(352 包,已实机刷入未通过启动验证)
+
+- squashfs:`795d5d1f6ad7d60ad48319576b143cb38e787de1d21554d53e819314add8ca25`
+- ext4:`79cf5852b5b072a77c75750019066a516723d60c52a3532efc595fd8748f46f5`
+- openwrt/ 目录内时间戳 08-14 的 ext4 .gz 被某 Windows 进程锁住暂无法删除
+  (RKDevTool 已关仍锁),带 `_STALE-*.txt` 标记;有效 ext4 用解压版 .img(08-15)
+
+## Armbian 镜像(armbian 路线)
+
+## stable-v3-rebuild-f850f7e8(当前重新打包版,Armbian)
 
 - 构建 commit:`c69e8be`
 - 构建完成:2026-08-14 22:13 CST
