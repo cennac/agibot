@@ -27,7 +27,8 @@ openwrt/
 │       └── rk3588-agibot-mb0002-v2.dts   # ★ 主线精简路由 DTS(电源树照搬 seewo srcm3588-io,双 GMAC 参考 nanopi-r6)
 ├── patches/
 │   ├── 001-rockchip-add-agibot-mb0002-v2-image.patch   # armv8.mk 加 DEVICE 块(UBOOT=generic-rk3588)
-│   └── 002-uboot-rockchip-build-generic-rk3588-agibot.patch  # generic-rk3588 的 BUILD_DEVICES 追加本板
+│   ├── 002-uboot-rockchip-build-generic-rk3588-agibot.patch  # generic-rk3588 的 BUILD_DEVICES 追加本板
+│   └── 003-strace-enable-bundled.patch   # strace 6.6+musl io_uring 断言修复
 ├── config-agibot-openwrt      # .config 种子(Target/Profile + 全功能选包:LuCI/docker/passwall/sqm)
 ├── Dockerfile-lede            # LEDE builder 镜像(ubuntu:22.04,纯交叉编译,无 qemu/binfmt)
 ├── docker-lede-build.sh       # 容器编译入口(WSL 内跑,挂 ext4 仓库;无 -v /dev:/dev)
@@ -69,16 +70,27 @@ cd lede && make -j$(nproc) V=s
 代理:WSL2 自动走 Windows 网关 Clash(7897);Linux 检测本地 7897 或继承 `http_proxy`。
 Docker 下 `DIRECT=1 bash docker-lede-build.sh` 不传代理(feeds 已装 / cache 齐时更稳)。
 
-## 已构建产物(2026-08-14,含 passwall)
+## 已构建产物(2026-08-15 完善版,398 包)
 
 | 镜像 | 大小(gz) | 解压 | sha256 |
 |---|---|---|---|
-| `openwrt-rockchip-armv8-agibot_mb0002-v2-squashfs-sysupgrade.img.gz` | 127 MB | 2.13 GiB | `795d5d1f6ad7d60ad48319576b143cb38e787de1d21554d53e819314add8ca25` |
-| `openwrt-rockchip-armv8-agibot_mb0002-v2-ext4-sysupgrade.img.gz` | 163 MB | 2.13 GiB | `79cf5852b5b072a77c75750019066a516723d60c52a3532efc595fd8748f46f5` |
+| `openwrt-rockchip-armv8-agibot_mb0002-v2-squashfs-sysupgrade.img.gz` | 136 MB | 2.13 GiB | `77660b980df2e184679ff3caaea4c206860b2fa5bf005c2f948957a96f262c56` |
+| `openwrt-rockchip-armv8-agibot_mb0002-v2-ext4-sysupgrade.img.gz` | 174 MB | 2.13 GiB | `cb306ccea1fe361bde4ed05dafb1a7cd8a46e10576656a5d42c34e295709d974` |
 
-**推荐 squashfs**(官方惯例:支持 sysupgrade + 恢复出厂;rootfs 用 squashfs xz 实际仅 ~112 MB,剩余空间给 overlay/docker)。ext4 为可扩容全盘分区(2 GB),两者分区布局一致。
+⚠️ 本目录 ext4 的 `.gz` 若时间戳是 08-14 且带 `_STALE-*.txt` 标记,是旧构建被
+Windows 进程锁住删不掉——用同目录解压版 `.img`(08-15)或 WSL `~/lede/bin/...` 的新 gz。
 
-**已含(352 包,见同目录 `.manifest`)**:`luci-app-passwall 26.4.6`(+shadowsocks-rust-sslocal/ssserver 1.17.1 + ipt2socks + v2ray-plugin + simple-obfs)+ `luci-app-openclash 0.47.075` + `luci-app-homeproxy` + `dockerd/docker-compose` + LuCI 中文 + `luci-app-sqm` 等。
+**推荐 squashfs**(官方惯例:支持 sysupgrade + 恢复出厂;rootfs 用 squashfs xz,剩余空间给 overlay/docker)。ext4 为可扩容全盘分区(2 GB),两者分区布局一致。
+
+**已含(398 包,见同目录 `.manifest`)**:`luci-app-passwall 26.4.6`(+shadowsocks-rust-sslocal/ssserver + ipt2socks + v2ray-plugin + simple-obfs)+ `luci-app-openclash` + `luci-app-homeproxy` + `dockerd/docker-compose` + LuCI 中文 + `luci-app-sqm`。
+
+**2026-08-15 增补(完善版)**:
+- 网络诊断:iperf3 / ethtool / bash / jq / bc / lsof / strace / uuid
+- 监控:luci-app-ttyd(Web 终端)/ netdata / nlbwmon(流量统计)/ statistics(collectd 图形)
+- DNS:luci-app-smartdns(mosdns 留注释按需)
+- 运维:luci-app-ddns(+ddns-scripts)/ watchcat(断网重连)/ wol / autoreboot
+- 健康:lm-sensors / smartmontools;文件:rsync;维护:advanced-reboot / ramfree
+- 修复:strace 6.6+musl 编译失败(io_uring 断言),补丁 `patches/003-strace-enable-bundled.patch`
 
 ## 从零重建(2026-08-14 实测,代理环境)
 
@@ -95,6 +107,10 @@ bash _helloworld_srclink.sh
 
 # 2. docker/dockerd 的 git-short-commit.sh 网络校验会卡死/失败,打补丁跳过
 python3 _patch_dockerd.py
+
+# 2.5 strace 6.6+musl io_uring 断言修复(干净树由 setup 的 003 补丁自动打;
+#      已在用的 ~/lede 可手动 python3 _patch_strace.py)
+python3 _patch_strace.py
 
 # 3. 编译(内置代理 env + GOPROXY=goproxy.cn;GOPROXY 不设会走 proxy.golang.org 国内挂)
 bash _build_make.sh

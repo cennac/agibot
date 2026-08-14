@@ -1,0 +1,5 @@
+⚠️ openwrt-rockchip-armv8-agibot_mb0002-v2-ext4-sysupgrade.img.gz 是【旧构建 2026-08-14 12:23, SHA 79cf5852】
+   此文件被某 Windows 进程锁住(已关闭 RKDevTool 仍锁),暂无法删除。
+   删除方法:重启 Windows(或找到占用进程)后删除本文件与本标记。
+   当前有效 ext4 产物 = 同目录解压版 openwrt-rockchip-armv8-agibot_mb0002-v2-ext4-sysupgrade.img (2026-08-15 05:10)
+   或 WSL ~/lede/bin/targets/rockchip/armv8/ 下的 .gz。

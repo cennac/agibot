@@ -1,0 +1,11 @@
+diff --git a/package/devel/strace/Makefile b/package/devel/strace/Makefile
+--- a/package/devel/strace/Makefile
++++ b/package/devel/strace/Makefile
+@@ -72,6 +72,7 @@ CONFIGURE_ARGS += \
+ 	--with-libdw=$(if $(CONFIG_STRACE_LIBDW),yes,no) \
+ 	--with-libunwind=$(if $(CONFIG_STRACE_LIBUNWIND),yes,no) \
+ 	--enable-mpers=no \
++	--enable-bundled=yes \
+ 	--without-libselinux
+
+ MAKE_FLAGS := \
