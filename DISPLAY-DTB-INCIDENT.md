@@ -125,4 +125,6 @@ DTB 并重启;显示 v5 实验与本板 vendor 6.1 驱动不兼容,内核启动�
 - 旧镜像 SHA `78defab9...`,已被稳定镜像 `2dc05ed4...` 取代;
 - 旧 `armbian-flash/` 已迁移为仓库 `flash/`;
 - cache/output 约占 3.5GB;
-- 确认后可以删除整个平级旧目录,但不要删除仓库 submodule。
+- **已于 2026-08-14 经用户确认后删除整个平级旧目录**;
+- 正式仓库 submodule `agibot-armbian/armbian-build/` 和稳定镜像 `2dc05ed4...`
+  已在删除后复核存在。
