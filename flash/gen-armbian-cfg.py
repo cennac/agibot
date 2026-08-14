@@ -31,6 +31,8 @@ ROOTFS = os.path.join(FLASH, 'armbian-rootfs.img')
 CFG    = os.path.join(FLASH, 'config.cfg')
 HEAD_SECTORS = 32768            # 0x8000 = 16 MiB(head/rootfs 分界)
 HEAD_BYTES   = HEAD_SECTORS * 512
+EXPECTED_UBOOT_DTB = b'rk3588-agibot-mb0002-v2'
+KNOWN_WRONG_UBOOT_DTB = b'rk3588-rock-5b'
 
 def to_win(p):
     """config.cfg 给 Windows 版 RKDevTool 用, 路径须 Windows 格式。
@@ -71,6 +73,21 @@ def split_img(img):
     print(f'  head   = {os.path.getsize(HEAD):,} bytes')
     print(f'  rootfs = {os.path.getsize(ROOTFS):,} bytes')
 
+def verify_uboot_board(img):
+    """Refuse images that still contain the known-incompatible Rock 5B U-Boot."""
+    with open(img, 'rb') as fp:
+        head = fp.read(HEAD_BYTES)
+    if EXPECTED_UBOOT_DTB in head:
+        print('U-Boot DTB: rk3588-agibot-mb0002-v2 [OK]')
+        return
+    found = ('rk3588-rock-5b' if KNOWN_WRONG_UBOOT_DTB in head
+             else '未找到 AGIBOT 板级标识')
+    sys.exit(
+        '[拒绝生成刷机配置] 镜像没有 AGIBOT 专用 U-Boot。\n'
+        f'  检测结果: {found}\n'
+        '  先重新运行 setup.sh 并编译 BOARD=agibot；不要把该镜像写入 LBA0。'
+    )
+
 def enc_path(p, size=520):
     b = p.encode('utf-16-le')
     assert len(b) <= size, f'path too long: {p}'
@@ -89,6 +106,7 @@ def main():
                  '  用法: python gen-armbian-cfg.py --img <Armbian-*.img 路径>\n'
                  '  或编译后默认从 ../armbian-build/output/images/ 自动找最新 Armbian-*.img')
     print(f'整盘 img: {img}')
+    verify_uboot_board(img)
     split_img(img)
 
     items = [

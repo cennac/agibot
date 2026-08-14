@@ -2,22 +2,32 @@
 
 把 `armbian-build` 编译出的 Armbian 镜像刷进板载 **eMMC**。
 
-> **结论先行**:RKDevTool「下载镜像」页把**整盘 img 从地址 `0x00000000` 写入即可**,
-> 等同整盘 `dd`,不必拆分。下面方法一是主推,方法二(拆分)是整盘写失败时的备选。
+> **硬性前提**:镜像头部必须包含 AGIBOT 专用 U-Boot 标识
+> `rk3588-agibot-mb0002-v2`。2026-08-14 之前使用
+> `rock-5b-rk3588_defconfig` 构建的镜像会停在 BL31 跳转 BL33 后，禁止刷入。
+>
+> `gen-armbian-cfg.py` 会检查这个标识；检查失败时不会生成刷机配置。
 
 ## 需要的文件
 
 | 文件 | 位置 | 说明 |
 |---|---|---|
 | 整盘镜像 `Armbian-...minimal.img` | `../armbian-build/output/images/` | 自建产物,~1.67 GiB,kernel 6.1.115 / jammy / vendor |
-| `rk3588_spl_loader_v1.16.113.bin` | **本目录(已入库)** | 正确的 RK3588 loader,MASKROM 阶段必用 |
+| `rk3588_spl_loader_v1.16.113.bin` | **本目录(已入库)** | MASKROM 转 LOADER 的临时下载器，不定义 GPT 或板级 U-Boot |
 
 loader SHA256 = `4cc43c2ff29e08b5491b4d52528346aa7da6948128c17e670ff8a000029c9408`(487 872 字节)
 ⚠️ **别用 RKDevTool 安装目录自带的 `MiniLoaderAll.bin`** —— 多半是 RK356x 的,会报「下载 boot 失败 / Sent(0)」。这是刷不动的头号原因,不是 USB 线。
 
 ---
 
-## 方法一(推荐):整盘写,不拆分
+## 方法一:整盘写,不拆分
+
+先运行方法二中的生成脚本完成 U-Boot 板型校验。只有脚本输出下面一行时，
+整盘写入才允许继续：
+
+```text
+U-Boot DTB: rk3588-agibot-mb0002-v2 [OK]
+```
 
 ### 1. 板子进 MASKROM
 断电 → **按住板载 MASKROM 按键** → 上电 → 松开 → USB-C 连电脑。
@@ -49,7 +59,8 @@ RKDevTool 底部状态栏显示 `Found One MASKROM Device`。
 
 ## 方法二(备选):拆分写
 
-仅当方法一整盘单文件写入报错时使用。本目录的 `gen-armbian-cfg.py` 会**自动**从整盘 img 拆出 head/rootfs 并生成 config.cfg:
+本目录的 `gen-armbian-cfg.py` 会先检查 AGIBOT U-Boot，再从整盘 img 拆出
+head/rootfs 并生成 config.cfg：
 
 ```bash
 # 在仓库根(flash/ 的上一层),Windows 或 WSL Python 均可
@@ -69,6 +80,9 @@ python flash/gen-armbian-cfg.py --img /path/to/Armbian-xxx.img
 | `armbian-rootfs.img` (1.65 GiB) | `0x00008000` (32768) | LBA 32768–末尾:rootfs 分区 + 备份 GPT |
 
 **操作**:「下载镜像」页 → **「选择配置文件」** → 选 `flash/config.cfg`(已配好 Loader + head@0 + rootfs@32768 三项)→ 勾选 → 执行。
+
+拆分不会改变启动链，也不会修复不兼容的 U-Boot。它只用于绕过 RKDevTool
+单个大文件写入问题。
 
 校验/排查 config.cfg 内容:
 ```bash
