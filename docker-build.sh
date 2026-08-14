@@ -13,6 +13,7 @@
 #   bash docker-build.sh agibot-desktop     # 编桌面版(noble + xfce);默认 agibot(minimal)
 #   bash docker-build.sh --shell            # 只进容器开交互 shell(调试/手动跑)
 #   PROXY_PORT=7890 bash docker-build.sh    # 改代理端口(默认 7897 = Clash Verge mixed-port)
+#   DIRECT=1 bash docker-build.sh           # 不传代理(apt 直连清华;cache 已齐时用,避免 Clash 抖动挂 apt)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,6 +21,12 @@ IMG="agibot-armbian-builder"
 MNT="/docker-agibot-armbian"
 PROXY_PORT="${PROXY_PORT:-7897}"
 NP="localhost,127.0.0.1,::1,github.armbian.com"
+# DIRECT=1:不向容器传代理 env → armbian 的 apt 直连清华镜像(更稳)。
+#   原因:armbian main-config.sh 会从 http_proxy 推导全局 APT_PROXY_ADDR(runners.sh 设
+#   Acquire::http::Proxy),把所有 apt(含清华镜像)全劫持进 Clash;Clash 抖一下 apt 即挂。
+#   适合:cache/ 已齐(无需再从 github 拉 kernel/u-boot/rootfs)的重复 / 桌面编译。
+# 默认(未设 DIRECT):传代理,首次编译需经代理从 github 拉资产。
+DIRECT="${DIRECT:-0}"
 
 # 0. 前置检查
 command -v docker >/dev/null 2>&1 || {
@@ -51,16 +58,32 @@ fi
 #    --privileged                :armbian rootfs 阶段要 losetup/mount/chroot
 #    --add-host host.docker.internal:host-gateway :容器经此访问 host 的 Clash(三平台统一)
 #    -e http_proxy=host.docker.internal:PROXY_PORT :传给 start-build.sh 的 linux 分支继承
+# -it 仅在有 tty 时加(交互式终端);后台/CI 无 tty 时加 -it 会让 docker 报
+#   "cannot attach stdin to a TTY-enabled container because stdin is not a terminal" 直接退出
+INTERACTIVE=()
+[ -t 0 ] && INTERACTIVE=(-it)
+# 代理 env:仅非 DIRECT 模式注入(armbian 会把 http_proxy 当 apt 全局代理)
+PROXY_ENV=()
+if [ "$DIRECT" = 1 ]; then
+	echo ">>> DIRECT=1:不传代理(apt 直连清华镜像,需 cache 已齐)"
+else
+	PROXY_ENV=(
+		-e http_proxy="http://host.docker.internal:${PROXY_PORT}"
+		-e https_proxy="http://host.docker.internal:${PROXY_PORT}"
+		-e no_proxy="$NP" -e NO_PROXY="$NP"
+		-e HTTP_PROXY="http://host.docker.internal:${PROXY_PORT}"
+		-e HTTPS_PROXY="http://host.docker.internal:${PROXY_PORT}"
+	)
+fi
+
 COMMON=(
-	--rm -it --privileged
+	--rm --privileged
+	"${INTERACTIVE[@]}"
+	-v /dev:/dev                # 打包 img 阶段 losetup -P 建的分区节点 /dev/loopXp1 需共享 host /dev 才在容器可见
 	--add-host host.docker.internal:host-gateway
 	-v "$ROOT":"$MNT" -w "$MNT"
 	-e TERM="${TERM:-xterm}"
-	-e http_proxy="http://host.docker.internal:${PROXY_PORT}"
-	-e https_proxy="http://host.docker.internal:${PROXY_PORT}"
-	-e no_proxy="$NP"  -e NO_PROXY="$NP"
-	-e HTTP_PROXY="http://host.docker.internal:${PROXY_PORT}"
-	-e HTTPS_PROXY="http://host.docker.internal:${PROXY_PORT}"
+	"${PROXY_ENV[@]}"
 )
 
 # 4. 进容器
@@ -74,6 +97,7 @@ fi
 TARGET="${ARG:-agibot}"
 echo ">>> 启动容器编译 [$TARGET]:挂载 $ROOT → $MNT"
 echo ">>> 容器内执行 setup.sh + start-build.sh $TARGET(前台编译,日志实时输出)..."
-docker run "${COMMON[@]}" "$IMG" bash -c "bash setup.sh && bash start-build.sh $TARGET"
+# 先设 safe.directory:容器以 root 跑,访问 ext4 上 host 用户拥有的仓库会触发 git dubious ownership
+docker run "${COMMON[@]}" "$IMG" bash -c "git config --global --add safe.directory '*' && bash setup.sh && bash start-build.sh $TARGET"
 echo ""
 echo ">>> 完成。产物:$ROOT/armbian-build/output/images/"

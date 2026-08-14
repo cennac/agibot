@@ -2,3 +2,6 @@
 	path = armbian-build
 	url = https://github.com/armbian/build
 	branch = main
+[submodule "openwrt/lede"]
+	path = openwrt/lede
+	url = https://github.com/coolsnowwolf/lede

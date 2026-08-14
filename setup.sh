@@ -35,13 +35,15 @@ if ! command -v git >/dev/null 2>&1; then
 	echo ">>> [!] 缺 git。先装依赖: bash scripts/install-deps.sh"
 	exit 1
 fi
-if [ "$PLATFORM" != macos ] && [ ! -f /proc/sys/fs/binfmt_misc/qemu-aarch64 ]; then
+# 容器内跳过:Docker Desktop kernel 全局 binfmt 生效,但 /proc/.../qemu-aarch64 在容器不可见(实测 arm64 可执行)
+if [ "$PLATFORM" != macos ] && [ ! -f /.dockerenv ] && [ ! -f /proc/sys/fs/binfmt_misc/qemu-aarch64 ]; then
 	echo ">>> [提醒] qemu-aarch64 binfmt 未注册 —— 编译到 rootfs 阶段会报 'Exec format error'"
 	echo "         首次请先跑: bash scripts/install-deps.sh"
 fi
 
 # 1. 初始化 submodule(armbian/build @ 70a242f)
-if [ ! -d "$SUB/.git" ]; then
+#    注意 submodule 的 .git 是文件(gitdir 指针)非目录,用 -e 判存在
+if [ ! -e "$SUB/.git" ]; then
 	echo ">>> [1/3] 初始化 submodule $SUB(首次会从 github clone,约 15G 源码/工具链)..."
 	git submodule update --init --recursive "$SUB"
 else
