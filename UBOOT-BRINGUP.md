@@ -99,14 +99,35 @@ ext4ls mmc 0:1 /boot
 只有 U-Boot 能稳定访问 eMMC 和 rootfs 后，才继续验证 Linux DTB、网络、USB、
 HDMI 和其他外设。
 
+### 2026-08-14 SW9200 镜像构建记录
+
+完整 Armbian 镜像已在 WSL2 中通过 `192.168.208.1:7897` 代理构建成功，构建退出码
+为 0。产物与校验值：
+
+```text
+armbian-build/output/images/Armbian-unofficial_26.08.0-trunk_Agibot_jammy_vendor_6.1.115_minimal.img
+SHA256 fd2c6b782df046ccbcc3cb93edc6c52477e930658e0a3320d617eaf1edf9c0c9
+U-Boot package hash: 2017.09-S39cd-P3f7c-Hbe55-Vecf7-B5da4-R448a
+```
+
+镜像头已检出 `AGIBOT MB0002 V2`、`rk3588-agibot-mb0002-v2` 和
+`SW9200 loader`。生成的 U-Boot DTB 已用 `fdtget` 核对 SARADC ch1、键码 115、
+松开阈值 1800000、按下阈值 1750，以及 `saradc status = okay`。
+
+本次还发现 `gen-armbian-cfg.py` 原先只按文件大小复用 `armbian-head.img` 和
+`armbian-rootfs.img`。新旧镜像大小相同时会继续刷入旧 U-Boot，表现为源码已修改、
+板上行为完全不变。生成器现已改为每次原子重建拆分文件；本次拆分结果也已与整盘
+镜像对应区间逐段校验 SHA-256。以后测试启动链前必须重新运行生成器，不能复用旧拆分件。
+
 ### SW9200 Loader 验收
 
 U-Boot proper 自带下载键检测：`setup_download_mode()` 读取 `KEY_VOLUMEUP`，按下时
 执行 `download` 并进入 RockUSB。AGIBOT 专用 DTS 按原厂 DTB 恢复了 SW9200 的
 `adc-keys` 定义，因此不需要修改闭源 rkbin TPL/SPL。
 
-源码补丁已通过 ARM64 交叉编译，生成 DTB 的通道、键码和电压阈值也已核对；下面
-步骤仍须在实机上完成，不能以编译成功代替 Loader USB 枚举验收。
+源码补丁、ARM64 交叉编译和完整镜像构建均已通过，生成 DTB 的通道、键码和电压
+阈值也已核对；下面步骤仍须在刷入上述新镜像后于实机完成，不能以构建成功代替
+Loader USB 枚举验收。旧镜像不包含该功能，未刷入前按键测试必然无效。
 
 1. 断电后按住 SW9200。
 2. 保持按住并重新加电，直到串口出现下载键提示。

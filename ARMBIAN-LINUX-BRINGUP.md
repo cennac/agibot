@@ -58,8 +58,9 @@ GPT 是**单分区**,p1=rootfs,`boot` 目录与 rootfs 同分区——见 `confi
 ## 刷机方法汇总(loader / maskrom)
 
 OpenWrt 主线版 U-Boot 尚未接入 SW9200；AGIBOT Armbian vendor U-Boot 源码已按
-原厂 DTB 接入 SW9200 下载键（交叉编译已通过，实机待验收）。仍可通过 U-Boot
-命令或擦 idbloader 进入下载模式。
+原厂 DTB 接入 SW9200 下载键（交叉编译和完整镜像构建已通过，须刷入新镜像后实机
+验收）。旧 eMMC 镜像不会因本机完成编译而改变，未刷入前按键测试必然无效。仍可
+通过 U-Boot 命令或擦 idbloader 进入下载模式。
 **真 Maskrom 比 Loader 稳**(RKDevTool 标准 BROM+loader 协议,不会「读取 flash
 信息失败」)。
 
@@ -76,15 +77,25 @@ OpenWrt 主线版 U-Boot 尚未接入 SW9200；AGIBOT Armbian vendor U-Boot 源�
 
 ### 进 Maskrom(真 BROM,最稳,刷机首选)
 
-进真 Maskrom 的本质是**让 BROM 读不到 idbloader**。两种等价操作:
+进真 Maskrom 的本质是**让 BROM 读不到 idbloader**。三种等价操作(**方法 0 最快**,
+完整问答见 [FAQ.md Q1](FAQ.md#q1)):
 
+0. **Linux 里擦,SSH 远程**(能进系统时最快,2026-08-14 实测):
+   ```sh
+   ssh root@<板子IP>   # 密码 1234
+   dd if=/dev/zero of=/dev/mmcblk0 bs=512 count=32768 conv=fsync; sync; reboot -f
+   ```
+   ⚠️ paramiko 自动化发 `reboot -f` 必须后台化,否则 channel 关闭会杀掉 reboot:
+   `c.exec_command("(sleep 1; reboot -f) >/dev/null 2>&1 &")`。
+   验证:ping 断(Maskrom 无网络)+ 串口完全静默 + RKDevTool 显示 MASKROM。
+   可顺手 `dd ... skip=64 count=1 | hexdump` 校验 RKNS 魔数已清零。
 1. **U-Boot 里擦**(当前停在 U-Boot 时):
    ```
    => mmc dev 0
    => mmc erase 0 0x8000      # 擦 eMMC 前 16MiB(idbloader@32KB + u-boot@8MB)
    => reset
    ```
-2. **Linux 里擦**(能进系统时):
+2. **Linux 里擦**(本机接串口/键盘时):
    ```sh
    dd if=/dev/zero of=/dev/mmcblk0 bs=512 count=32768; sync; reboot
    ```
@@ -104,7 +115,10 @@ OpenWrt 主线版 U-Boot 尚未接入 SW9200；AGIBOT Armbian vendor U-Boot 源�
 - AGIBOT U-Boot 专用 DTS 已恢复该节点。断电后按住 SW9200 再加电，并保持到串口
   显示 `download key pressed... entering download mode...`，RKDevTool 应枚举 LOADER。
 - 当前状态：补丁应用、U-Boot 链接和最终 DTB 属性检查均已通过，尚需按上述步骤
-  在板上确认 USB 枚举与正常冷启动两条路径。
+  在板上确认 USB 枚举与正常冷启动两条路径。2026-08-14 完整镜像已构建，SHA-256
+  为 `fd2c6b782df046ccbcc3cb93edc6c52477e930658e0a3320d617eaf1edf9c0c9`。
+- 运行 `flash/gen-armbian-cfg.py` 时必须由目标镜像重新生成 `armbian-head.img` 和
+  `armbian-rootfs.img`。历史版本只比较大小，可能误刷同尺寸的旧拆分镜像；该缺陷已修复。
 - Linux 启动后仍会把 SW9200 注册为 `adc-keys` 输入设备；这是独立的内核运行时
   功能，不影响 U-Boot 的冷启动检测。
 

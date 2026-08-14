@@ -11,6 +11,7 @@
 
 > 完整步骤(WSL2 四大坑、5 处框架 hack、镜像验证、刷机、跨平台):见 **[BUILD-GUIDE.md](BUILD-GUIDE.md)**。
 > OpenWrt/LEDE 路线见 **[§13 / openwrt/README.md](openwrt/README.md)**。
+> 板子怎么进 Maskrom/Loader、怎么刷、按键干嘛的、调试怎么不崩板……常见操作问答见 **[FAQ.md](FAQ.md)**。
 
 ## 板子规格
 - **SoC**:Rockchip RK3588
@@ -59,6 +60,7 @@
 ├── wsl-binfmt-setup.sh         # WSL2 qemu binfmt 注册
 ├── ADAPT-NOTES.md              # 设备树 5.10 → 6.1 适配记录
 ├── BUILD-GUIDE.md              # ★ 完整编译教程
+├── FAQ.md                      # ★ 板子操作问答(进 Maskrom/刷机/按键/调试安全)
 └── README.md
 ```
 
@@ -95,7 +97,8 @@ bash docker-build.sh --shell           # 进容器交互 shell 调试
 ```
 
 ## 刷机(写入 eMMC)
-见 **[flash/README.md](flash/README.md)**。要点:RKDevTool「下载镜像」页加两项执行——
+先让板子进 **Maskrom**(能 SSH 时最快:`dd` 擦 eMMC 头部再 `reboot -f`,见 [FAQ Q1](FAQ.md#q1)),
+然后见 **[flash/README.md](flash/README.md)**。要点:RKDevTool「下载镜像」页加两项执行——
 - **Loader** `@0xCCCCCCCC` → `flash/rk3588_spl_loader_v1.16.113.bin`
 - **image** `@0x00000000` → 整盘 `.img`(等同 `dd`,不必拆分)
 
