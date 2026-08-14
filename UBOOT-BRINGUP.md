@@ -30,6 +30,34 @@ SHA-256 为 `511E6A45561056D3FF7B1B7C2868F351FEDDDF48D1CFFFCB390AA525FAB66C42`�
 U-Boot DTS 有意只保留启动必需节点。完整外设继续由 Linux 的
 `rk3588-agibot-mb0002-v2.dtb` 描述。
 
+## CPU 信息显示策略
+
+当前保持：
+
+```text
+# CONFIG_DISPLAY_CPUINFO is not set
+```
+
+这不是 AGIBOT 配置遗漏。Radxa vendor RK3588 U-Boot 的 Rock 5B、Rock 5 ITX
+及多个 ArmSoM defconfig 同样关闭了该选项。开启 `CONFIG_DISPLAY_CPUINFO=y`
+后，`common/board_f.c` 会在早期 `init_sequence_f` 中调用 `print_cpuinfo()`；
+该 RK3588 代码路径没有实现这个函数，因此构建会链接失败：
+
+```text
+undefined reference to `print_cpuinfo'
+```
+
+该选项只控制 U-Boot 启动日志中的 CPU 信息，不负责 CPU 初始化、调频或 Linux
+启动。当前已有 U-Boot 版本、Model、DRAM 和 MMC 等输出，所以它不是 bring-up
+的必要条件。尤其不应在早期阶段为了显示频率或芯片分档而依赖 OTP、clock、
+SCMI 或 Driver Model，这些子系统此时可能尚未完成初始化。
+
+待专用 U-Boot 在实机上稳定启动后，可用独立补丁增加无外设依赖的最小
+`print_cpuinfo()`：只读取 `MIDR_EL1`，显示 ARM implementer、part、variant 和
+revision，并标识 RK3588 的 Cortex-A55/Cortex-A76 CPU 拓扑。不要在该函数中
+读取 OTP、温度、实时频率或芯片 binning。实现后必须重新做 ARM64 交叉编译和
+实机启动验证，再启用 `CONFIG_DISPLAY_CPUINFO=y`。
+
 ## 构建接线
 
 `setup.sh` 将仓库的 `u-boot/` 复制到 `armbian-build/userpatches/u-boot/`。
