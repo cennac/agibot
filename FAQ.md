@@ -66,10 +66,11 @@ python _ser.py "reset" 3
 ## Q2 板子怎么进 Loader?
 
 - **串口**:上电时按提示打断(U-Boot `Hit key('CTRL+C')` 时发 0x03),再 `download`
-- **SW9200 按键**:AGIBOT Armbian vendor U-Boot 已实现。断电后按住 SW9200 再上电，
-  保持 1–3 秒直到 U-Boot proper 检测 `KEY_VOLUMEUP` 并自动 `download`。必须先刷入
-  2026-08-14 之后包含该补丁的新镜像；只编译但没刷入时，旧板上行为不会变化。
-- 当前状态是源码、DTB 和完整镜像构建已通过，实机 LOADER USB 枚举仍须按上述步骤验收。
+- **SW9200 按键**(2026-08-14 实测可用):断电后**按住 SW9200 再上电**,保持到 RKDevTool
+  显示「LOADER 设备」即可松手。**检测者是 idbloader 里的 rkbin miniloader**(闭源件,
+  USB 枚举 PID 0x350B),不依赖任何 U-Boot 补丁——别再往 U-Boot DTS 加 adc-keys:
+  实测该节点会让 U-Boot proper 在 console 初始化前挂死(BL31 后串口全静默),
+  2026-08-14 已回退(镜像 SHA `2dc05ed4...`)。
 
 <a name="q3"></a>
 ## Q3 Maskrom 和 Loader 有什么区别?该用哪个?

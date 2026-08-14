@@ -106,21 +106,40 @@ OpenWrt 主线版 U-Boot 尚未接入 SW9200；AGIBOT Armbian vendor U-Boot 源�
 - **Loader** `@0xCCCCCCCC` → `flash/rk3588_spl_loader_v1.16.113.bin`
 - **image** `@0x00000000` → 整盘 `.img`(armbian 或 openwrt)
 
-### SW9200 按钮进 Loader
+### SW9200 按钮进 Loader(2026-08-14 实测定论)
 
-- 原厂 DTB 已确认 SW9200 为 `adc-keys`：SARADC ch1、`KEY_VOLUMEUP`、按下阈值
-  `1750 uV`、松开阈值 `1800000 uV`。
-- Radxa vendor U-Boot 的 `setup_download_mode()` 已有标准逻辑：读取
-  `KEY_VOLUMEUP`，命中后执行 `download`，无需修改闭源 rkbin TPL/SPL。
-- AGIBOT U-Boot 专用 DTS 已恢复该节点。断电后按住 SW9200 再加电，并保持到串口
-  显示 `download key pressed... entering download mode...`，RKDevTool 应枚举 LOADER。
-- 当前状态：补丁应用、U-Boot 链接和最终 DTB 属性检查均已通过，尚需按上述步骤
-  在板上确认 USB 枚举与正常冷启动两条路径。2026-08-14 完整镜像已构建，SHA-256
-  为 `fd2c6b782df046ccbcc3cb93edc6c52477e930658e0a3320d617eaf1edf9c0c9`。
-- 运行 `flash/gen-armbian-cfg.py` 时必须由目标镜像重新生成 `armbian-head.img` 和
-  `armbian-rootfs.img`。历史版本只比较大小，可能误刷同尺寸的旧拆分镜像；该缺陷已修复。
-- Linux 启动后仍会把 SW9200 注册为 `adc-keys` 输入设备；这是独立的内核运行时
-  功能，不影响 U-Boot 的冷启动检测。
+- **检测者是 idbloader 里的 rkbin miniloader(闭源)**,不依赖 U-Boot 补丁。
+  断电按住 SW9200 再上电 → miniloader 检测到 → 直接枚举 Rockusb(PID 0x350B),
+  RKDevTool 显示「LOADER 设备」。
+- ⚠️ **不要往 U-Boot DTS 加 adc-keys 节点**:实测(commit c260761 那版)会让
+  U-Boot proper 在 console 初始化前挂死——正常启动 BL31 跳 BL33 后串口全静默、
+  不进 Linux。已回退(镜像 SHA `2dc05ed4...`,U-Boot hash `S39cd-P9a41`),
+  回退后启动正常、SW9200→Loader 依旧可用(miniloader 提供)。
+- Linux 启动后仍会把 SW9200 注册为 `adc-keys` 输入设备;这是独立的内核运行时
+  功能,不影响上述流程。
+
+## Linux DTB 修复(2026-08-14,在板内改 /boot DTB 即生效,无需重刷镜像)
+
+1. **CPU 一直高频(`no supported OPPs`)**:DTB 的 OPP 表带
+   `nvmem-cells + opp-supported-hw` 硬件匹配,本板 OTP 读值与 opp 条目不匹配
+   → 全部 OPP 被拒。修法:从 OPP 表删 `nvmem-cells`/`nvmem-cell-names`/
+   `rockchip,supported-hw`/`opp-supported-hw`(手术脚本 `_fix_dtb.py`,
+   改的是 `overlay/boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb`)。
+   修后小核 1.2–1.8GHz、大核 1.2–2.2GHz,ondemand 正常调频。
+3. **rkvenc2 视频编码器 OPP(2026-08-14 也修了)**:DTB 里 rkvenc-core 节点缺
+   opp 表(原厂 5.10 DTS 没有)。修法:照 rk3588 兄弟板(sige7)移植
+   `venc-opp-table`(800MHz/800mV,不带 nvmem 匹配),给 `vdd_vdenc_s0`
+   (DCDC_REG4)加 phandle,两个 core 挂 `operating-points-v2`+`venc-supply`。
+   手术脚本 `_fix_venc.py`。修后 `rkvenc-ccu probing finish`、`mpp-srv probe
+   success`,零 OPP 报错。
+4. **Linux 下 SW9200 按不出事件**:adc-keys `press-threshold-microvolt=1750`(1.75mV)
+   过严,按下实测 17mV 不触发。改为 30000(30mV),事件应出(实机按压验证待做,
+   用户不在板旁)。
+2. **tsadc probe -22(`Failed to find 'trips' node`)**:原厂 DTS 7 个 thermal
+   zone 只有 soc-thermal 带 trips,6.1 内核要求每个 zone 都有。修法:给
+   bigcore0/1、littlecore、center、gpu、npu 六个 zone 补 trips(passive 75°C +
+   critical 115°C)。修后 `tsadc is probed successfully!`,7 个 zone 全部出温度。
+   `Missing rockchip,grf property` 警告原厂同样存在,无害。
 
 ## 附:本次调试的关键命令(复用)
 

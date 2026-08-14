@@ -12,7 +12,10 @@ DDR 和 BL31，但在 BL31 跳转 BL33 (`0x00200000`) 后没有可见 U-Boot 输
 - U-Boot DTB: `rk3588-agibot-mb0002-v2.dtb`
 - UART: UART2 M0, `0xfeb50000`, 1500000 baud
 - eMMC: `0xfe2e0000`, 8-bit, HS400, enhanced strobe
-- Loader 键: SW9200, SARADC channel 1, 按住启动进入 RockUSB Loader
+- Loader 键: SW9200, SARADC channel 1 —— **检测由 idbloader 里的 rkbin miniloader
+  完成(实测可用,PID 0x350B),U-Boot DTS 不需要也不应该加 adc-keys 节点**
+  (2026-08-14 实测:加节点会导致 U-Boot proper 在 console 初始化前挂死,已回退,
+  见 ARMBIAN-LINUX-BRINGUP.md「SW9200 按钮进 Loader」一节)
 - 启动等待: 3 秒，控制台保持开启
 
 ## 原厂依据
