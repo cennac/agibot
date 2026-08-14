@@ -118,28 +118,38 @@ OpenWrt 主线版 U-Boot 尚未接入 SW9200；AGIBOT Armbian vendor U-Boot 源�
 - Linux 启动后仍会把 SW9200 注册为 `adc-keys` 输入设备;这是独立的内核运行时
   功能,不影响上述流程。
 
-## Linux DTB 修复(2026-08-14,在板内改 /boot DTB 即生效,无需重刷镜像)
+## Linux DTB 修复(2026-08-14,稳定 v3)
 
 1. **CPU 一直高频(`no supported OPPs`)**:DTB 的 OPP 表带
    `nvmem-cells + opp-supported-hw` 硬件匹配,本板 OTP 读值与 opp 条目不匹配
    → 全部 OPP 被拒。修法:从 OPP 表删 `nvmem-cells`/`nvmem-cell-names`/
-   `rockchip,supported-hw`/`opp-supported-hw`(手术脚本 `_fix_dtb.py`,
-   改的是 `overlay/boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb`)。
+   `rockchip,supported-hw`/`opp-supported-hw`(手术脚本 `_fix_dtb.py`)。
    修后小核 1.2–1.8GHz、大核 1.2–2.2GHz,ondemand 正常调频。
-3. **rkvenc2 视频编码器 OPP(2026-08-14 也修了)**:DTB 里 rkvenc-core 节点缺
-   opp 表(原厂 5.10 DTS 没有)。修法:照 rk3588 兄弟板(sige7)移植
-   `venc-opp-table`(800MHz/800mV,不带 nvmem 匹配),给 `vdd_vdenc_s0`
-   (DCDC_REG4)加 phandle,两个 core 挂 `operating-points-v2`+`venc-supply`。
-   手术脚本 `_fix_venc.py`。修后 `rkvenc-ccu probing finish`、`mpp-srv probe
-   success`,零 OPP 报错。
-4. **Linux 下 SW9200 按不出事件**:adc-keys `press-threshold-microvolt=1750`(1.75mV)
-   过严,按下实测 17mV 不触发。改为 30000(30mV),事件应出(实机按压验证待做,
-   用户不在板旁)。
 2. **tsadc probe -22(`Failed to find 'trips' node`)**:原厂 DTS 7 个 thermal
-   zone 只有 soc-thermal 带 trips,6.1 内核要求每个 zone 都有。修法:给
+   zone 只有 soc-thermal 带 trips,6.1 内核要求每个 zone 都有。给
    bigcore0/1、littlecore、center、gpu、npu 六个 zone 补 trips(passive 75°C +
    critical 115°C)。修后 `tsadc is probed successfully!`,7 个 zone 全部出温度。
-   `Missing rockchip,grf property` 警告原厂同样存在,无害。
+3. **rkvenc2 视频编码器 OPP**:DTB 的 rkvenc-core 节点缺 opp 表。照 RK3588
+   兄弟板 sige7 移植 `venc-opp-table`(800MHz/800mV,不带 nvmem 匹配),给
+   `vdd_vdenc_s0` 加 phandle,两个 core 挂 `operating-points-v2`+`venc-supply`
+   (脚本 `_fix_venc.py`)。修后 `mpp-srv probe success`,零 rkvenc OPP 报错。
+4. **Linux 下 SW9200 按键阈值**:`1750uV` 过严(按下实测约 17mV),已改为
+   30000uV。Linux input 事件的最终按压验收待有人在板旁执行;不影响 miniloader
+   的 SW9200→Loader 功能。
+
+稳定 v3 overlay DTB SHA-256:
+`007b1b76dc3c221da437e321581423ab889291ef831b042b4aae886943a6f133`。
+深度回归:PASS=22/FAIL=0;8 核满载 90 秒最高约 41.6°C;NPU 171.3 FPS;
+eMMC 写约 218MB/s;eth1 1Gbps Full;USB hub 正常。
+
+## 显示 DTB v5 事故/当前板端恢复
+
+2026-08-14 在无人可物理复位的条件下,在线覆盖默认 DTB 测试 HDMI/DP 迁移是错误
+操作。v4 尚能启动但 DRM 反复 `EPROBE_DEFER(-517)`;v5 合并修改 HDMI PHY clock
+provider、旧 clk-port 接线和 VOP OPP 后,板端内核启动挂起,SSH/串口不可操作。
+失败 v4/v5 **未提交/未推送**,仓库已经恢复稳定 v3。板端 `/root/dtb.v3-good`
+可用于恢复;完整时间线、U-Boot 手动启动命令和后续分阶段修复规则见
+**[DISPLAY-DTB-INCIDENT.md](DISPLAY-DTB-INCIDENT.md)**。
 
 ## 附:本次调试的关键命令(复用)
 

@@ -16,6 +16,7 @@ Linux bring-up 见 [ARMBIAN-LINUX-BRINGUP.md](ARMBIAN-LINUX-BRINGUP.md)。
 - [Q9 怎么安全地监控/测试 GPIO 和按键?](#q9)
 - [Q10 NPU 怎么测试?](#q10)
 - [Q11 板子 SSH 怎么连?](#q11)
+- [Q12 替换 DTB 后板子无网络/无串口,怎么恢复?](#q12)
 
 ---
 
@@ -124,7 +125,7 @@ RKDevTool v3.37 比 v2.86 稳。raw img 别走「升级固件」页(要 RKFW/RKA
 
 | 按键 | 行为 | 接线 |
 |---|---|---|
-| **SW9200** | 上电长按进 loader(U-Boot adc-keys 检测) | SARADC **ch1** → `adc-keys`(Linux input1) |
+| **SW9200** | 上电长按进 loader(**rkbin miniloader 检测,不是 U-Boot adc-keys 补丁**) | SARADC **ch1** → `adc-keys`(Linux input1) |
 | **SW9201** | **硬复位**(瞬时断电重启,无软件日志) | 硬件复位线 |
 | **SW9202** | **关机**(systemd 关停 + BL31 virtual poweroff) | PMIC PWRON → `rk805 pwrkey`(input2) |
 | **SW8900** | **重启**(轻触即重启) | 复位/重启线 |
@@ -162,7 +163,8 @@ ch2/ch4 有缓慢漂移。SW9200 按下时 ch1 从 ~4090 掉到 ~39。
 
 - rknpu 驱动是 **DRM 形态**(节点 `/dev/dri/renderD128`,不是旧 misc `/dev/rknpu`——没有后者不是故障)
 - 用户态:`flash/npu_test.py`(RKNNLite + resnet18,三核 init_runtime)
-- 2026-08-14 实测:124.7 FPS(armbian vendor 6.1 + librknnrt v1.5.2)
+- 2026-08-14 稳定 v3 DTB 深度复测:171.3 FPS(5.8ms/frame,resnet18 单核 fallback),
+  NPU 推理路径正常;此前环境约 124.7 FPS
 - 坑:armbian minimal 无 pip3,先 `apt-get install -y python3-pip`;
   pip 走清华源 `-i https://pypi.tuna.tsinghua.edu.cn/simple`
 
@@ -174,3 +176,25 @@ ch2/ch4 有缓慢漂移。SW9200 按下时 ch1 从 ~4090 掉到 ~39。
 - Python paramiko 注意:Windows 控制台 GBK,要 `python -X utf8` +
   `sys.stdout.reconfigure(encoding="utf-8", errors="replace")`,否则 print 中文/box 字符崩溃
   会 SIGPIPE 断掉板端 tee;循环重开 exec_command 会连接抖动,长任务用单 exec_command 板端循环
+
+<a name="q12"></a>
+## Q12 替换 DTB 后板子无网络/无串口,怎么恢复?
+
+先看完整事故与恢复手册:[DISPLAY-DTB-INCIDENT.md](DISPLAY-DTB-INCIDENT.md)。最短路径:
+
+1. 运行 `python -X utf8 _catch_uboot.py 1800`(COM5@1500000,持续发 Ctrl+C)。
+2. 轻按 SW9201/SW8900 一次,抓到 U-Boot `=>`。
+3. 手动用 eMMC 上的稳定备份启动:
+   ```text
+   mmc dev 0
+   ext4load mmc 0:1 ${ramdisk_addr_r} /boot/uInitrd
+   ext4load mmc 0:1 ${kernel_addr_r} /boot/Image
+   ext4load mmc 0:1 ${fdt_addr_r} /root/dtb.v3-good
+   fdt addr ${fdt_addr_r}
+   booti ${kernel_addr_r} ${ramdisk_addr_r} ${fdt_addr_r}
+   ```
+4. Linux 恢复后把 `/root/dtb.v3-good` 覆盖回 `/boot/dtb-6.1.115-vendor-rk35xx/
+   rockchip/rk3588-agibot-mb0002-v2.dtb`,执行 `sync; reboot`。
+
+若完全抓不到 U-Boot,才用 SW9200 进 LOADER 重刷 SHA `2dc05ed4...` 的稳定镜像。
+**无人可物理复位时禁止远程覆盖默认显示 DTB。**
