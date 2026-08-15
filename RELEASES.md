@@ -51,6 +51,10 @@
 - CPU OPP hardware matching 残留=0;thermal trips=7。
 - `venc-opp-table` 存在,两个 rkvenc core 引用存在。
 - Linux SW9200 阈值=30000uV。
+- ⚠️ **SW9200→Loader 在本镜像上无效**(2026-08-15 确认):该功能依赖 U-Boot
+  控制 DTB 的 adc-keys 节点(PID 0x350B 是 U-Boot rockusb 的 PID,非 miniloader);
+  本镜像为修启动挂死删了节点。恢复方案见 UBOOT-BRINGUP.md「按键恢复实验」。
+  实机结果中的启动/回归项均不含按键验证。
 - 失败显示 v4/v5 的 VOP/HDMI PHY 实验属性不存在。
 - `flash/armbian-head.img` 与整盘前 16MiB 逐字节一致:
   `63710dedbe23f0e2e13de566222a84674ccbb6b06c48d393234f536954571316`。

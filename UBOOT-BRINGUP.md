@@ -12,10 +12,11 @@ DDR 和 BL31，但在 BL31 跳转 BL33 (`0x00200000`) 后没有可见 U-Boot 输
 - U-Boot DTB: `rk3588-agibot-mb0002-v2.dtb`
 - UART: UART2 M0, `0xfeb50000`, 1500000 baud
 - eMMC: `0xfe2e0000`, 8-bit, HS400, enhanced strobe
-- Loader 键: SW9200, SARADC channel 1 —— **检测由 idbloader 里的 rkbin miniloader
-  完成(实测可用,PID 0x350B),U-Boot DTS 不需要也不应该加 adc-keys 节点**
-  (2026-08-14 实测:加节点会导致 U-Boot proper 在 console 初始化前挂死,已回退,
-  见 ARMBIAN-LINUX-BRINGUP.md「SW9200 按钮进 Loader」一节)
+- Loader 键: SW9200, SARADC channel 1 —— **检测者是 U-Boot proper 的
+  `setup_download_mode()` + DTB adc-keys 节点**(2026-08-15 修正:PID 0x350B 即
+  U-Boot 自己的 `CONFIG_ROCKUSB_G_DNL_PID`,rk3588_common.h;早前「rkbin
+  miniloader 检测」结论错误)。稳定镜像为修启动挂死删了该节点,**按键当前无效**,
+  恢复实验见下节「按键恢复实验」。
 - 启动等待: 3 秒，控制台保持开启
 
 ## 原厂依据
@@ -142,6 +143,50 @@ Loader USB 枚举验收。旧镜像不包含该功能，未刷入前按键测试
 识别按键；按键必须保持到 U-Boot 执行 `board_late_init()`。如果串口出现下载键提示
 但电脑没有枚举 Loader，应继续检查 J2600 刷机 Type-C 的数据线、VBUS 和 USB gadget
 控制器，而不是调整 ADC 阈值。
+
+## 按键恢复实验(2026-08-15 分析定论,待下次刷机窗口验证)
+
+三个 U-Boot 包 DTB 取证(输出 debs 保留的 Pab49/P3f7c/P9a41)+ 源码链路分析:
+
+| U-Boot hash | adc-keys 节点 | 实机现象 |
+|---|---|---|
+| Pab49/P3f7c(fd2c6b78 镜像) | 有(bus+child 均 `u-boot,dm-pre-reloc`) | 按住 SW9200 进 Loader ✓;正常启动 BL31→BL33 后静默挂死 ✗ |
+| P9a41(2dc05ed4/f850f7e8 稳定版) | 无 | 启动 ✓;**按键无响应 ✗** |
+
+机制链:`board_late_init() → setup_download_mode() → key_read(KEY_VOLUMEUP)
+→ adc_key 驱动读 DTB adc-keys(SARADC ch1) → run_command("download")
+→ rockusb 0 ... → 枚举 2207:0x350B`。PID 350B 就是 U-Boot 的
+`CONFIG_ROCKUSB_G_DNL_PID`(rk3588_common.h),**不是** rkbin miniloader。
+
+挂死最可能原因(假设,未证):`u-boot,dm-pre-reloc` 让按键设备在重定位前、
+console 初始化前被 bind/probe(saradc probe 走 CRU 时钟/reset,该阶段可能死等)。
+对照:Radxa rock-3a/e25 的 adc-keys 用 **`u-boot,dm-spl`**,不用 dm-pre-reloc;
+稳定版 saradc 节点本身也带 dm-pre-reloc 且能启动,说明挂死由「adc-keys bus+child
+的 pre-reloc 标记」触发,非 saradc 本身。
+
+**恢复实验(下次刷机窗口)**:把 adc-keys 节点加回 board_agibot 补丁,但
+**去掉两处 `u-boot,dm-pre-reloc`**(或按 Radxa 惯例改 `u-boot,dm-spl`):
+
+```dts
+adc-keys {
+    compatible = "adc-keys";
+    io-channels = <&saradc 1>;
+    io-channel-names = "buttons";
+    keyup-threshold-microvolt = <1800000>;
+    status = "okay";
+
+    loader-key {
+        linux,code = <KEY_VOLUMEUP>;
+        label = "SW9200 loader";
+        press-threshold-microvolt = <1750>;
+    };
+};
+```
+
+依据:`key_read()` 第一遍只找非 pre-reloc 设备,board_late_init 时 console 已就绪,
+即使探测失败也是串口可见报错(不再是静默挂死)。验收两步:① 不按键冷启动正常进
+Armbian;② 按住 SW9200 上电进 Loader(PID 350B)。失败退路:串口 Ctrl+C 抓 U-Boot
+→ 擦 idbloader 进 Maskrom → 重刷稳定版(FAQ Q1/Q4)。
 
 ## 回滚
 

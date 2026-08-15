@@ -49,7 +49,7 @@ DTB 并重启;显示 v5 实验与本板 vendor 6.1 驱动不兼容,内核启动�
    python -X utf8 _catch_uboot.py 1800
    ```
    工具打开 COM5@1500000,持续发 Ctrl+C,抓到 `=>` 后释放串口。
-2. 轻按一次 **SW9201 或 SW8900**。不要按住 SW9200(它会进 miniloader LOADER)。
+2. 轻按一次 **SW9201 或 SW8900**。不要按住 SW9200(避免误触下载键路径)。
 3. U-Boot `=>` 下依次执行:
    ```text
    mmc dev 0

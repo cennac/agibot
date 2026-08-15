@@ -106,15 +106,19 @@ OpenWrt 主线版 U-Boot 尚未接入 SW9200；AGIBOT Armbian vendor U-Boot 源�
 - **Loader** `@0xCCCCCCCC` → `flash/rk3588_spl_loader_v1.16.113.bin`
 - **image** `@0x00000000` → 整盘 `.img`(armbian 或 openwrt)
 
-### SW9200 按钮进 Loader(2026-08-14 实测定论)
+### SW9200 按钮进 Loader(2026-08-15 根因修正)
 
-- **检测者是 idbloader 里的 rkbin miniloader(闭源)**,不依赖 U-Boot 补丁。
-  断电按住 SW9200 再上电 → miniloader 检测到 → 直接枚举 Rockusb(PID 0x350B),
-  RKDevTool 显示「LOADER 设备」。
-- ⚠️ **不要往 U-Boot DTS 加 adc-keys 节点**:实测(commit c260761 那版)会让
-  U-Boot proper 在 console 初始化前挂死——正常启动 BL31 跳 BL33 后串口全静默、
-  不进 Linux。已回退(镜像 SHA `2dc05ed4...`,U-Boot hash `S39cd-P9a41`),
-  回退后启动正常、SW9200→Loader 依旧可用(miniloader 提供)。
+- **检测者是 U-Boot proper 的 `setup_download_mode()` + DTB adc-keys 节点**
+  (boot_rkimg.c → key_read(KEY_VOLUMEUP) → adc_key 读 SARADC ch1 → download
+  → rockusb 枚举 2207:0x350B)。PID 350B 就是 U-Boot 自己的
+  `CONFIG_ROCKUSB_G_DNL_PID`(rk3588_common.h),**不是** rkbin miniloader
+  ——早前结论错误。
+- ⚠️ **不要照抄 c260761 那版 adc-keys 节点**:它给 bus+child 都加了
+  `u-boot,dm-pre-reloc`,实测会让 U-Boot proper 在 console 初始化前挂死
+  (正常启动 BL31 跳 BL33 后串口全静默、不进 Linux)。
+- **当前稳定镜像(2dc05ed4/f850f7e8)删了该节点,SW9200→Loader 无效**。
+  恢复方案(节点加回去但去掉 pre-reloc 标记,待下次刷机窗口验证)详见
+  UBOOT-BRINGUP.md「按键恢复实验」一节。
 - Linux 启动后仍会把 SW9200 注册为 `adc-keys` 输入设备;这是独立的内核运行时
   功能,不影响上述流程。
 
@@ -134,7 +138,7 @@ OpenWrt 主线版 U-Boot 尚未接入 SW9200；AGIBOT Armbian vendor U-Boot 源�
    `vdd_vdenc_s0` 加 phandle,两个 core 挂 `operating-points-v2`+`venc-supply`
    (脚本 `_fix_venc.py`)。修后 `mpp-srv probe success`,零 rkvenc OPP 报错。
 4. **Linux 下 SW9200 按键阈值**:`1750uV` 过严(按下实测约 17mV),已改为
-   30000uV。Linux input 事件的最终按压验收待有人在板旁执行;不影响 miniloader
+   30000uV。Linux input 事件的最终按压验收待有人在板旁执行;不影响 U-Boot
    的 SW9200→Loader 功能。
 
 稳定 v3 overlay DTB SHA-256:

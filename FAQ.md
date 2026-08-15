@@ -67,11 +67,14 @@ python _ser.py "reset" 3
 ## Q2 板子怎么进 Loader?
 
 - **串口**:上电时按提示打断(U-Boot `Hit key('CTRL+C')` 时发 0x03),再 `download`
-- **SW9200 按键**(2026-08-14 实测可用):断电后**按住 SW9200 再上电**,保持到 RKDevTool
-  显示「LOADER 设备」即可松手。**检测者是 idbloader 里的 rkbin miniloader**(闭源件,
-  USB 枚举 PID 0x350B),不依赖任何 U-Boot 补丁——别再往 U-Boot DTS 加 adc-keys:
-  实测该节点会让 U-Boot proper 在 console 初始化前挂死(BL31 后串口全静默),
-  2026-08-14 已回退(镜像 SHA `2dc05ed4...`)。
+- **SW9200 按键**(2026-08-15 根因修正):机制是 **U-Boot proper 的
+  `setup_download_mode()` 读 DTB 的 adc-keys 节点**(SARADC ch1)→ `download` →
+  rockusb 枚举(PID 0x350B 就是 U-Boot 自己的 `CONFIG_ROCKUSB_G_DNL_PID`,
+  见 rk3588_common.h —— 之前「rkbin miniloader 检测」的结论是错的)。
+  因此**当前稳定镜像(2dc05ed4/f850f7e8)上该按键无效**——为修启动挂死删了
+  adc-keys 节点。恢复方案见 UBOOT-BRINGUP.md「按键恢复实验」:节点加回但
+  **去掉 `u-boot,dm-pre-reloc`**(Radxa rock-3a/e25 惯例是 `u-boot,dm-spl`),
+  下次刷机窗口验证。
 
 <a name="q3"></a>
 ## Q3 Maskrom 和 Loader 有什么区别?该用哪个?
@@ -125,7 +128,7 @@ RKDevTool v3.37 比 v2.86 稳。raw img 别走「升级固件」页(要 RKFW/RKA
 
 | 按键 | 行为 | 接线 |
 |---|---|---|
-| **SW9200** | 上电长按进 loader(**rkbin miniloader 检测,不是 U-Boot adc-keys 补丁**) | SARADC **ch1** → `adc-keys`(Linux input1) |
+| **SW9200** | 上电长按进 loader(**检测者=U-Boot proper 的 adc-keys 节点;稳定镜像已删节点故当前无效**,见 Q2) | SARADC **ch1** → `adc-keys`(Linux input1) |
 | **SW9201** | **硬复位**(瞬时断电重启,无软件日志) | 硬件复位线 |
 | **SW9202** | **关机**(systemd 关停 + BL31 virtual poweroff) | PMIC PWRON → `rk805 pwrkey`(input2) |
 | **SW8900** | **重启**(轻触即重启) | 复位/重启线 |
