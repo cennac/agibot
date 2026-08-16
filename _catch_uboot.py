@@ -3,8 +3,9 @@
 import serial, time, sys
 
 DUR = float(sys.argv[1]) if len(sys.argv) > 1 else 1800
+PORT = sys.argv[2] if len(sys.argv) > 2 else "COM5"
 LOG = r"E:\AIPorject\101\agibot-armbian\_catch_uboot.log"
-s = serial.Serial("COM5", 1500000, timeout=0.08)
+s = serial.Serial(PORT, 1500000, timeout=0.08)
 s.reset_input_buffer()
 print(f">>> 等待板子复位，持续抓 U-Boot {DUR}s；日志 {LOG}")
 end = time.time() + DUR

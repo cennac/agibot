@@ -1,14 +1,35 @@
 # AGIBOT MB0002 V2 — 显示 DTB v5 事故记录与恢复手册
 
-> 状态日期:2026-08-14。本文记录一次**未提交、未推送**的显示设备树实验导致板端
-> 启动挂起的过程、当前边界和恢复步骤。仓库 `main` 仍是已验证的稳定版本。
+> 状态日期:2026-08-16。**事故已恢复,板子全自主启动 + 回归 PASS=23/FAIL=0。**
+> 本文保留完整时间线(前段记录一次未提交、未推送的显示设备树实验导致板端启动
+> 失败的过程),以及 2026-08-16 实战验证的恢复流程。仓库 `main` 始终是稳定版本。
 
-## 一句话结论
+## 2026-08-16 恢复实录(最终事实,修正前期误判)
+
+1. **真实故障形态(修正)**:v5 DTB 下**内核能正常启动**,但 init(systemd)
+   被 SIGSEGV 干掉(`Kernel panic - not syncing: Attempted to kill init!
+   exitcode=0x0000000b`),约 4.5s 即崩。前期「内核启动挂起/无输出」是误判——
+   panic 后停在死机画面不再打印,而监控挂晚了看不到已滚过的日志。
+   **rootfs 并没有损坏**(同内核+同 rootfs 换 v3 DTB 直接正常启动)。
+2. **串口输入(修正)**:vendor U-Boot 的 stdin 是好的。前期 pyserial 脚本连发
+   Ctrl+C 五次(含冷启动)都没打断,一度误判「U-Boot stdin 失效」;最终人工用
+   **SSCOM 勾 HEX 发送、内容 `03`、循环 100ms** 一次命中打断 autoboot(方法
+   详见 FAQ Q13)。板子串口 RX 输入脚曾疑似烧坏(换线无效),换适配器/USB 口后
+   枚举为 COM6 恢复。
+3. **恢复步骤(实测版)**:
+   - SSCOM 打断 U-Boot → `=>`;
+   - 手动 `ext4load` 真实文件名(`vmlinuz-6.1.115-vendor-rk35xx`、
+     `uInitrd-6.1.115-vendor-rk35xx`,**别用符号链接** `/boot/Image`)加载
+     kernel/initramfs/`/root/dtb.v3-good` → `booti`;
+   - SSH(本次 IP 192.168.88.88)进系统后
+     `cp /root/dtb.v3-good /boot/dtb-.../rk3588-agibot-mb0002-v2.dtb && sync`;
+   - `reboot` 验证全自主启动链 ✓;回归 `postflash-test.sh` **PASS=23 FAIL=0**。
+4. **未走 Maskrom 重刷**——eMMC 短接方案备而未用。
+
+## 一句话结论(历史)
 
 CPU 压力测试没有把板子跑坏。直接原因是为了修 HDMI/DP 错误而在线替换了 `/boot`
-DTB 并重启;显示 v5 实验与本板 vendor 6.1 驱动不兼容,内核启动阶段挂起,网络和串口
-均未进入可操作状态。需要有人轻按一次 SW9201/SW8900,截停 U-Boot 后用 eMMC 上的
-`/root/dtb.v3-good` 启动并恢复 `/boot` DTB。**不需要重刷整盘镜像。**
+DTB 并重启;显示 v5 实验与本板 vendor 6.1 驱动不兼容,内核起来后 init 崩溃。
 
 ## 当前状态(重要)
 
@@ -29,16 +50,13 @@ DTB 并重启;显示 v5 实验与本板 vendor 6.1 驱动不兼容,内核启动�
 - 失败的显示 v4/v5 二进制和手术脚本已从工作区删除,没有 commit/push。
 - `git status` 除 armbian/build submodule 的 WSL 符号链接噪声外应为干净。
 
-### 板端:等待一次物理复位
+### 板端:已恢复(2026-08-16)
 
-- `/boot/.../rk3588-agibot-mb0002-v2.dtb` 当前是失败 v5
-  (当时 SHA-256:`7115d2bb597cddfcc464387c694f8bb5d8b7441e61432bda39ab1c3541d3abea`)。
-- eMMC 已保留两个可启动备份:
-  - `/root/dtb.v3-good` — **首选**,完整回归通过。
-  - `/root/dtb.v4` — 能启动,但 DRM 反复 `EPROBE_DEFER`,不推荐长期用。
-- 当前 `.89` 无 SSH;40 次重连全超时。串口 SysRq、CH340 DTR/RTS 均无法远程复位;
-  CH340 控制线没有接板子 reset。
-- 结论:远程没有剩余重启通道,必须轻按 SW9201/SW8900 一次。
+- `/boot/.../rk3588-agibot-mb0002-v2.dtb` 已恢复为稳定 v3
+  (SHA-256:`007b1b76dc3c221da437e321581423ab889291ef831b042b4aae886943a6f133`)。
+- eMMC 仍保留两个备份:`/root/dtb.v3-good`(首选)和 `/root/dtb.v4`。
+- 全自主启动链验证 ✓,回归 PASS=23/FAIL=0。
+- 串口:换适配器后工作在 **COM6**,输入输出均正常(SSCOM HEX 03 打断法见 FAQ Q13)。
 
 ## 恢复步骤(下次有人到板旁)
 

@@ -17,6 +17,7 @@ Linux bring-up 见 [ARMBIAN-LINUX-BRINGUP.md](ARMBIAN-LINUX-BRINGUP.md)。
 - [Q10 NPU 怎么测试?](#q10)
 - [Q11 板子 SSH 怎么连?](#q11)
 - [Q12 替换 DTB 后板子无网络/无串口,怎么恢复?](#q12)
+- [Q13 怎么用 SSCOM/串口工具打断 U-Boot?(2026-08-16 实战)](#q13)
 
 ---
 
@@ -201,3 +202,38 @@ ch2/ch4 有缓慢漂移。SW9200 按下时 ch1 从 ~4090 掉到 ~39。
 
 若完全抓不到 U-Boot,才用 SW9200 进 LOADER 重刷 SHA `2dc05ed4...` 的稳定镜像。
 **无人可物理复位时禁止远程覆盖默认显示 DTB。**
+
+<a name="q13"></a>
+## Q13 怎么用 SSCOM/串口工具打断 U-Boot?(2026-08-16 实战验证)
+
+Ctrl+C 就是字节 `0x03`,SSCOM 的文本框打不出控制字符,必须走 HEX 模式:
+
+1. SSCOM 连接 COM 口,1500000 8N1
+2. 发送区勾选「**HEX 发送**」,发送框填 **`03`**
+3. **卡准时机**:串口出现 `Hit key to stop autoboot('CTRL+C')` 倒计时(3、2、1)
+   的 **3 秒窗口内**发到
+4. 手点来不及就勾「**循环发送**」、间隔 **100ms**,让它在倒计时窗口里自动连发
+5. 成功后串口停在 **`=>`** 提示符(U-Boot 提示符不会超时,可以从容操作)
+
+其他工具:Xshell/SecureCRT 直接按键盘 Ctrl+C 即可;自写脚本用 pyserial
+`s.write(b"\x03")` 循环发(仓库 `_catch_uboot.py`,用法
+`python _catch_uboot.py 秒数 COMx`)。
+
+⚠️ 2026-08-16 教训:自动化脚本连发 5 次都没打断,人工 SSCOM HEX 一次命中——
+遇到「脚本打断失败」别急着判 U-Boot stdin 坏,先用 SSCOM 手发验证一遍。
+
+打断后的手动恢复启动(Q12 的实测版):
+
+```text
+mmc dev 0
+ext4load mmc 0:1 ${ramdisk_addr_r} /boot/uInitrd-6.1.115-vendor-rk35xx
+ext4load mmc 0:1 ${kernel_addr_r} /boot/vmlinuz-6.1.115-vendor-rk35xx
+ext4load mmc 0:1 ${fdt_addr_r} /root/dtb.v3-good
+fdt addr ${fdt_addr_r}
+booti ${kernel_addr_r} ${ramdisk_addr_r} ${fdt_addr_r}
+```
+
+注意 ext4load 用**真实文件名**(`/boot/vmlinuz-*`、`/boot/uInitrd-*`),别用
+`/boot/Image`、`/boot/uInitrd` 这两个符号链接(vendor U-Boot 的 ext4 驱动
+不保证能跟符号链接)。地址变量 `printenv` 确认:kernel=0x400000、
+ramdisk=0xa200000、fdt=0x8300000(devtype=mmc devnum=0)。
