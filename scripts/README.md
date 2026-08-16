@@ -59,7 +59,7 @@ bash scripts/verify-image.sh path/to/Armbian_*.img # 指定镜像
 **不刷板子**直接验证产物(对应 BUILD-GUIDE §7):
 - (1) agibot dtb 是否进了 `boot/dtb-*/rockchip/`
 - (2) dtb 5.10→6.1 适配是否生效(`iommu-av1d` compatible)
-- (3) mali firmware、resize-rootfs.service、hostname、armbianEnv 的 fdtfile
+- (3) mali firmware、Armbian 官方扩容服务、hostname、armbianEnv 的 fdtfile
 
 依赖 `debugfs`(e2fsprogs)和 `fdtget`(device-tree-compiler),install-deps.sh 已装。
 

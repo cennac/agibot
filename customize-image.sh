@@ -41,12 +41,16 @@ if [ -f /boot/armbianEnv.txt ]; then
 	printf 'extraargs=%s\n' "$NEW_EXTRAARGS" >> /boot/armbianEnv.txt
 fi
 
-# 4) 启用首次启动 rootfs 扩容、USB-A 端口供电和 HDMI tty1 登录
-systemctl enable resize-rootfs.service 2>/dev/null || true
+# 4) 使用 Armbian 自带的 armbian-resize-filesystem 动态识别根分区
+# 清理旧版镜像中写死 /dev/mmcblk0p2 的重复服务。
+systemctl disable resize-rootfs.service 2>/dev/null || true
+rm -f /etc/systemd/system/resize-rootfs.service
+
+# 5) 启用 USB-A 端口供电和 HDMI tty1 登录
 systemctl enable agibot-usb-port-power.service 2>/dev/null || true
 systemctl enable getty@tty1.service 2>/dev/null || true
 
-# 5) 清理备份文件（不该进镜像）
+# 6) 清理备份文件（不该进镜像）
 find /boot -name '*.510-orig' -delete 2>/dev/null || true
 
 exit 0

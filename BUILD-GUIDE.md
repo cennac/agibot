@@ -185,7 +185,7 @@ userpatches/
 ├── kernel/rk35xx-vendor-6.1/       # ACM8625P codec 内核补丁
 ├── overlay/                        # 要注入 rootfs 的文件
 │   ├── etc/hostname
-│   ├── etc/systemd/system/resize-rootfs.service
+│   ├── etc/systemd/system/agibot-usb-port-power.service
 │   ├── lib/firmware/               # GPU/WiFi/DP 固件
 │   └── boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb
 └── customize-image.sh              # ★ 注入逻辑(必须)
@@ -250,12 +250,16 @@ if [ -f /boot/armbianEnv.txt ]; then
     sed -i -E '/^extraargs=/ s#(^| )video=HDMI-A-1:[^ ]+##g' /boot/armbianEnv.txt
 fi
 
-# 4) 启用首次启动 rootfs 扩容、USB-A 端口供电和 HDMI tty1 登录
-systemctl enable resize-rootfs.service 2>/dev/null || true
+# 4) 使用 Armbian 自带的 armbian-resize-filesystem 动态识别根分区
+# 清理旧版镜像中写死 /dev/mmcblk0p2 的重复服务
+systemctl disable resize-rootfs.service 2>/dev/null || true
+rm -f /etc/systemd/system/resize-rootfs.service
+
+# 5) 启用 USB-A 端口供电和 HDMI tty1 登录
 systemctl enable agibot-usb-port-power.service 2>/dev/null || true
 systemctl enable getty@tty1.service 2>/dev/null || true
 
-# 5) 清理备份文件(不该进镜像)
+# 6) 清理备份文件(不该进镜像)
 find /boot -name '*.510-orig' -delete 2>/dev/null || true
 exit 0
 ```
@@ -336,9 +340,9 @@ debugfs -R "dump boot/dtb-6.1.115-vendor-rk35xx/rockchip/rk3588-agibot-mb0002-v2
 fdtget /tmp/v.dtb /iommu@fdca0000 compatible     # → rockchip,iommu-av1d
 fdtget /tmp/v.dtb /csi2-dphy0 compatible          # → rockchip,rk3588-csi2-dphy
 
-# ③ firmware / service / hostname / armbianEnv
+# ③ firmware / Armbian 官方扩容服务 / hostname / armbianEnv
 debugfs -R "stat lib/firmware/mali_csffw.bin" /tmp/v.ext4 | grep Inode
-debugfs -R "cat etc/systemd/system/resize-rootfs.service" /tmp/v.ext4 | head -2
+debugfs -R "cat usr/lib/systemd/system/armbian-resize-filesystem.service" /tmp/v.ext4 | head -2
 debugfs -R "cat etc/hostname" /tmp/v.ext4
 debugfs -R "cat boot/armbianEnv.txt" /tmp/v.ext4   # fdtfile=rockchip/rk3588-agibot-mb0002-v2.dtb
 ```

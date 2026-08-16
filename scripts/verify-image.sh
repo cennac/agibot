@@ -46,7 +46,7 @@ fi
 
 echo ">>> (3) firmware / service / hostname / armbianEnv"
 debugfs -R "stat lib/firmware/mali_csffw.bin" "$TMP/v.ext4" 2>/dev/null | grep -q Inode && check "mali_csffw firmware" OK || check "mali_csffw firmware" FAIL
-debugfs -R "cat etc/systemd/system/resize-rootfs.service" "$TMP/v.ext4" 2>/dev/null | head -1 | grep -q . && check "resize-rootfs.service" OK || check "resize-rootfs.service" FAIL
+debugfs -R "cat usr/lib/systemd/system/armbian-resize-filesystem.service" "$TMP/v.ext4" 2>/dev/null | head -1 | grep -q . && check "armbian-resize-filesystem.service" OK || check "armbian-resize-filesystem.service" FAIL
 echo -n "  hostname: "; debugfs -R "cat etc/hostname" "$TMP/v.ext4" 2>/dev/null
 echo -n "  fdtfile:  "; debugfs -R "cat boot/armbianEnv.txt" "$TMP/v.ext4" 2>/dev/null | grep fdtfile || echo "(无 fdtfile 行)"
 

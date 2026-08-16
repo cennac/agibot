@@ -50,3 +50,10 @@ SiGma Micro 键盘 `1c4f:0002` 绑定 `usbhid`。
   （Linux GPIO137）专用于 I2S1 `SDO0`。
 - `/i2s@fe480000` 与 `/acm8625p-sound` 恢复为 `okay`。6.1 内核通过
   `kernel/rk35xx-vendor-6.1/0001-ASoC-add-ACM8625P-amplifier.patch` 加入 codec 驱动。
+
+## 根文件系统扩容
+
+使用 Armbian 自带的 `armbian-resize-filesystem.service`，由它根据 `/` 的挂载源
+动态识别磁盘和分区。不要另建写死 `/dev/mmcblk0p2` 的扩容服务：本板 eMMC 根分区
+实际为 `/dev/mmcblk0p1`。官方服务实测已将 256GB eMMC 扩展到 99%，并按设计保留
+1% 空间用于闪存磨损均衡。
