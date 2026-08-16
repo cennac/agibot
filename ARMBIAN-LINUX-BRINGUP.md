@@ -287,8 +287,14 @@ Type-C 口(接电脑)原镜像是 adb 服务口。6.1 下该口**无任何功能
   - `customize-image.sh`:chmod + systemctl enable。
 - **板上验证(Windows 侧)**:`adb devices` → `SN123 device`;
   `adb shell` 返回 `ADB-OK`/`uname`/`uptime`。
-- **仓库 DTB 固化**:overlay DTB 已带 `dr_mode=peripheral` + `husb311=disabled`,
-  新镜像开箱即得 adb。
+- **安全:默认关闭(opt-in)**。实证 `adb shell id` → `uid=0(root) gid=0(root)`:
+  原厂静态 adbd 以 **root** 运行,Type-C 口一旦挂上,任何插线电脑都能
+  `adb shell` 拿到整板 root shell(原厂 rockchip.sh 的 adb 启动同样是注释
+  掉的,默认不跑)。因此 `customize-image.sh` 只安装服务、**不 enable**;
+  需要调试时手动 `systemctl enable --now agibot-usb-adb.service`,
+  停用 `systemctl disable --now agibot-usb-adb.service`。未启动时
+  dr_mode=peripheral 但无 gadget 装配 → Type-C 口不枚举,电脑侧完全无感。
+- **仓库 DTB 固化**:overlay DTB 已带 `dr_mode=peripheral` + `husb311=disabled`。
 
 ## 固化:下次打包一次成功
 
@@ -318,9 +324,10 @@ GPT 是**单分区**,p1=rootfs,`boot` 目录与 rootfs 同分区——见 `confi
 
 该 DTB 由 `customize-image.sh` 第 17-22 行复制进镜像的 `/boot/dtb-*-vendor-rk35xx/rockchip/`,
 所以改这个 overlay DTB 即完成固化,下次 `setup.sh && docker-build.sh` 直接产出可启动镜像。
-随 DTB 一起固化的还有 `agibot-usb-adb.service`(Type-C adb)与
-`agibot-usb-hub-reset.service`(hub 复位)等 overlay 服务,均由 `customize-image.sh`
-chmod + `systemctl enable`。
+随 DTB 一起固化的还有 overlay 服务,均由 `customize-image.sh` 安装:
+`agibot-usb-hub-reset.service`(hub 复位,enable)、`agibot-usb-port-power.service`
+(USB-A 供电,enable)、`agibot-usb-adb.service`(Type-C adb,**安装但默认不
+enable**——原厂 adbd 跑 root,按需 `systemctl enable --now` 打开)。
 
 ### 验证(下次构建后)
 

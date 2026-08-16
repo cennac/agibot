@@ -53,10 +53,13 @@ fi
 systemctl disable resize-rootfs.service 2>/dev/null || true
 rm -f /etc/systemd/system/resize-rootfs.service
 
-# 5) 启用 USB hub 复位、USB-A 端口供电、Type-C adb、HDMI tty1、蓝牙
+# 5) 启用 USB hub 复位、USB-A 端口供电、HDMI tty1、蓝牙
+#    Type-C adb 刻意【默认关闭】(opt-in):原厂 adbd 以 root 运行,一旦挂上,
+#    任何插线电脑都能 adb shell 拿到整板 root。需要调试时手动:
+#       systemctl enable --now agibot-usb-adb.service
+#    服务本体照常安装(chmod 保留),仅不 enable。
 systemctl enable agibot-usb-hub-reset.service 2>/dev/null || true
 systemctl enable agibot-usb-port-power.service 2>/dev/null || true
-systemctl enable agibot-usb-adb.service 2>/dev/null || true
 systemctl enable getty@tty1.service 2>/dev/null || true
 systemctl enable agibot-bt-attach.service 2>/dev/null || true
 
