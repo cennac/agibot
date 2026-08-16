@@ -1,0 +1,60 @@
+#!/bin/sh
+set -eu
+
+# AGIBOT Type-C adb gadget —— 复刻原厂 usbdevice 脚本的 adb 部分(6.1 下)
+#
+# 背景:
+#  * 原厂(5.10)靠 DWC3 OTG + Type-C PD 控制器做角色检测,PD 芯片在 6.1
+#    无驱动,otg 角色信号缺失 → dwc3 不 probe,Type-C 口没任何功能。
+#  * 解法:DTB 把 /usbdrd3_0/usb@fc000000 的 dr_mode 固定为 peripheral
+#    (板永远做 USB 设备,电脑做 host——正是 adb 形态),再走 configfs
+#    functionfs + 原厂静态 adbd,与内核 f_adb 解耦。
+#  * 原厂 adbd 是静态 aarch64 ELF(rockchip.sh 的 service adbd start),
+#    零依赖,直接可跑。f_adb(ffs.adb)用的就是 functionfs 目录。
+
+UDC="$(ls /sys/class/udc/ 2>/dev/null | awk '{print $1}')"
+if [ -z "$UDC" ]; then
+	echo "agibot-usb-adb: no UDC registered" >&2
+	exit 1
+fi
+
+G=/sys/kernel/config/usb_gadget/agibot
+
+# 幂等/重启场景:若已配置且已绑同一 UDC,直接返回
+if [ -d "$G" ] && [ "$(cat "$G/UDC" 2>/dev/null)" = "$UDC" ]; then
+	exit 0
+fi
+
+# 清理旧 gadget(解绑 + 拆目录)
+if [ -d "$G" ]; then
+	echo "" > "$G/UDC" 2>/dev/null || true
+	rm -f "$G/configs/b.1/ffs.adb" 2>/dev/null || true
+	rmdir "$G/configs/b.1/strings/0x409" "$G/configs/b.1" \
+	      "$G/functions/ffs.adb" "$G/strings/0x409" "$G" 2>/dev/null || true
+fi
+
+mkdir -p "$G/strings/0x409" "$G/configs/b.1/strings/0x409"
+echo 0x2207 > "$G/idVendor"            # Rockchip vendor id
+echo 0x0006 > "$G/idProduct"           # adb PID(原厂参数表)
+echo "AGIBOT" > "$G/strings/0x409/manufacturer"
+echo "AGIBOT MB0002 V2" > "$G/strings/0x409/product"
+SN="$(tr -d '\0' < /proc/device-tree/serial-number 2>/dev/null || true)"
+[ -n "$SN" ] || SN=0123456789ABCDEF
+echo "$SN" > "$G/strings/0x409/serialnumber"
+echo 500 > "$G/configs/b.1/MaxPower"
+echo "adb" > "$G/configs/b.1/strings/0x409/configuration"
+
+mkdir -p "$G/functions/ffs.adb"
+ln -s "$G/functions/ffs.adb" "$G/configs/b.1/ffs.adb"
+
+mkdir -p /dev/usb-ffs/adb
+mountpoint -q /dev/usb-ffs/adb 2>/dev/null || \
+	mount -o uid=2000,gid=2000 -t functionfs adb /dev/usb-ffs/adb
+
+echo "$UDC" > "$G/UDC"
+
+# 原厂静态 adbd(无依赖,rockchip.sh: service adbd start)
+if [ -x /usr/local/bin/adbd ]; then
+	start-stop-daemon --start --oknodo \
+		--pidfile /var/run/adbd.pid --startas /usr/local/bin/adbd --background
+fi

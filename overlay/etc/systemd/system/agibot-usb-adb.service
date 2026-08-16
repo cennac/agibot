@@ -1,0 +1,14 @@
+[Unit]
+Description=AGIBOT Type-C adb gadget (configfs functionfs + oem adbd)
+# dwc3 UDC 由 udev 创建,等待系统基本就绪后再装配 gadget
+After=systemd-udev-settle.service
+ConditionPathExists=/sys/class/udc
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/agibot-usb-adb
+ExecStop=/usr/local/sbin/agibot-usb-adb-stop
+
+[Install]
+WantedBy=multi-user.target

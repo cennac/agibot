@@ -259,6 +259,37 @@ err/warn 全扫,结论:**无新的可修驱动 bug,全子系统绑定完整**。
   rk806 且 BOUND;USB 17 接口全 BOUND;声卡 3 张、hci0(BCM4362A2 固件
   已打)、can0/1、watchdog、thermal 全就绪。
 
+## Type-C adb:usb@fc000000 peripheral + 原厂 adbd(2026-08-17 实测)
+
+Type-C 口(接电脑)原镜像是 adb 服务口。6.1 下该口**无任何功能**(电脑
+不认识设备),根因与修复:
+
+- **根因一:dwc3 不 probe**。`/usbdrd3_0/usb@fc000000` 在 6.1 下报
+  `Fixed dependency cycle(s) with /i2c@fec80000/husb311@4e` —— DWC3 的
+  device link 经 usb-c-connector 与 `fed80000.phy` 成环,导致 gadget irq
+  未就绪,UDC `start -19`。husb311 是 Hynetek Type-C PD 控制器
+  (`CONFIG_TYPEC_HUSB311=y`,6.1 能 probe),但**角色检测依赖 PD 协商**;
+  peripheral 模式不需要 PD。
+- **修法(两处 DTB,板上/仓库已同步)**:
+  - `/usbdrd3_0/usb@fc000000` `dr_mode = "peripheral"`(板永远做 USB 设备,
+    电脑做 host——正是 adb 形态);
+  - `/i2c@fec80000/husb311@4e` `status = "disabled"`(断依赖环;PD 在
+    peripheral 场景无用)。
+- **用户态装配(复刻原厂 usbdevice 脚本的 adb 部分,与内核 f_adb 解耦)**:
+  - `overlay/usr/local/sbin/agibot-usb-adb`:configfs 建 `usb_gadget/agibot`
+    (idVendor=0x2207、idProduct=0x0006=adb PID、serialnumber 取自 DTB)、
+    `functions/ffs.adb` link 到 `configs/b.1/`、mount functionfs 到
+    `/dev/usb-ffs/adb`、`start-stop-daemon` 起 adbd、`echo $UDC > UDC`。幂等/重启清理齐全。
+  - `overlay/usr/local/bin/adbd`:原厂静态 aarch64 ELF(2106864B,零依赖,
+    原 5.10 rootfs `/usr/bin/adbd`,rockchip.sh 的 `service adbd start`)。
+  - `overlay/usr/local/sbin/agibot-usb-adb-stop` + `agibot-usb-adb.service`
+    (oneshot,After=systemd-udev-settle,ConditionPathExists=/sys/class/udc)。
+  - `customize-image.sh`:chmod + systemctl enable。
+- **板上验证(Windows 侧)**:`adb devices` → `SN123 device`;
+  `adb shell` 返回 `ADB-OK`/`uname`/`uptime`。
+- **仓库 DTB 固化**:overlay DTB 已带 `dr_mode=peripheral` + `husb311=disabled`,
+  新镜像开箱即得 adb。
+
 ## 固化:下次打包一次成功
 
 
@@ -280,8 +311,16 @@ console=ttyFIQ0 console=tty1 root=/dev/mmcblk0p1
 (`/dev/mmcblk0p1` 是通用设备名,不依赖每次构建变化的 UUID。前提:本板 armbian
 GPT 是**单分区**,p1=rootfs,`boot` 目录与 rootfs 同分区——见 `config/boards/agibot.conf`。)
 
+同一 DTB 还固化了两组后续修复(与板上实测一致):
+- `/usbdrd3_0/usb@fc000000` `dr_mode="peripheral"` + `/i2c@fec80000/husb311@4e`
+  `status="disabled"` —— Type-C 口 adb 功能(见上文 Type-C adb 章节);
+- `watchdog@feaf0000` `status="okay"` —— 看门狗。
+
 该 DTB 由 `customize-image.sh` 第 17-22 行复制进镜像的 `/boot/dtb-*-vendor-rk35xx/rockchip/`,
 所以改这个 overlay DTB 即完成固化,下次 `setup.sh && docker-build.sh` 直接产出可启动镜像。
+随 DTB 一起固化的还有 `agibot-usb-adb.service`(Type-C adb)与
+`agibot-usb-hub-reset.service`(hub 复位)等 overlay 服务,均由 `customize-image.sh`
+chmod + `systemctl enable`。
 
 ### 验证(下次构建后)
 
