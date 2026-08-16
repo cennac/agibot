@@ -238,6 +238,10 @@ err/warn 全扫,结论:**无新的可修驱动 bug,全子系统绑定完整**。
   full-speed 设备反复 `descriptor read/64, error -32 (EPIPE)` 后被内核放弃。
   EHCI 驱动本身工作正常(同 hub 其他口、9-1.1 键盘都好)。是设备/供电/
   接触的物理问题,远程不可修——**到场检查该 hub 下挂了什么**。
+  (2026-08-17 用户确认外设仅 U盘+键盘:U盘=8-1.4 DataTraveler、键盘=
+  9-1.1,分别在 fcd00000 xHCI / fc400000 DWC3 上**均正常枚举**;而 3-1.4
+  挂在 fc800000(USB OTG)板载 Genesys hub 的 port4——板上有三片焊死的
+  05e3 hub 分接三条 USB 控制器,失败的 3-1.4 是**板内设备**,非用户外设。)
 - **余下 dmesg 噪声逐条定性(cosi)**:fiq_debugger IRQ ENXIO(6.1 无 FIQ,
   console 走 ttyS2 正常)、tsadc 缺 `rockchip,grf`(温度照读,7 个 zone
   33-34℃)、`pin 156 already requested by feb80000.serial`(BT 修复的
