@@ -234,14 +234,20 @@ err/warn 全扫,结论:**无新的可修驱动 bug,全子系统绑定完整**。
   活着),只是没插对端线;eth1 1000Mbps UP(SSH 走它)。dmesg 里 gmac1
   `rx_delay set to 0xffffffff` 是 `rgmii-rxid`(RX 延迟在 PHY 内)的
   正常表达,非 bug。
-- **唯一硬件层异常:usb 3-1.4**(EHCI 侧 05e3:0610 Hub 的 port4)一个
-  full-speed 设备反复 `descriptor read/64, error -32 (EPIPE)` 后被内核放弃。
-  EHCI 驱动本身工作正常(同 hub 其他口、9-1.1 键盘都好)。是设备/供电/
-  接触的物理问题,远程不可修——**到场检查该 hub 下挂了什么**。
-  (2026-08-17 用户确认外设仅 U盘+键盘:U盘=8-1.4 DataTraveler、键盘=
-  9-1.1,分别在 fcd00000 xHCI / fc400000 DWC3 上**均正常枚举**;而 3-1.4
-  挂在 fc800000(USB OTG)板载 Genesys hub 的 port4——板上有三片焊死的
-  05e3 hub 分接三条 USB 控制器,失败的 3-1.4 是**板内设备**,非用户外设。)
+- **唯一硬件层异常:板载 hub port4 的 FS 设备(已判死刑)**:一个
+  full-speed 设备反复 `descriptor read/64, error -32 (EPIPE)` 被内核放弃。
+  2026-08-17 三重验证:①用户确认外设仅 U盘(8-1.4 DataTraveler ✓)+
+  键盘(9-1.1 ✓),均正常,失败者非用户外设;②重启后问题跟着设备换总线
+  (3-1.4→5-1.4),非控制器侧问题;③手动脉冲 hub 复位脚后仍不出现。
+  **结论:板内某 USB 外设硬件故障**(焊死在 fc800000/fc880000 EHCI 侧
+  hub 的 port4),远程不可修,到场检查。
+- **已补:agibot-usb-hub-reset 服务**(2026-08-17):原厂 5.10 DT 有
+  `hubrst-gpio` 节点(`compatible="usbhub_rst"`,usbhub1/2 复位脚=
+  GPIO4_D2/D3,sysfs 154/155,mux GPIO/pull-none),其私有驱动开机脉冲
+  两根脚——**6.1 内核无此驱动,引脚浮空,hub 上电状态随机**(实测一次
+  启动 usb3 侧 hub 整片丢失)。已在用户态复刻:`agibot-usb-hub-reset`
+  服务(sysinit 阶段,先于 usb-port-power)脉冲 154/155;板上验证
+  status=0,脉冲时 U盘/键盘所在 hub 端口干净断开重枚举。
 - **余下 dmesg 噪声逐条定性(cosi)**:fiq_debugger IRQ ENXIO(6.1 无 FIQ,
   console 走 ttyS2 正常)、tsadc 缺 `rockchip,grf`(温度照读,7 个 zone
   33-34℃)、`pin 156 already requested by feb80000.serial`(BT 修复的
