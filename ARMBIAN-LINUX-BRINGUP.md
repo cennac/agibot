@@ -269,3 +269,44 @@ python _erase_to_maskrom.py
 fdtput -t s overlay/boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb /chosen bootargs \
   "earlycon=uart8250,mmio32,0xfeb50000 console=ttyFIQ0 irqchip.gicv3_pseudo_nmi=0 root=/dev/mmcblk0p1 rw rootwait"
 ```
+
+## 附:引脚/串口实测工具箱(2026-08-16 BT 调试沉淀,测其他针脚/按钮前先读)
+
+**安全铁律**:`gpioget`/gpiod 扫 SoC gpiochip 会把未 claimed 的关键输出脚改输入
+→ 板子崩(实测过两次)。只准只读:`cat /sys/kernel/debug/gpio`、SARADC
+`/sys/bus/iio/devices/iio:device0/in_voltageN_raw`。要常拉电平用 DT `gpio-hog`
+(开机即生效),sysfs export 仅限临时调试。
+
+**串口测协议(任何 uart 外设)**:
+- 先看 `/proc/tty/driver/serial` 的 **tx/rx 计数**——tx 涨 rx 不涨 = 对面没收到
+  或没回,这是硬证据,别先猜协议。
+- 必须 `exec 3<>/dev/ttySN` **全程持 fd**:`printf > tty` 发完即关,ACK 毫秒级
+  回来被 8250 丢弃,极像"无响应"。
+- 设备不存在时 `>/dev/ttySN` 会在 devtmpfs 建普通文件 → od 读回自己的字节 =
+  **假 ACK**;先 `ls -l` 确认是字符设备。
+- **CRTSCTS 坑**:DW apb uart 开 CRTSCTS 后 TX 被 nCTS 门死(ctsn 未接线则恒死,
+  字节卡 FIFO、tx 计数照涨)。测不通查 `tcgetattr` cflag 是否带 0x80000000。
+- `TIOCMGET`(0x5415,传 buffer)读 MCR/MSR 活状态:DTR=0x2 RTS=0x4 CTS=0x20
+  CD=0x40 DSR=0x100;MSR.CTS 仅在 ctsn mux 成 UART 功能后才有意义。
+  /dev/mem 被 STRICT_DEVMEM 拦,读不到,用这个替代。
+- python `fcntl.ioctl` 语义:内核用 arg **原值**的(如 HCIUARTSETPROTO
+  0x400455C8)必须传裸 int,传 buffer = 指针值当参数;TIOCSETD(0x5423)/
+  TIOCMGET 是指针语义,传 buffer。
+- 内核驱动调试:dynamic_debug(`echo 'module hci_uart +p' >
+  /sys/kernel/debug/dynamic_debug/control`)+ unbind/bind
+  `/sys/bus/<bus>/drivers/<drv>/` 免重启重跑 probe。
+
+**BT 引脚硬结论**:
+
+| 引脚 | 全局号 | 功能 | 实测 |
+|---|---|---|---|
+| GPIO1_A6 | 38 | BT_REG_ON | 高=上电,上电 **50ms 即响应 HCI** |
+| GPIO3_B2 | 106 | BT_WAKE | 高=唤醒 |
+| GPIO2_C4 | 84 | HOST_WAKE_BT | 模块→主机中断 |
+| GPIO1_A2 | 34 | uart6 rtsn | mux 0x1ac 生效 |
+| ctsn | — | **未接线** | mux 了 MSR 也恒 0,流控路线全死 |
+
+**phandle↔gpio bank 对照(反编 DTB 用)**:gpio1@fec20000=0x191、
+gpio2@fec30000=0x1af、gpio3@fec40000=0xf0、gpio4@fec50000;全局号=bank×32+pin。
+⚠️ vendor `wireless-bluetooth` pinctrl `<0x1ac 0x1ad>` 里 **0x1ad 是 bt-gpio 组
+(非 ctsn)**,别再当 ctsn 用。
