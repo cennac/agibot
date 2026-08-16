@@ -200,6 +200,24 @@ ACM8625P codec 驱动补丁；外置模块已通过 6.1.115 编译和 vermagic �
   它等的东西永远不来。存 MAC 地址用,有 fallback,无功能影响。
 - 清理后 `devices_deferred` 仅剩上两条,均为「留痕的已知项」而非 bug。
 
+## VPU/RGA 用户态库:rockchip-mpp + librga(2026-08-16 实测)
+
+- **背景**:内核侧 VPU 一直就绪(`/dev/mpp_service`),缺的只是用户态库;
+  Armbian/Jammy 仓库**没有** rockchip-mpp/librga 包,需自取源码/预编译。
+- **两个仓库坑**:①`rockchip-linux/mpp` 默认分支是 **develop**(master 404),
+  用 codeload tarball 拉(git clone 在板上会 `expected flush` 抽风);
+  ②`rockchip-linux/librga` 仓库已 **404**(官方迁到 `airockchip/librga`),
+  且新版不再带根 CMakeLists——库以 `libs/Linux/gcc-aarch64/librga.so`
+  预编译交付,直接拷即可。
+- **板上构建**:`scripts/build-vpu-userland.sh` 有完整命令。产物已固化进
+  `overlay/usr/local/{lib,include,bin}`(真身 .so.0 + 测试工具 + 头文件,
+  共 ~15MB;symlink 由 customize-image.sh 重建,Windows git 不保符号链接)。
+- **实测(真硬解)**:ffmpeg 造 320x240 H.264 → `mpi_dec_test -t 7`:
+  **30 帧 14ms,fps 2123.89,峰值内存 1.03MB**——软解不可能的速度,
+  RKDVB/RKVDEC 硬解通路全通。`mpp_info_test` 正常(开头两条
+  `client 4/12 driver is not ready` 是独立的 vdpu/vepu 服务不存在,主
+  mpp_service 工作正常,无害)。
+
 ## 固化:下次打包一次成功
 
 

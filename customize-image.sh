@@ -53,7 +53,22 @@ systemctl enable agibot-usb-port-power.service 2>/dev/null || true
 systemctl enable getty@tty1.service 2>/dev/null || true
 systemctl enable agibot-bt-attach.service 2>/dev/null || true
 
-# 6) 清理备份文件（不该进镜像）
+# 6) VPU 用户态库(rockchip-mpp + librga 预编译产物,来源见 scripts/build-vpu-userland.sh)
+#    overlay 只带真身 .so.0(SONAME=.so.1);Windows git 不可靠保存 symlink,
+#    dev 链接在此重建 + ldconfig。开机自动 modprobe acm8625p 扬声器驱动。
+cd /usr/local/lib
+[ -f librockchip_mpp.so.0 ] && {
+	ln -sf librockchip_mpp.so.0 librockchip_mpp.so.1
+	ln -sf librockchip_mpp.so.1 librockchip_mpp.so
+	ln -sf librockchip_vpu.so.0 librockchip_vpu.so.1
+	ln -sf librockchip_vpu.so.1 librockchip_vpu.so
+}
+chmod 0755 /usr/local/bin/*_test /usr/local/bin/vpu_api_test 2>/dev/null || true
+ldconfig
+mkdir -p /etc/modules-load.d
+echo acm8625p > /etc/modules-load.d/acm8625p.conf
+
+# 7) 清理备份文件（不该进镜像）
 find /boot -name '*.510-orig' -delete 2>/dev/null || true
 
 exit 0
