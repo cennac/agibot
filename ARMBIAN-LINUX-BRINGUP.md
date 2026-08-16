@@ -218,6 +218,37 @@ ACM8625P codec 驱动补丁；外置模块已通过 6.1.115 编译和 vermagic �
   `client 4/12 driver is not ready` 是独立的 vdpu/vepu 服务不存在,主
   mpp_service 工作正常,无害)。
 
+## 全面驱动审计(2026-08-17,DT 节点 vs 实际绑定全量对照)
+
+逐总线遍历 `/sys/bus/{platform,i2c,spi,usb,pci}` 未绑定设备 + dmesg
+err/warn 全扫,结论:**无新的可修驱动 bug,全子系统绑定完整**。
+
+- **PCIe(曾疑似三条全挂,实为 3/3 成功)**:dmesg 早期 3 条
+  `dw-pcie ... invalid resource/-22` 是 vendor 驱动首次尝试的残影,随后
+  rk-pcie host 模式全部接手(三条都打了 host bridge ranges + iATU unroll)。
+  实际拓扑:0002 域 RC→`14e4:449d` **AP6275P WiFi**(dhd 绑定,wlan0 就绪,
+  probe exit err=0);0004 域 RC→`1106:3483` **VIA VL832 PCIe-USB3**
+  (xhci_hcd 绑定,板上 USB3 Hub/U盘全挂它下面);fe150000(Gen3x4)空槽,
+  `PCIe Link Fail, LTSSM 0x0` 属正常(无对端设备)。
+- **eth0 `NO-CARRIER`/DOWN**:网口本身健康(能报载波状态=PHY 链路监视
+  活着),只是没插对端线;eth1 1000Mbps UP(SSH 走它)。dmesg 里 gmac1
+  `rx_delay set to 0xffffffff` 是 `rgmii-rxid`(RX 延迟在 PHY 内)的
+  正常表达,非 bug。
+- **唯一硬件层异常:usb 3-1.4**(EHCI 侧 05e3:0610 Hub 的 port4)一个
+  full-speed 设备反复 `descriptor read/64, error -32 (EPIPE)` 后被内核放弃。
+  EHCI 驱动本身工作正常(同 hub 其他口、9-1.1 键盘都好)。是设备/供电/
+  接触的物理问题,远程不可修——**到场检查该 hub 下挂了什么**。
+- **余下 dmesg 噪声逐条定性(cosi)**:fiq_debugger IRQ ENXIO(6.1 无 FIQ,
+  console 走 ttyS2 正常)、tsadc 缺 `rockchip,grf`(温度照读,7 个 zone
+  33-34℃)、`pin 156 already requested by feb80000.serial`(BT 修复的
+  rtsn gpio-hog,有意为之)、drm-logo/cubic-lut/KASLR 无 seed/VOP overlay
+  plane/opp info/loader memory(HDMI 显示正常工作下的 cosmetic)、
+  rk806 无 sleep/dvs pinctrl、spi2 无 high_speed state、cpuinfo id cell
+  ——均无功能影响。
+- **绑定面抽查**:i2c 8 个 client 全 BOUND(含 acm8625p 1-0015);SPI 仅
+  rk806 且 BOUND;USB 17 接口全 BOUND;声卡 3 张、hci0(BCM4362A2 固件
+  已打)、can0/1、watchdog、thermal 全就绪。
+
 ## 固化:下次打包一次成功
 
 
