@@ -12,7 +12,7 @@ index 0360cde..895c267 100644
  obj-$(CONFIG_SND_SOC_AD193X_SPI)	+= snd-soc-ad193x-spi.o
 diff --git a/sound/soc/codecs/acm8625p.c b/sound/soc/codecs/acm8625p.c
 new file mode 100644
-index 0000000..2b79ef7
+index 0000000..a3dbe7a
 --- /dev/null
 +++ b/sound/soc/codecs/acm8625p.c
 @@ -0,0 +1,565 @@

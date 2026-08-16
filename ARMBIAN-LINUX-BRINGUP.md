@@ -129,6 +129,47 @@ ACM8625P codec 驱动补丁；外置模块已通过 6.1.115 编译和 vermagic �
   (ctsn 未接线),除非硬件补线。HCI 工作在 115200(足够 BLE/控制类应用;
   若日后需高吞吐 A2DP,可仿 vendor 用 brcm_patchram_plus 两段式升 1500000)。
 
+## 扬声器:ACM8625P 功放(i2c8@0x15 + i2s@fe480000)(2026-08-16 实测,只到声卡)
+
+- **硬件**:ACM8625P 功放在 **i2c8(feaa0000)@0x15**,I2S 音频经
+  `i2s@fe480000`(I2S1,GPIO137=SDO0)。DT 已有 `acm8625p@15`(BSP 提供)与
+  `acm8625p-sound`(simple-audio-card,name `rockchip,acm8625p-codec`)。板端此前
+  deferred 报 `acm8625p-sound asoc-simple-card: parse error`——codec dai 解析
+  不到,根因是**驱动未编译**(内核 sound/soc/codecs 无此 codec)。
+- **编译路线(已实证)**:本板内核 CONFIG_MODVERSIONS=y → 外置模块必须与
+  内核同源码+同 config+**同编译器**才 CRC 匹配。**原内核编译器
+  = `aarch64-linux-gnu-gcc (Debian) 14.2.0-19`**(CONFIG_CC_VERSION_TEXT),
+  即 armbian build-container **debian-trixie** 自带的 Debian gcc-14 交叉链。
+  源码 = `armbian/linux-rockchip` `rk-6.1-rkr5.1`(HEAD 5280f9b43361,2026-07-15)
+  + **必须复刻 armbian family 补丁** `rk35xx-vendor-6.1/{001-hid-sony,
+  bluetooth-hci-quirk-v6.1-v6.15}`(第二个恰好改到我们 BT 用的 hci_ldisc.c)。
+  WSL 本机 Ubuntu 24.04 的 gcc-13 **不行**,必须用 Debian trixie 的
+  gcc-14-aarch64-linux-gnu(**版本串逐字一致 14.2.0-19**)。
+- **库内补丁**:`kernel/rk35xx-vendor-6.1/0001-ASoC-add-ACM8625P-amplifier.patch`
+  在 `sound/soc/codecs/Makefile` 加 `obj-y += acm8625p.o` + 新增 565 行
+  acm8625p.c(Wenhao Yang, acme-semi.com;I2C regmap codec,寄存器 REG_PAGE/
+  DEVICE_STATE,DEEP_SLEEP/SLEEP/HIZ/PLAY/MUTE)。**建议做成内建**(obj-y),
+  这样下次打包镜像直接编进内核,无需再带 .ko。
+- **外置模块复用内核构建**:`kernel/_acm_build.sh`(容器内跑)演示完整链路
+  ——应用补丁 → `make olddefconfig`(注意必须重放 arm64 真 config,`make prepare`
+  会按当前 config 覆盖)→ `make prepare` → 单目标编 acm8625p.o → 外置
+  `M=` 产 .ko。**踩坑**:①在 x86 config 下 `make prepare` 会洗掉 arm64 config
+  (CONFIG_CPU_SUP_INTEL=y),导致 `-mrecord-mcount` 编译错;②外置 M= 必须
+  `ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu-`(否则 MODPOST 在 x86 上下文
+  报 `__x86_return_thunk` undefined)。
+- **上板(已远程验证)**:`modprobe acm8625p` → I2C probe 成功
+  (`acm8625p 1-0015`),DSP 固件 `acm8625p_dsp_stereo_btl_48khz.bin` 缺失为
+  非致命 warn(DSP 参数跳过,codec 照常注册)。`/proc/asound/cards` 出
+  `2 [rockchipacm8625]`,`/dev/snd/pcmC2D0p/c/d1p`;ASOC 机器
+  `rockchip,acm8625p-codec`,dai1 = `fe480000.i2s → acm8625p-hifi`。
+  `acm8625p-sound` 从 deferred 消失。**开机自启**:`/etc/modules-load.d/
+  acm8625p.conf`(一行 `acm8625p`)。MODALIAS
+  `of:Nacm8625pT(null)Cacme,acm8625p` 与驱动 compatible 匹配。
+- **放音**:按约定只到「声卡就绪」,**未执行任何 aplay/播放**。用户到场后用
+  `aplay -D hw:2,1 /usr/share/sounds/alsa/Front_Center.wav` 试音(注意
+  modules-load.d 确保开机即加载)。DSP 固件(acme-semi 提供)若需装载性能参数,
+  后续放 /lib/firmware 即可。
+
 ## 固化:下次打包一次成功
 
 
