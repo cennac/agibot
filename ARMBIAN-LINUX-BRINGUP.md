@@ -44,15 +44,51 @@ DRM 按 EDID 自动选择首选模式。控制台字体保持系统默认 8x16�
 - `/dev/vcs1` 最后显示 `Armbian ... Jammy tty1` 和 `agibot login:`；
 - COM7 的 `ttyFIQ0` 登录保持正常。
 
-当前默认 DTB SHA-256:
-`0b93236febdfb31b7687434a115610a851fb25170b5d58329f34f6c31eab9ba4`。
-旧稳定 v3 已在板端备份为 `/root/dtb.v3-pre-hdmi-console`。
+当前默认 DTB SHA-256(HDMI 控制台 + PCIe/WiFi 修复版,2026-08-16):
+`9f1c04daa5667013450aca47ac6bfc07dcef1a987f1063987086245ccb3ea135`。
+旧稳定 v3 已在板端备份为 `/root/dtb.v3-pre-hdmi-console`,
+PCIe 修复前版本备份为 `/root/dtb.pre-pcie-fix`。
 
 GPIO137 是 I2S1 `SDO0`。旧 DTB 同时把它错误写成 HDMI `enable-gpios`，导致 HDMI
 mode set 把 I2S 引脚强切回 GPIO。默认 DTB 已删除该错误属性，并恢复
 `/i2s@fe480000` 和 `/acm8625p-sound`。`kernel/rk35xx-vendor-6.1/` 还加入 GPL-2.0
 ACM8625P codec 驱动补丁；外置模块已通过 6.1.115 编译和 vermagic 校验，板端
 加载与实际放音测试需在明确授权后执行。
+
+## WiFi:AP6275P(BCM43752 PCIe)(2026-08-16 实测)
+
+- **板载无线不是 RTL8821CU(USB)**，而是 **AP6275P = BCM43752 PCIe 模组**
+  (DTB `wireless-wlan` 节点 `wifi_chip_type="ap6275p"`)，挂在
+  **pcie2x1l0(fe170000)**，PCI ID `14e4:449d`。fe190000 总线上还枚举出
+  VIA VL805 USB3 控制器(`1106:3483`)和两颗 GSW PCIe switch。
+- **根因**:原厂 5.10 的 pcie 节点是两段式 `reg-names="pcie-apb","pcie-dbi"`,
+  6.1 vendor 驱动要求三段式——缺第三段 **`config`** reg → 三条控制器全部
+  `Missing *config* reg space → Failed to initialize host`,PCIe 总线零设备,
+  WiFi/USB3 扩展全部枚举不到。
+- **修复**(照 vendor 6.1 SDK `rk3588.dtsi`/`rk3588s.dtsi` 标准写法,脚本
+  `_fix_pcie.py`):每条 pcie 的 `reg` 补第三段 config 空间、`reg-names` 加
+  `"config"`:
+  - fe150000(pcie3x4)→ `<0x0 0xf0000000 0x0 0x100000>`
+  - fe170000(pcie2x1l0)→ `<0x0 0xf2000000 0x0 0x100000>`
+  - fe190000(pcie2x1l2)→ `<0x0 0xf4000000 0x0 0x100000>`
+  - (disabled 的 fe160000/fe180000 一并补上,以后启用免再踩)
+- **驱动与固件**:内核自带 `bcmdhd.ko`(CONFIG_BCMDHD_PCIE),PCIe 枚举后自动
+  加载;固件在 `overlay/lib/firmware/ap6275p/`(`fw_bcm43752a2_pcie_ag.bin`、
+  `nvram_AP6275P.txt`、CLM blob、BT `BCM4362A2.hcd`),驱动按芯片类型表自动选名。
+  模块加载完是 Android 式「WiFi OFF」待机(WL_REG_ON LOW),
+  `ip link set wlan0 up` 触发 dhd_open 上电、加载固件(wl0 18.35.387),
+  之后 `iw dev wlan0 scan` 正常出 SSID(实测扫到 8 个)。
+- **已知噪声**:dmesg 仍有三条 `dw-pcie ... invalid resource → -22`
+  (通用 DW 驱动先 probe 失败),随后 `rk-pcie` 层接管成功——SDK 双驱动层
+  怪癖,功能无碍。
+- **回归**:默认启动 postflash-test **PASS=25/FAIL=0**;wlan0 扫描 ✅;
+  HDMI tty1、声卡无回退。
+- **M.2 / pcie3x4(fe150000)状态(2026-08-16,空槽)**:host 侧全部就绪
+  (host bridge ranges/iATU/PHY 初始化成功,并实际执行链路训练);LTSSM 停在
+  Detect(0x0/0x1)后 `PCIe Link Fail` 是**空槽的正常表现**,非驱动问题。
+  插卡后需**重启一次**才枚举(boot 训练失败时 host 不注册总线,不支持运行中
+  热插)。M.2 物理走线(fe150000 直连还是 GSW switch 下游口)与槽位供电/PERST
+  需实插终验:插卡重启后 `ls /sys/bus/pci/devices/` 出现新设备即确认。
 
 ## 固化:下次打包一次成功
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# HDMI 分阶段测试启动器:reboot → COM6 打断 U-Boot → 测试 DTB 启动 → 串口里程碑。
+# HDMI 分阶段测试启动器:reboot → COM7 打断 U-Boot → 测试 DTB 启动 → 串口里程碑。
 # 用法: python _hdmi_testboot.py <测试dtb路径> [捕获秒数=75]
 import serial, time, sys, threading
 import paramiko
@@ -22,7 +22,7 @@ c.close()
 print(">>> reboot 已发,等待 U-Boot 窗口...")
 
 # 2) 打开 COM6,spam Ctrl+C 直到抓到 => (最长 45s)
-s = serial.Serial("COM6", 1500000, timeout=0.05)
+s = serial.Serial("COM7", 1500000, timeout=0.05)
 s.reset_input_buffer()
 buf = bytearray()
 deadline = time.time() + 45

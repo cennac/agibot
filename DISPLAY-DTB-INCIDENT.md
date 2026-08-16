@@ -38,9 +38,11 @@ DTB 并重启;显示 v5 实验与本板 vendor 6.1 驱动不兼容,内核起来�
 - GitHub `main` 的稳定提交:`7b41c83`。
 - 当前默认 overlay DTB:
   `overlay/boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb`
-  - SHA-256:`0b93236febdfb31b7687434a115610a851fb25170b5d58329f34f6c31eab9ba4`
+  - SHA-256:`9f1c04daa5667013450aca47ac6bfc07dcef1a987f1063987086245ccb3ea135`
+    (2026-08-16 在 HDMI 版基础上追加 PCIe 三段式 reg 修复,AP6275P WiFi 可用)
   - HDMI-A-1 connected、DRM fb0、fbcon 和 `getty@tty1` 已验证。
   - `/chosen/bootargs` 同时保留 `console=ttyFIQ0 console=tty1`。
+  - PCIe/WiFi 详情见 [ARMBIAN-LINUX-BRINGUP.md](ARMBIAN-LINUX-BRINGUP.md)。
 - 已验证启动镜像(实机回滚基线):
   `armbian-build/output/images/Armbian-unofficial_26.08.0-trunk_Agibot_jammy_vendor_6.1.115_minimal.img`
   - SHA-256:`2dc05ed4e388cb8187d2c4a92f8cc1de45926c70cd0a4b3a11c6b8cac411da91`
