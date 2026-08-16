@@ -39,6 +39,8 @@
 │   └── boards/
 │       └── agibot.conf         # 板定义(u-boot defconfig / fdtfile / boot)
 ├── customize-image.sh          # ★ overlay 注入逻辑(chroot 内执行)
+├── kernel/
+│   └── rk35xx-vendor-6.1/      # ACM8625P 扬声器 codec 内核补丁
 ├── overlay/                    # 注入 rootfs 的文件
 │   ├── etc/{hostname, systemd/system/{resize-rootfs,agibot-usb-port-power}.service}
 │   ├── usr/local/sbin/agibot-usb-port-power

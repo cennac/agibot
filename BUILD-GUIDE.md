@@ -182,6 +182,7 @@ bash setup.sh
 userpatches/
 ├── config-agibot.conf              # 顶层编译参数
 ├── config/boards/agibot.conf       # 板定义
+├── kernel/rk35xx-vendor-6.1/       # ACM8625P codec 内核补丁
 ├── overlay/                        # 要注入 rootfs 的文件
 │   ├── etc/hostname
 │   ├── etc/systemd/system/resize-rootfs.service
@@ -244,12 +245,17 @@ if [ -n "$DTB_REAL" ] && [ -f "$OVER/boot/dtb/rockchip/rk3588-agibot-mb0002-v2.d
     cp -v "$OVER/boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb" "$DTB_REAL/rockchip/"
 fi
 
-# 3) 启用首次启动 rootfs 扩容、USB-A 端口供电和 HDMI tty1 登录
+# 3) 清除旧镜像遗留的 HDMI connector 强制模式,让 DRM 按 EDID 自动选模
+if [ -f /boot/armbianEnv.txt ]; then
+    sed -i -E '/^extraargs=/ s#(^| )video=HDMI-A-1:[^ ]+##g' /boot/armbianEnv.txt
+fi
+
+# 4) 启用首次启动 rootfs 扩容、USB-A 端口供电和 HDMI tty1 登录
 systemctl enable resize-rootfs.service 2>/dev/null || true
 systemctl enable agibot-usb-port-power.service 2>/dev/null || true
 systemctl enable getty@tty1.service 2>/dev/null || true
 
-# 4) 清理备份文件(不该进镜像)
+# 5) 清理备份文件(不该进镜像)
 find /boot -name '*.510-orig' -delete 2>/dev/null || true
 exit 0
 ```

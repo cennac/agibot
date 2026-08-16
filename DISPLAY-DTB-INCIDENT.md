@@ -38,7 +38,7 @@ DTB 并重启;显示 v5 实验与本板 vendor 6.1 驱动不兼容,内核起来�
 - GitHub `main` 的稳定提交:`7b41c83`。
 - 当前默认 overlay DTB:
   `overlay/boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb`
-  - SHA-256:`6ce250609afd09eb810c836012c0b3bef2e7f9f7f59cb8e67b9e60866d8458ea`
+  - SHA-256:`0b93236febdfb31b7687434a115610a851fb25170b5d58329f34f6c31eab9ba4`
   - HDMI-A-1 connected、DRM fb0、fbcon 和 `getty@tty1` 已验证。
   - `/chosen/bootargs` 同时保留 `console=ttyFIQ0 console=tty1`。
 - 已验证启动镜像(实机回滚基线):
@@ -172,12 +172,12 @@ DTB 并重启;显示 v5 实验与本板 vendor 6.1 驱动不兼容,内核起来�
   输出 2560x1440；无需修改 VOP 时钟/OPP。
 - DTB `chosen.bootargs` 追加 `console=tty1`，镜像显式启用 `getty@tty1`。
   默认重启后 `/dev/vcs1` 显示 `agibot login:`，串口 ttyFIQ0 同时可用。
-- EDID 首选的 2560x1440@60 要求 241.5MHz，而 VOP 实际得到 237.6MHz；启动末尾
-  或 HDMI 热插拔切回该模式时可出现黑屏。`armbianEnv.txt` 现固定
-  `video=HDMI-A-1:1920x1080@60e`，实测 fb0 为 1920x1080、148.5MHz。
-- 默认 DTB 已禁用 `/i2s@fe480000` 和 `/acm8625p-sound`，消除 GPIO137
-  引脚复用冲突。代价是板载 ACM8625P 扬声器暂时不可用；HDMI 显示、tty1
-  登录和 HDMI 自身音频节点不依赖这两个节点。
+- 237.6MHz 的根因是 Stage A+B 误删了 `display-subsystem` 的 `hdmi0_phy_pll`，
+  VOP 退回 1188MHz CRU 近似分频。改为引用节点级 HDMI PHY clock provider 后，
+  默认启动按 EDID 自动输出 2560x1440@60，`dclk=real_dclk=241.5MHz`；不再固定 1080p。
+- GPIO137 冲突来自 HDMI 节点错误的 `enable-gpios=<&gpio4 9 ...>`，该脚实际是
+  I2S1 `SDO0`。删除错误 HDMI GPIO 后，恢复 `/i2s@fe480000` 和
+  `/acm8625p-sound`；USB/HDMI/tty1 默认重启回归均通过。
 
 ## 文件整理结论
 

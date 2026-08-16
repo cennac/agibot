@@ -75,6 +75,7 @@ cp -r config/. "$UP/config/"
 cp config-agibot.conf config-agibot-desktop.conf config-example.conf "$UP/"
 cp customize-image.sh "$UP/"
 cp -r overlay "$UP/"
+cp -r kernel "$UP/"
 cp -r u-boot "$UP/"
 
 # 可选:复用平级旧副本的编译缓存(避免重新下载 ~15G)

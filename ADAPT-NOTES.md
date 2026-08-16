@@ -40,3 +40,13 @@ HUB1/HUB2/HUB3/HUB20 的端口电源开关。
 
 实机验证：Kingston `0951:1666` 以 5000 Mbps 枚举为 `/dev/sda`，
 SiGma Micro 键盘 `1c4f:0002` 绑定 `usbhid`。
+
+## HDMI 自动分辨率与板载扬声器
+
+- `/display-subsystem` 使用节点级 HDMI PHY provider 作为 `hdmi0_phy_pll`，让
+  2560x1440@60 的 VOP pixel clock 精确为 241.5MHz。
+- 镜像不再写死 `video=HDMI-A-1:1920x1080@60e`，启动和热插拔按 EDID 选模。
+- 删除 `/hdmi@fde80000` 错误的 `enable-gpios=<&gpio4 9 ...>`；GPIO4_B1
+  （Linux GPIO137）专用于 I2S1 `SDO0`。
+- `/i2s@fe480000` 与 `/acm8625p-sound` 恢复为 `okay`。6.1 内核通过
+  `kernel/rk35xx-vendor-6.1/0001-ASoC-add-ACM8625P-amplifier.patch` 加入 codec 驱动。

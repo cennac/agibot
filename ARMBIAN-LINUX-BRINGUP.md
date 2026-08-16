@@ -31,25 +31,28 @@ console=ttyFIQ0,1500000"` 后,`/proc/cmdline` 仍是 DTB chosen 的
 
 默认 DTB 已加入 `console=ttyFIQ0 console=tty1`，同时保留串口恢复能力和 HDMI
 framebuffer 控制台。板级配置设 `DEFAULT_CONSOLE="both"`，`customize-image.sh`
-显式启用 `getty@tty1.service`，并通过 `armbianEnv.txt` 固定
-`video=HDMI-A-1:1920x1080@60e`。显示器 EDID 的首选 2560x1440 模式要求
-241.5MHz pixel clock，而当前 VOP 实际只能得到 237.6MHz；固定 1080p60 后为
-148.5MHz，可避免启动末尾和热插拔后黑屏。控制台字体保持系统默认 8x16。
+显式启用 `getty@tty1.service`。DTB 将 `display-subsystem` 的
+`hdmi0_phy_pll` 接到节点级 HDMI PHY clock provider；VOP 不再用 1188MHz CRU
+时钟近似分频。`customize-image.sh` 会删除旧镜像遗留的 connector `video=` 参数，
+DRM 按 EDID 自动选择首选模式。控制台字体保持系统默认 8x16。
 
 默认启动实测结果:
 - `/sys/class/drm/card0-HDMI-A-1/status` 为 `connected`；
+- EDID 自动选择 `2560x1440p60`，`dclk` 与 `real_dclk` 均为精确的 `241500 kHz`；
 - `vtcon1` 为已绑定的 `frame buffer device`；
 - `getty@tty1.service` 为 `active`；
 - `/dev/vcs1` 最后显示 `Armbian ... Jammy tty1` 和 `agibot login:`；
-- COM6 的 `ttyFIQ0` 登录保持正常。
+- COM7 的 `ttyFIQ0` 登录保持正常。
 
 当前默认 DTB SHA-256:
-`6ce250609afd09eb810c836012c0b3bef2e7f9f7f59cb8e67b9e60866d8458ea`。
+`0b93236febdfb31b7687434a115610a851fb25170b5d58329f34f6c31eab9ba4`。
 旧稳定 v3 已在板端备份为 `/root/dtb.v3-pre-hdmi-console`。
 
-为消除 HDMI 热插拔时 GPIO137 被 I2S1 占用的 pinctrl 冲突，默认 DTB 暂时
-禁用 `/i2s@fe480000` 和 `/acm8625p-sound`。板载 ACM8625P 扬声器因此不可用；
-HDMI 显示、tty1 登录和 HDMI 自身音频节点不依赖这两个节点。
+GPIO137 是 I2S1 `SDO0`。旧 DTB 同时把它错误写成 HDMI `enable-gpios`，导致 HDMI
+mode set 把 I2S 引脚强切回 GPIO。默认 DTB 已删除该错误属性，并恢复
+`/i2s@fe480000` 和 `/acm8625p-sound`。`kernel/rk35xx-vendor-6.1/` 还加入 GPL-2.0
+ACM8625P codec 驱动补丁；外置模块已通过 6.1.115 编译和 vermagic 校验，板端
+加载与实际放音测试需在明确授权后执行。
 
 ## 固化:下次打包一次成功
 

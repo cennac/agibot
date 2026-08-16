@@ -24,9 +24,10 @@ if [ -n "$DTB_REAL" ] && [ -f "$OVER/boot/dtb/rockchip/rk3588-agibot-mb0002-v2.d
 	cp -v "$OVER/boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb" "$DTB_REAL/rockchip/"
 fi
 
-# 3) 固定 HDMI 控制台为稳定的 1080p60 模式
-# 显示器 EDID 首选 2560x1440,但 VOP 只能给出 237.6MHz(目标 241.5MHz),
-# 热插拔后会黑屏。保留其他 extraargs,只替换本 connector 的 video 参数。
+# 3) 让 DRM 按显示器 EDID 自动选择首选模式
+# DTB 已把 HDMI PHY PLL 重新接回 display-subsystem,2560x1440@60 的
+# VOP dclk 可精确得到 241.5MHz。保留其他 extraargs,清除旧镜像遗留的
+# connector 强制参数,避免 DRM 跳过 EDID 首选模式。
 if [ -f /boot/armbianEnv.txt ]; then
 	EXTRAARGS="$(sed -n 's/^extraargs=//p' /boot/armbianEnv.txt | head -1)"
 	NEW_EXTRAARGS=""
@@ -36,7 +37,6 @@ if [ -f /boot/armbianEnv.txt ]; then
 		esac
 		NEW_EXTRAARGS="${NEW_EXTRAARGS:+$NEW_EXTRAARGS }$ARG"
 	done
-	NEW_EXTRAARGS="${NEW_EXTRAARGS:+$NEW_EXTRAARGS }video=HDMI-A-1:1920x1080@60e"
 	sed -i '/^extraargs=/d' /boot/armbianEnv.txt
 	printf 'extraargs=%s\n' "$NEW_EXTRAARGS" >> /boot/armbianEnv.txt
 fi
