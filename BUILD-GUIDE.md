@@ -213,6 +213,7 @@ KERNEL_TARGET="vendor"
 BOOT_FDT_FILE="rockchip/rk3588-agibot-mb0002-v2.dtb"   # ★ 决定 armbianEnv.txt 的 fdtfile
 BOOT_SCENARIO="spl-blobs"
 BOOT_SUPPORT_SPI="no"                      # ★ AGIBOT 不走 SPI,改 no 否则报 tpl/u-boot-tpl.bin 缺失
+DEFAULT_CONSOLE="both"                     # 串口 ttyFIQ0 + HDMI tty1
 IMAGE_PARTITION_TABLE="gpt"
 ```
 
@@ -227,9 +228,12 @@ IMAGE_PARTITION_TABLE="gpt"
 set -e
 OVER=/tmp/overlay
 
-# 1) 复制 overlay 的 etc / lib 到根(hostname、resize-rootfs.service、firmware)
+# 1) 复制 overlay 的 etc / lib / usr 到根(服务、板级工具、firmware)
 cp -a "$OVER"/etc/. /etc/ 2>/dev/null || true
 cp -a "$OVER"/lib/. /lib/ 2>/dev/null || true
+cp -a "$OVER"/usr/. /usr/ 2>/dev/null || true
+chmod 0755 /usr/local/sbin/agibot-usb-port-power 2>/dev/null || true
+chmod 0644 /etc/systemd/system/agibot-usb-port-power.service 2>/dev/null || true
 
 # 2) 把适配 6.1 的 agibot dtb 放进内核 dtb 目录
 #    /boot/dtb 是指向 dtb-<ver>-vendor-rk35xx 的 symlink,解析真实路径后写入
@@ -240,8 +244,10 @@ if [ -n "$DTB_REAL" ] && [ -f "$OVER/boot/dtb/rockchip/rk3588-agibot-mb0002-v2.d
     cp -v "$OVER/boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb" "$DTB_REAL/rockchip/"
 fi
 
-# 3) 启用首次启动 rootfs 扩容
+# 3) 启用首次启动 rootfs 扩容、USB-A 端口供电和 HDMI tty1 登录
 systemctl enable resize-rootfs.service 2>/dev/null || true
+systemctl enable agibot-usb-port-power.service 2>/dev/null || true
+systemctl enable getty@tty1.service 2>/dev/null || true
 
 # 4) 清理备份文件(不该进镜像)
 find /boot -name '*.510-orig' -delete 2>/dev/null || true

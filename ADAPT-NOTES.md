@@ -26,3 +26,17 @@ AGIBOT 核心板兼容 **Firefly ITX-3588J**(RK3588**J** 工业级,-40~85°C,核
 
 - **u-boot / loader / 刷机方案通用**:共用 `rock-5b-rk3588_defconfig`,当前 `flash/rk3588_spl_loader_v1.16.113.bin` 对该核心板适用
 - **设备树板级专属**:本表的自适配 dtb(`rk3588-agibot-mb0002-v2.dtb`)是正解;但若某节点适配卡壳,内核自带的 `rk3588-firefly-itx-3588j.dtb`(`arch/arm64/boot/dts/rockchip/`)可作为**核心板部分(DDR / PMIC / clock)的有效对照基准**
+
+## USB-A 端口供电
+
+两组 Genesys Hub 的枚举和 GPIO154/155 复位不能单独打开 USB-A VBUS。
+原厂 rootfs 还通过 `/home/.qc/USB_Monitor.sh` 将 PCA9555 `3-0020`
+的 offset 0..11（旧内核全局 GPIO493..504）设置为输出高，分别使能
+HUB1/HUB2/HUB3/HUB20 的端口电源开关。
+
+6.1 镜像使用 `agibot-usb-port-power.service` 在启动时按 GPIO chip label
+动态查找 base，再拉高这 12 路。不要把全局 GPIO 编号写死，也不要复制
+原厂脚本中 HDMI、音频、雷达和 4G 的无关使能。
+
+实机验证：Kingston `0951:1666` 以 5000 Mbps 枚举为 `/dev/sda`，
+SiGma Micro 键盘 `1c4f:0002` 绑定 `usbhid`。

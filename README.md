@@ -40,7 +40,8 @@
 │       └── agibot.conf         # 板定义(u-boot defconfig / fdtfile / boot)
 ├── customize-image.sh          # ★ overlay 注入逻辑(chroot 内执行)
 ├── overlay/                    # 注入 rootfs 的文件
-│   ├── etc/{hostname, systemd/system/resize-rootfs.service}
+│   ├── etc/{hostname, systemd/system/{resize-rootfs,agibot-usb-port-power}.service}
+│   ├── usr/local/sbin/agibot-usb-port-power
 │   ├── boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb   # 设备树,5.10 → 6.1 适配
 │   └── lib/firmware/           # Mali / DP / RTL8821CU / BT / regulatory
 ├── flash/                      # eMMC 刷机 + 板端回归测试

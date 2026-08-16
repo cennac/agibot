@@ -4,7 +4,7 @@
 三个 Linux 层问题及最终修复，并固化「下次打包一次成功」所需的关键改动。U-Boot
 层的专用 defconfig/DTS 见 [[UBOOT-BRINGUP.md]]。
 
-## 结论(2026-08-14 实测)
+## 结论(2026-08-14 实测，2026-08-16 补充 HDMI 控制台)
 
 Armbian 镜像已能完整启动进入系统。Linux 层一共有 **三个坑**，其中两个是「vendor
 内核 vs armbian 框架默认值不匹配」导致的，一个是我自己在调试中绕的弯路。
@@ -23,15 +23,40 @@ console=ttyFIQ0,1500000"` 后,`/proc/cmdline` 仍是 DTB chosen 的
 
 因此:
 - `boot.cmd`/`boot.scr` 里的 `console=ttyS2` **不影响实际控制台**(被 DTB chosen 覆盖)。
-- **唯一必须修的 Linux 层文件就是 DTB 的 `chosen.bootargs` 里的 `root=`**。
+- 2026-08-14 的启动修复里，必须修改的是 DTB `chosen.bootargs` 的 `root=`。
+- HDMI 登录控制台还必须在同一处保留串口并追加 `console=tty1`。
 - fiq=okay、uart2=disabled、console=ttyFIQ0、earlycon 在原始 DTB 里**本来就是对的**,不用改。
+
+## HDMI login shell(2026-08-16 实测)
+
+默认 DTB 已加入 `console=ttyFIQ0 console=tty1`，同时保留串口恢复能力和 HDMI
+framebuffer 控制台。板级配置设 `DEFAULT_CONSOLE="both"`，`customize-image.sh`
+显式启用 `getty@tty1.service`，并通过 `armbianEnv.txt` 固定
+`video=HDMI-A-1:1920x1080@60e`。显示器 EDID 的首选 2560x1440 模式要求
+241.5MHz pixel clock，而当前 VOP 实际只能得到 237.6MHz；固定 1080p60 后为
+148.5MHz，可避免启动末尾和热插拔后黑屏。控制台字体保持系统默认 8x16。
+
+默认启动实测结果:
+- `/sys/class/drm/card0-HDMI-A-1/status` 为 `connected`；
+- `vtcon1` 为已绑定的 `frame buffer device`；
+- `getty@tty1.service` 为 `active`；
+- `/dev/vcs1` 最后显示 `Armbian ... Jammy tty1` 和 `agibot login:`；
+- COM6 的 `ttyFIQ0` 登录保持正常。
+
+当前默认 DTB SHA-256:
+`6ce250609afd09eb810c836012c0b3bef2e7f9f7f59cb8e67b9e60866d8458ea`。
+旧稳定 v3 已在板端备份为 `/root/dtb.v3-pre-hdmi-console`。
+
+为消除 HDMI 热插拔时 GPIO137 被 I2S1 占用的 pinctrl 冲突，默认 DTB 暂时
+禁用 `/i2s@fe480000` 和 `/acm8625p-sound`。板载 ACM8625P 扬声器因此不可用；
+HDMI 显示、tty1 登录和 HDMI 自身音频节点不依赖这两个节点。
 
 ## 固化:下次打包一次成功
 
-唯一的持久化改动已经落在仓库:
+启动与 HDMI 控制台所需的持久化改动已经落在仓库:
 
 **`overlay/boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb`**(预编二进制 DTB)的
-`/chosen/bootargs` 已由:
+`/chosen/bootargs` 已包含:
 
 ```
 root=PARTUUID=614e0000-0000
@@ -40,7 +65,7 @@ root=PARTUUID=614e0000-0000
 改为:
 
 ```
-root=/dev/mmcblk0p1
+console=ttyFIQ0 console=tty1 root=/dev/mmcblk0p1
 ```
 
 (`/dev/mmcblk0p1` 是通用设备名,不依赖每次构建变化的 UUID。前提:本板 armbian

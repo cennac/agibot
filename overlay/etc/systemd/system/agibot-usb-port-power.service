@@ -1,0 +1,12 @@
+[Unit]
+Description=Enable AGIBOT USB-A port power through PCA9555
+After=systemd-udev-trigger.service
+Before=getty@tty1.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /usr/local/sbin/agibot-usb-port-power
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -8,9 +8,12 @@ set -e
 
 OVER=/tmp/overlay
 
-# 1) 复制 overlay 的 etc / lib 到根（hostname、resize-rootfs.service、firmware）
+# 1) 复制 overlay 的 etc / lib / usr 到根（服务、板级工具、firmware）
 cp -a "$OVER"/etc/. /etc/ 2>/dev/null || true
 cp -a "$OVER"/lib/. /lib/ 2>/dev/null || true
+cp -a "$OVER"/usr/. /usr/ 2>/dev/null || true
+chmod 0755 /usr/local/sbin/agibot-usb-port-power 2>/dev/null || true
+chmod 0644 /etc/systemd/system/agibot-usb-port-power.service 2>/dev/null || true
 
 # 2) 把适配 6.1 的 agibot dtb 放进内核 dtb 目录
 #    /boot/dtb 是指向 dtb-<ver>-vendor-rk35xx 的 symlink，解析真实路径后写入
@@ -21,10 +24,29 @@ if [ -n "$DTB_REAL" ] && [ -f "$OVER/boot/dtb/rockchip/rk3588-agibot-mb0002-v2.d
 	cp -v "$OVER/boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb" "$DTB_REAL/rockchip/"
 fi
 
-# 3) 启用首次启动 rootfs 扩容
-systemctl enable resize-rootfs.service 2>/dev/null || true
+# 3) 固定 HDMI 控制台为稳定的 1080p60 模式
+# 显示器 EDID 首选 2560x1440,但 VOP 只能给出 237.6MHz(目标 241.5MHz),
+# 热插拔后会黑屏。保留其他 extraargs,只替换本 connector 的 video 参数。
+if [ -f /boot/armbianEnv.txt ]; then
+	EXTRAARGS="$(sed -n 's/^extraargs=//p' /boot/armbianEnv.txt | head -1)"
+	NEW_EXTRAARGS=""
+	for ARG in $EXTRAARGS; do
+		case "$ARG" in
+			video=HDMI-A-1:*) continue ;;
+		esac
+		NEW_EXTRAARGS="${NEW_EXTRAARGS:+$NEW_EXTRAARGS }$ARG"
+	done
+	NEW_EXTRAARGS="${NEW_EXTRAARGS:+$NEW_EXTRAARGS }video=HDMI-A-1:1920x1080@60e"
+	sed -i '/^extraargs=/d' /boot/armbianEnv.txt
+	printf 'extraargs=%s\n' "$NEW_EXTRAARGS" >> /boot/armbianEnv.txt
+fi
 
-# 4) 清理备份文件（不该进镜像）
+# 4) 启用首次启动 rootfs 扩容、USB-A 端口供电和 HDMI tty1 登录
+systemctl enable resize-rootfs.service 2>/dev/null || true
+systemctl enable agibot-usb-port-power.service 2>/dev/null || true
+systemctl enable getty@tty1.service 2>/dev/null || true
+
+# 5) 清理备份文件（不该进镜像）
 find /boot -name '*.510-orig' -delete 2>/dev/null || true
 
 exit 0

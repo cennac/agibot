@@ -1,6 +1,6 @@
 # AGIBOT MB0002 V2 — 显示 DTB v5 事故记录与恢复手册
 
-> 状态日期:2026-08-16。**事故已恢复,板子全自主启动 + 回归 PASS=23/FAIL=0。**
+> 状态日期:2026-08-16。**事故已恢复；HDMI DRM + tty1 login 已通过默认启动验证。**
 > 本文保留完整时间线(前段记录一次未提交、未推送的显示设备树实验导致板端启动
 > 失败的过程),以及 2026-08-16 实战验证的恢复流程。仓库 `main` 始终是稳定版本。
 
@@ -36,9 +36,11 @@ DTB 并重启;显示 v5 实验与本板 vendor 6.1 驱动不兼容,内核起来�
 ### 仓库/构建侧:安全
 
 - GitHub `main` 的稳定提交:`7b41c83`。
-- 稳定 overlay DTB:
+- 当前默认 overlay DTB:
   `overlay/boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb`
-  - SHA-256:`007b1b76dc3c221da437e321581423ab889291ef831b042b4aae886943a6f133`
+  - SHA-256:`6ce250609afd09eb810c836012c0b3bef2e7f9f7f59cb8e67b9e60866d8458ea`
+  - HDMI-A-1 connected、DRM fb0、fbcon 和 `getty@tty1` 已验证。
+  - `/chosen/bootargs` 同时保留 `console=ttyFIQ0 console=tty1`。
 - 已验证启动镜像(实机回滚基线):
   `armbian-build/output/images/Armbian-unofficial_26.08.0-trunk_Agibot_jammy_vendor_6.1.115_minimal.img`
   - SHA-256:`2dc05ed4e388cb8187d2c4a92f8cc1de45926c70cd0a4b3a11c6b8cac411da91`
@@ -161,17 +163,21 @@ DTB 并重启;显示 v5 实验与本板 vendor 6.1 驱动不兼容,内核起来�
   误传 `75` 被当路径。两次都导致 fdt 没加载、内核悄悄用了默认 DTB,测试结果无效。
   现在脚本默认路径可直接 `python _hdmi_testboot.py` 无参运行。
 
-### 待解决:D 阶段 VOP 对齐(DRM master 未绑定)
+### 已解决:C/D 阶段 DRM master 与 HDMI tty1
 
-- hdmiphy 修好后,DRM master(rockchip-drm display-subsystem)**仍未绑定**,`/sys/class/drm`
-  只有 NPU 的 card0,无显示 card。根因在 **VOP**:sige7 的 vop 有 **13 个时钟**
-  (多 `aclk_dovi`/`aclk_vop_div2_src`/`aclk_vop_root`)+ `vop-opp-table` +
-  `rockchip,aclk-normal/advanced-mode-rates` + aclk assigned-rate 750MHz;
-  本板 v3 的 vop 只有 **10 个时钟、无 opp 表**(v3 里即见 `failed to init opp info`)。
-- 下一步:按 sige7 补 VOP 的 3 个时钟 + vop-opp-table(500/750/850MHz,不带 nvmem 匹配,
-  参照之前 rkvenc/CPU 的做法)+ mode-rates;再复查 display-subsystem 删时钟后
-  drm master 是否恢复正常绑定。dp0-sound/hdmi0-sound/acm8625p-sound 等音频 deferred
-  是更低优先级(不阻塞显示)。
+- DP0 按 6.1 sige7 绑定补 `hdcp` 时钟，消除 `dw-dp` 的缺时钟错误。
+- HDMI0 的单段 `reg=<fde80000 0x20000>` 拆成控制器和 HDCP 1.4 memory 两段；
+  QP 驱动随后能取得 `resource[1]`，DRM master 正常绑定。
+- 实测 `/sys/class/drm` 出现 `card0-HDMI-A-1`，状态 `connected`，创建 DRM fb0，
+  输出 2560x1440；无需修改 VOP 时钟/OPP。
+- DTB `chosen.bootargs` 追加 `console=tty1`，镜像显式启用 `getty@tty1`。
+  默认重启后 `/dev/vcs1` 显示 `agibot login:`，串口 ttyFIQ0 同时可用。
+- EDID 首选的 2560x1440@60 要求 241.5MHz，而 VOP 实际得到 237.6MHz；启动末尾
+  或 HDMI 热插拔切回该模式时可出现黑屏。`armbianEnv.txt` 现固定
+  `video=HDMI-A-1:1920x1080@60e`，实测 fb0 为 1920x1080、148.5MHz。
+- 默认 DTB 已禁用 `/i2s@fe480000` 和 `/acm8625p-sound`，消除 GPIO137
+  引脚复用冲突。代价是板载 ACM8625P 扬声器暂时不可用；HDMI 显示、tty1
+  登录和 HDMI 自身音频节点不依赖这两个节点。
 
 ## 文件整理结论
 

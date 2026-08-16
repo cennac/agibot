@@ -1,16 +1,17 @@
 #!/usr/bin/env python
-# 串口助手:python _ser.py "<命令>" [捕获秒数,默认4]
-# 1500000 8N1,发命令后抓 N 秒输出。板子在 root@LEDE:/# 提示符。
+# 串口助手:python _ser.py "<命令>" [捕获秒数,默认4] [端口,默认COM7]
+# 1500000 8N1,发命令后抓 N 秒输出。
 import serial, sys, time
 
 cmd = sys.argv[1] if len(sys.argv) > 1 else ""
 wait = float(sys.argv[2]) if len(sys.argv) > 2 else 4.0
+port = sys.argv[3] if len(sys.argv) > 3 else "COM7"
 
 try:
-    s = serial.Serial("COM5", 1500000, timeout=0.1)
+    s = serial.Serial(port, 1500000, timeout=0.1)
 except Exception as e:
-    print(f"[!] 打不开 COM5: {e}")
-    print("    -> 你的串口助手可能还占着 COM5,先关掉它。")
+    print(f"[!] 打不开 {port}: {e}")
+    print(f"    -> 串口助手可能还占着 {port},先关掉它。")
     sys.exit(1)
 
 time.sleep(0.15)
