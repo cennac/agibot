@@ -20,3 +20,8 @@ __pycache__/
 flash/config.cfg
 flash/armbian-head.img
 flash/armbian-rootfs.img
+
+# HDMI/display 调试产物与临时 DTB
+_test_ab.dtb
+_hdmi_testboot.log
+_hdmi_ab.dts

@@ -140,6 +140,39 @@ DTB 并重启;显示 v5 实验与本板 vendor 6.1 驱动不兼容,内核起来�
 5. PCIe 在确认板上是否真的接出插槽/端点前不修改。无硬件端点时 host init 失败可记录
    为 WARN,不要为消日志盲配 reset/power GPIO。
 
+## HDMI 推进记录(2026-08-16)
+
+### 已解决:A 阶段 hdmiphy clock provider(-12)
+
+- **根因**:DTB 的 hdmiphy 节点沿用 5.10 的 `clk-port` 子节点作时钟 provider,
+  6.1 驱动 `phy-rockchip-samsung-hdptx-hdmi.c` 的 `rockchip_hdptx_phy_clk_register()`
+  用 `of_property_read_string(np,"clock-output-names",&init.name)`,clk-port 写法下
+  `init.name=NULL` → `devm_clk_register` 里 `kstrdup_const(NULL)` → **-ENOMEM(-12)**。
+- **修复(实测生效)**:①hdmiphy@fed60000 删 `clk-port` 子节点,节点级补
+  `#clock-cells=<0>` + `clock-output-names="clk_hdmiphy_pixel0"`(fed70000 同理);
+  ②display-subsystem 删 `clocks/clock-names`(hdmi0/1_phy_pll);③hdmi@fde80000 /
+  fdea0000 的 `link_clk` 由 clk-port phandle(0x2d/0x2e)改指 hdmiphy 节点本身
+  (0xe4/0x183)。对应 sige7 6.1 写法。脚本 `_fix_hdmi_ab.py`,测试 DTB `_test_ab.dtb`。
+- **验证**:U-Boot 手动加载测试 DTB 启动,`rockchip-hdptx-phy-hdmi fed60000.hdmiphy:
+  hdptx phy init success`,原 `failed to register clock: -12` 消失。
+- **测试基建坑(重要)**:`_hdmi_testboot.py` 里 ext4load 的 DTB 路径两次踩坑:
+  ①MSYS/Git-Bash 把 `/boot/...` 转成 `D:/DTools/PortableGit/boot/...`(用
+  `MSYS_NO_PATHCONV=1` 且走脚本内置默认路径);②脚本参数顺序 arg1=路径 arg2=秒数,
+  误传 `75` 被当路径。两次都导致 fdt 没加载、内核悄悄用了默认 DTB,测试结果无效。
+  现在脚本默认路径可直接 `python _hdmi_testboot.py` 无参运行。
+
+### 待解决:D 阶段 VOP 对齐(DRM master 未绑定)
+
+- hdmiphy 修好后,DRM master(rockchip-drm display-subsystem)**仍未绑定**,`/sys/class/drm`
+  只有 NPU 的 card0,无显示 card。根因在 **VOP**:sige7 的 vop 有 **13 个时钟**
+  (多 `aclk_dovi`/`aclk_vop_div2_src`/`aclk_vop_root`)+ `vop-opp-table` +
+  `rockchip,aclk-normal/advanced-mode-rates` + aclk assigned-rate 750MHz;
+  本板 v3 的 vop 只有 **10 个时钟、无 opp 表**(v3 里即见 `failed to init opp info`)。
+- 下一步:按 sige7 补 VOP 的 3 个时钟 + vop-opp-table(500/750/850MHz,不带 nvmem 匹配,
+  参照之前 rkvenc/CPU 的做法)+ mode-rates;再复查 display-subsystem 删时钟后
+  drm master 是否恢复正常绑定。dp0-sound/hdmi0-sound/acm8625p-sound 等音频 deferred
+  是更低优先级(不阻塞显示)。
+
 ## 文件整理结论
 
 正式构建树是仓库内 `agibot-armbian/armbian-build/`(submodule)。平级旧目录
