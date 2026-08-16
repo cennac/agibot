@@ -44,10 +44,11 @@ DRM 按 EDID 自动选择首选模式。控制台字体保持系统默认 8x16�
 - `/dev/vcs1` 最后显示 `Armbian ... Jammy tty1` 和 `agibot login:`；
 - COM7 的 `ttyFIQ0` 登录保持正常。
 
-当前默认 DTB SHA-256(HDMI 控制台 + PCIe/WiFi + 蓝牙修复版,2026-08-16):
-`1dba2da79a008ede6f59bb6f6c2755b3d2df5d2be9a9bb494ea6ba273a506e1b`。
+当前默认 DTB SHA-256(HDMI 控制台 + PCIe/WiFi + 蓝牙 + 看门狗版,2026-08-17):
+`2906b7af255d06e6fe27445598e5e8f3654cb6064b63b121f7fa15fc863d56f0`。
 旧稳定 v3 已在板端备份为 `/root/dtb.v3-pre-hdmi-console`,
-PCIe 修复前版本备份为 `/root/dtb.pre-pcie-fix`。
+PCIe 修复前版本备份为 `/root/dtb.pre-pcie-fix`,
+看门狗启用前版本备份为 `/root/dtb.v-pre-watchdog`。
 
 GPIO137 是 I2S1 `SDO0`。旧 DTB 同时把它错误写成 HDMI `enable-gpios`，导致 HDMI
 mode set 把 I2S 引脚强切回 GPIO。默认 DTB 已删除该错误属性，并恢复
@@ -169,6 +170,19 @@ ACM8625P codec 驱动补丁；外置模块已通过 6.1.115 编译和 vermagic �
   `aplay -D hw:2,1 /usr/share/sounds/alsa/Front_Center.wav` 试音(注意
   modules-load.d 确保开机即加载)。DSP 固件(acme-semi 提供)若需装载性能参数,
   后续放 /lib/firmware 即可。
+
+## 看门狗:watchdog@feaf0000(2026-08-17 实测)
+
+- **根因**:vendor DT 里 `watchdog@feaf0000`(snps,dw-wdt)被 `status="disabled"`,
+  而内核 `dw_wdt` 驱动本来就已内建——一行 DT 改动即激活,无需任何内核工作。
+- **修复**:`fdtput -t s <dtb> /watchdog@feaf0000 status okay`(节点自带
+  clocks=tclk/pclk、中断,属性完整)。重启后 `/dev/watchdog`、
+  `/dev/watchdog0` 出现。注意 CONFIG_WATCHDOG_SYSFS 未开,
+  `/sys/class/watchdog/watchdog0/` 下无 identity/timeout 文件属正常。
+- **实测**:open + 写 ping + 普通 close(非 magic 'V')→ watchdog core
+  释放时停表,板子不重启;`CONFIG_WATCHDOG_NOWAYOUT` 未开,安全。
+  用途:systemd WatchdogSec / 关键进程托管 / 刷机防砖场景。
+- **回归**:声卡(含 ACM 自动加载)、hci0、bcmdhd、双网口均无回退。
 
 ## 固化:下次打包一次成功
 
