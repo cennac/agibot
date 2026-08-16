@@ -68,14 +68,13 @@ python _ser.py "reset" 3
 ## Q2 板子怎么进 Loader?
 
 - **串口**:上电时按提示打断(U-Boot `Hit key('CTRL+C')` 时发 0x03),再 `download`
-- **SW9200 按键**(2026-08-15 根因修正):机制是 **U-Boot proper 的
-  `setup_download_mode()` 读 DTB 的 adc-keys 节点**(SARADC ch1)→ `download` →
-  rockusb 枚举(PID 0x350B 就是 U-Boot 自己的 `CONFIG_ROCKUSB_G_DNL_PID`,
-  见 rk3588_common.h —— 之前「rkbin miniloader 检测」的结论是错的)。
-  因此**当前稳定镜像(2dc05ed4/f850f7e8)上该按键无效**——为修启动挂死删了
-  adc-keys 节点。恢复方案见 UBOOT-BRINGUP.md「按键恢复实验」:节点加回但
-  **去掉 `u-boot,dm-pre-reloc`**(Radxa rock-3a/e25 惯例是 `u-boot,dm-spl`),
-  下次刷机窗口验证。
+- **SW9200 按键**(2026-08-16 ✅ 已恢复):断电**按住 SW9200 再上电**,保持 3~5 秒
+  → 进入下载模式(RKDevTool 显示 LOADER 或 MASKROM——USB gadget 起不来时
+  `download` 自动 fallback 到 BROM Maskrom,两种都是可用刷机态;正式刷机首选
+  MASKROM,u-boot rockusb 的 LOADER 枚举可能抖动)。机制:U-Boot proper 的
+  `setup_download_mode()` 读 DTB adc-keys 节点(SARADC ch1),节点须带
+  **`u-boot,dm-spl`** 标记(无标记被 fdtgrep 剥离失效、dm-pre-reloc 会挂死启动),
+  详见 UBOOT-BRINGUP.md「按键恢复实验」。
 
 <a name="q3"></a>
 ## Q3 Maskrom 和 Loader 有什么区别?该用哪个?
@@ -129,7 +128,7 @@ RKDevTool v3.37 比 v2.86 稳。raw img 别走「升级固件」页(要 RKFW/RKA
 
 | 按键 | 行为 | 接线 |
 |---|---|---|
-| **SW9200** | 上电长按进 loader(**检测者=U-Boot proper 的 adc-keys 节点;稳定镜像已删节点故当前无效**,见 Q2) | SARADC **ch1** → `adc-keys`(Linux input1) |
+| **SW9200** | 上电长按进下载模式(**2026-08-16 已恢复**:U-Boot adc-keys 节点须带 `u-boot,dm-spl` 标记,见 Q2) | SARADC **ch1** → `adc-keys`(Linux input1) |
 | **SW9201** | **硬复位**(瞬时断电重启,无软件日志) | 硬件复位线 |
 | **SW9202** | **关机**(systemd 关停 + BL31 virtual poweroff) | PMIC PWRON → `rk805 pwrkey`(input2) |
 | **SW8900** | **重启**(轻触即重启) | 复位/重启线 |

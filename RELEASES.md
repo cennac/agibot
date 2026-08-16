@@ -25,6 +25,16 @@
 
 ## Armbian 镜像(armbian 路线)
 
+### 2026-08-16 板载 U-Boot P986b(按键恢复版,就地上板)
+
+- U-Boot hash:`2017.09-S39cd-P986b-Hbe55-Vecf7-B5da4-R448a`(fwver uboot-rmbian-201-08/16/2026)
+- adc-keys 节点带 `u-boot,dm-spl` → **SW9200 下载键恢复**(按住上电进 Loader/Maskrom)
+- 上板方式:SSH dd 引导区就地升级(备份在板 `/root/bootregion-pre-btn.bak`),
+  非整盘重刷;rootfs/kernel 仍为 f850 系稳定件
+- 验证:不按键冷启动 ✓、按键进下载模式 ✓、回归 PASS=23/FAIL=0
+- deb:`armbian-build/output/debs/linux-u-boot-agibot-vendor_...S39cd-P986b...deb`
+- 注意:同日 P9703 版(无标记节点)已弃用——fdtgrep 会剥掉无标记节点,按键无效
+
 ## stable-v3-rebuild-f850f7e8(当前重新打包版,Armbian)
 
 - 构建 commit:`c69e8be`

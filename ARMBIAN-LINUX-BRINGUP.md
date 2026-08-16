@@ -106,21 +106,18 @@ OpenWrt 主线版 U-Boot 尚未接入 SW9200；AGIBOT Armbian vendor U-Boot 源�
 - **Loader** `@0xCCCCCCCC` → `flash/rk3588_spl_loader_v1.16.113.bin`
 - **image** `@0x00000000` → 整盘 `.img`(armbian 或 openwrt)
 
-### SW9200 按钮进 Loader(2026-08-15 根因修正)
+### SW9200 按钮进 Loader(2026-08-16 ✅ 恢复成功)
 
-- **检测者是 U-Boot proper 的 `setup_download_mode()` + DTB adc-keys 节点**
-  (boot_rkimg.c → key_read(KEY_VOLUMEUP) → adc_key 读 SARADC ch1 → download
-  → rockusb 枚举 2207:0x350B)。PID 350B 就是 U-Boot 自己的
-  `CONFIG_ROCKUSB_G_DNL_PID`(rk3588_common.h),**不是** rkbin miniloader
-  ——早前结论错误。
-- ⚠️ **不要照抄 c260761 那版 adc-keys 节点**:它给 bus+child 都加了
-  `u-boot,dm-pre-reloc`,实测会让 U-Boot proper 在 console 初始化前挂死
-  (正常启动 BL31 跳 BL33 后串口全静默、不进 Linux)。
-- **当前稳定镜像(2dc05ed4/f850f7e8)删了该节点,SW9200→Loader 无效**。
-  恢复方案(节点加回去但去掉 pre-reloc 标记,待下次刷机窗口验证)详见
-  UBOOT-BRINGUP.md「按键恢复实验」一节。
-- Linux 启动后仍会把 SW9200 注册为 `adc-keys` 输入设备;这是独立的内核运行时
-  功能,不影响上述流程。
+- 检测者是 **U-Boot proper 的 `setup_download_mode()` + DTB adc-keys 节点**
+  (PID 0x350B 是 U-Boot 自己的 `CONFIG_ROCKUSB_G_DNL_PID`)。
+- **正确写法 = 节点带 `u-boot,dm-spl`**(Radxa rock-3a/e25 同款)。三个坑:
+  ① 无标记 → 被 fdtgrep 剥离,节点进不了 u-boot.dtb,按键失效(P9703 实测);
+  ② `u-boot,dm-pre-reloc` → console 前绑定探测 → 启动静默挂死(fd2c6b78 实测);
+  ③ USB gadget 起不来时 `download` 自动 fallback `rbrom` → Maskrom(按住按键
+  上电可能得到 Loader 或 Maskrom,均可用;正式刷机首选 Maskrom)。
+- 当前板上 U-Boot hash `S39cd-P986b`(fwver uboot-rmbian-201-08/16/2026),
+  由 P9a41 经 SSH dd 引导区就地升级(方法见 UBOOT-BRINGUP.md),
+  冷启动/按键/回归 23-0 全部验证。
 
 ## Linux DTB 修复(2026-08-14,稳定 v3)
 

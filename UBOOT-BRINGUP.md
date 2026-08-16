@@ -12,11 +12,10 @@ DDR 和 BL31，但在 BL31 跳转 BL33 (`0x00200000`) 后没有可见 U-Boot 输
 - U-Boot DTB: `rk3588-agibot-mb0002-v2.dtb`
 - UART: UART2 M0, `0xfeb50000`, 1500000 baud
 - eMMC: `0xfe2e0000`, 8-bit, HS400, enhanced strobe
-- Loader 键: SW9200, SARADC channel 1 —— **检测者是 U-Boot proper 的
-  `setup_download_mode()` + DTB adc-keys 节点**(2026-08-15 修正:PID 0x350B 即
-  U-Boot 自己的 `CONFIG_ROCKUSB_G_DNL_PID`,rk3588_common.h;早前「rkbin
-  miniloader 检测」结论错误)。稳定镜像为修启动挂死删了该节点,**按键当前无效**,
-  恢复实验见下节「按键恢复实验」。
+- Loader 键: SW9200, SARADC channel 1 —— **2026-08-16 恢复成功**:U-Boot DTS
+  的 adc-keys 用 **`u-boot,dm-spl` 标记**(Radxa rock-3a/e25 同款;无标记会被
+  fdtgrep 剥离、dm-pre-reloc 会挂死启动,机制详见下文「按键恢复实验」)。
+  实测:不按键冷启动正常 + 回归 23/0;按住上电进 Loader/Maskrom。
 - 启动等待: 3 秒，控制台保持开启
 
 ## 原厂依据
@@ -144,49 +143,51 @@ Loader USB 枚举验收。旧镜像不包含该功能，未刷入前按键测试
 但电脑没有枚举 Loader，应继续检查 J2600 刷机 Type-C 的数据线、VBUS 和 USB gadget
 控制器，而不是调整 ADC 阈值。
 
-## 按键恢复实验(2026-08-15 分析定论,待下次刷机窗口验证)
+## 按键恢复实验(2026-08-16 完成,✅ 成功)
 
-三个 U-Boot 包 DTB 取证(输出 debs 保留的 Pab49/P3f7c/P9a41)+ 源码链路分析:
+三个 U-Boot 包 DTB 取证(output debs 保留的 Pab49/P3f7c 带节点 / P9a41 稳定版)
++ 源码分析 + 最终实测,完整结论:
 
 | U-Boot hash | adc-keys 节点 | 实机现象 |
 |---|---|---|
-| Pab49/P3f7c(fd2c6b78 镜像) | 有(bus+child 均 `u-boot,dm-pre-reloc`) | 按住 SW9200 进 Loader ✓;正常启动 BL31→BL33 后静默挂死 ✗ |
-| P9a41(2dc05ed4/f850f7e8 稳定版) | 无 | 启动 ✓;**按键无响应 ✗** |
+| Pab49/P3f7c(fd2c6b78) | 有(bus+child `u-boot,dm-pre-reloc`) | 按键 ✓;正常启动 BL31→BL33 后挂死 ✗ |
+| P9a41(稳定版) | 无 | 启动 ✓;按键 ✗ |
+| 无标记版(P9703) | DTS 有但被剥离 | 启动 ✓;按键 ✗(节点没进 u-boot.dtb) |
+| **P986b(最终版)** | **`u-boot,dm-spl`(Radxa rock-3a/e25 同款)** | **启动 ✓ + 按键 ✓ + 冷启动 ✓ + 回归 23/0** |
 
-机制链:`board_late_init() → setup_download_mode() → key_read(KEY_VOLUMEUP)
-→ adc_key 驱动读 DTB adc-keys(SARADC ch1) → run_command("download")
-→ rockusb 0 ... → 枚举 2207:0x350B`。PID 350B 就是 U-Boot 的
-`CONFIG_ROCKUSB_G_DNL_PID`(rk3588_common.h),**不是** rkbin miniloader。
+### 机制(全部实证)
 
-挂死最可能原因(假设,未证):`u-boot,dm-pre-reloc` 让按键设备在重定位前、
-console 初始化前被 bind/probe(saradc probe 走 CRU 时钟/reset,该阶段可能死等)。
-对照:Radxa rock-3a/e25 的 adc-keys 用 **`u-boot,dm-spl`**,不用 dm-pre-reloc;
-稳定版 saradc 节点本身也带 dm-pre-reloc 且能启动,说明挂死由「adc-keys bus+child
-的 pre-reloc 标记」触发,非 saradc 本身。
+1. **fdtgrep 剥离**:`u-boot.dtb` 由
+   `fdtgrep -b u-boot,dm-pre-reloc -b u-boot,dm-spl -RT <dts> -n /chosen -n /config`
+   生成(dts/Makefile)——**不带这两个标记之一的节点根本进不了 u-boot.dtb**
+   (P9703 实测:源 DTS 有节点、itb 内 DTB 没有)。
+2. **pre-reloc 挂死**:`u-boot,dm-pre-reloc` 让节点在 console 初始化前被绑定
+   探测(saradc probe 走 CRU 时钟/reset 死等)→ fd2c6b78 的静默挂死。
+3. **dm-spl 正解**:节点进 u-boot.dtb 但不参与 pre-console 扫描;
+   `key_read()` 在 board_late_init 第一遍即找到非 pre-reloc 设备。
+4. **按键链路**:`setup_download_mode() → key_read(KEY_VOLUMEUP) → adc_key
+   读 SARADC ch1 → download → rockusb 0 mmc 0 → 枚举 2207:0x350B`
+   (PID 350B = U-Boot 自己的 `CONFIG_ROCKUSB_G_DNL_PID`,非 miniloader)。
+   USB gadget 起不来时 `download` 自动 fallback `rbrom` → BROM Maskrom
+   (实测按住按键上电可能得到 Loader 或 Maskrom,两种都是可用刷机态;
+   u-boot rockusb 的 LOADER 枚举可能抖动,正式刷机仍首选真 Maskrom)。
 
-**恢复实验(下次刷机窗口)**:把 adc-keys 节点加回 board_agibot 补丁,但
-**去掉两处 `u-boot,dm-pre-reloc`**(或按 Radxa 惯例改 `u-boot,dm-spl`):
+### 就地更新 U-Boot 的方法(无需重刷整盘)
 
-```dts
-adc-keys {
-    compatible = "adc-keys";
-    io-channels = <&saradc 1>;
-    io-channel-names = "buttons";
-    keyup-threshold-microvolt = <1800000>;
-    status = "okay";
+板内 SSH 直接 dd 引导区(先备份!):
 
-    loader-key {
-        linux,code = <KEY_VOLUMEUP>;
-        label = "SW9200 loader";
-        press-threshold-microvolt = <1750>;
-    };
-};
+```sh
+# 备份现 16MiB 引导区
+dd if=/dev/mmcblk0 of=/root/bootregion.bak bs=512 count=32768 conv=fsync
+# 写入新构建的 idbloader(LBA64) + u-boot.itb(LBA16384=8MB)
+dd if=idbloader.img of=/dev/mmcblk0 bs=512 seek=64 conv=notrunc
+dd if=u-boot.itb  of=/dev/mmcblk0 bs=512 seek=16384 conv=notrunc
+sync
 ```
 
-依据:`key_read()` 第一遍只找非 pre-reloc 设备,board_late_init 时 console 已就绪,
-即使探测失败也是串口可见报错(不再是静默挂死)。验收两步:① 不按键冷启动正常进
-Armbian;② 按住 SW9200 上电进 Loader(PID 350B)。失败退路:串口 Ctrl+C 抓 U-Boot
-→ 擦 idbloader 进 Maskrom → 重刷稳定版(FAQ Q1/Q4)。
+2026-08-16 用此法从 P9a41 就地升级到 P986b,回读 SHA 校验一致,
+重启/冷启动/按键全部验证通过。U-Boot 包 hash 与 deb 对应:
+`2017.09-S39cd-P986b-Hbe55-Vecf7-B5da4-R448a`。
 
 ## 回滚
 
