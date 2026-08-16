@@ -44,11 +44,12 @@ DRM 按 EDID 自动选择首选模式。控制台字体保持系统默认 8x16�
 - `/dev/vcs1` 最后显示 `Armbian ... Jammy tty1` 和 `agibot login:`；
 - COM7 的 `ttyFIQ0` 登录保持正常。
 
-当前默认 DTB SHA-256(HDMI 控制台 + PCIe/WiFi + 蓝牙 + 看门狗版,2026-08-17):
-`2906b7af255d06e6fe27445598e5e8f3654cb6064b63b121f7fa15fc863d56f0`。
+当前默认 DTB SHA-256(HDMI 控制台 + PCIe/WiFi + 蓝牙 + 看门狗 + bt-sound 禁用版,2026-08-17):
+`cc80bd012a68123709d02d724cf3a2c32bd8317557ea76a82d649a9d935cdd66`。
 旧稳定 v3 已在板端备份为 `/root/dtb.v3-pre-hdmi-console`,
 PCIe 修复前版本备份为 `/root/dtb.pre-pcie-fix`,
-看门狗启用前版本备份为 `/root/dtb.v-pre-watchdog`。
+看门狗启用前版本备份为 `/root/dtb.v-pre-watchdog`,
+bt-sound 禁用前版本备份为 `/root/dtb.v-pre-btsound-off`。
 
 GPIO137 是 I2S1 `SDO0`。旧 DTB 同时把它错误写成 HDMI `enable-gpios`，导致 HDMI
 mode set 把 I2S 引脚强切回 GPIO。默认 DTB 已删除该错误属性，并恢复
@@ -183,6 +184,21 @@ ACM8625P codec 驱动补丁；外置模块已通过 6.1.115 编译和 vermagic �
   释放时停表,板子不重启;`CONFIG_WATCHDOG_NOWAYOUT` 未开,安全。
   用途:systemd WatchdogSec / 关键进程托管 / 刷机防砖场景。
 - **回归**:声卡(含 ACM 自动加载)、hci0、bcmdhd、双网口均无回退。
+
+## deferred 噪声清理与剩余已知项(2026-08-17 实测)
+
+- **bt-sound 已禁用**:该 simple-audio-card 的 codec 端指向 `bt-sco`
+  (compatible `delta,dfbmcs320`)假 codec——6.1 vendor 内核没有此驱动,
+  parse error 永远不消。此路是 BSP 的 BT-PCM 音频专用通路,而我们的蓝牙
+  音频走 HCI(uart6),不经它 → `status="disabled"` 纯去噪,无功能损失。
+- **dmc(留)**:DDR 调频 probe 依赖 ATF 侧 SIP DRAM 服务
+  (`sip_smc_dram`/`ROCKCHIP_SIP_DRAM_FREQ`),Armbian 的 BL31 未实现 →
+  probe 从未执行(无日志、手动 bind rc=1)。**内核侧无 bug 可修**,
+  DDR 固定频率运行。保留节点:将来若换带 DRAM SIP 的 ATF 可直接生效。
+- **mtd_vendor_storage(留)**:设备**不是 DT 创建的**(DT 无节点,无法
+  disable),且 `/proc/mtd` 为空——eMMC 走标准 mmc 驱动不产生 MTD 分区,
+  它等的东西永远不来。存 MAC 地址用,有 fallback,无功能影响。
+- 清理后 `devices_deferred` 仅剩上两条,均为「留痕的已知项」而非 bug。
 
 ## 固化:下次打包一次成功
 
