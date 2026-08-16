@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+# AGIBOT MB0002 V2 蓝牙挂载(AP6275P / BCM4362A2)
+#
+# 根因:本板 BT 的 ctsn 未接线。DW apb UART 一开 CRTSCTS(AFCE),TX 即被
+# 恒为低的 nCTS 门死(字节留在 TX FIFO,tx 计数涨、rx 恒 0)。
+# 内核 hci_bcm serdev(serdev_device_set_flow_control)与 bluez btattach
+# 都会开 CRTSCTS → Reset 0x0c03 永远超时。
+# 方案:用户态直接挂 N_HCI ldisc + BCM proto(ldisc 路线 hci_uart_setup
+# 不切速、不发 0xfc18,全程 115200),termios 由本脚本自控,绝不开 CRTSCTS。
+# patchram 由内核 btbcm 自动加载 brcm/BCM4362A2.hcd。
+import os, termios, fcntl, struct, time
+
+T = '/dev/ttyS6'
+TIOCSETD = 0x5423            # 指针语义(内核 get_user)
+HCIUARTSETPROTO = 0x400455C8  # 值语义!内核直接用 arg 当协议号,传裸 int
+N_HCI = 15
+HCI_UART_BCM = 7             # 与内核 include/net/bluetooth/hci_uart.h 一致
+
+for _ in range(60):
+    try:
+        fd = os.open(T, os.O_RDWR | os.O_NOCTTY)
+        break
+    except OSError:
+        time.sleep(2)
+else:
+    raise SystemExit('ttyS6 not found')
+
+a = termios.tcgetattr(fd)
+a[0] = a[1] = a[3] = 0
+a[2] = (a[2] & ~termios.CSIZE) | termios.CS8
+a[2] &= ~(termios.PARENB | termios.CSTOPB | termios.CRTSCTS)  # 关键
+a[4] = a[5] = termios.B115200
+termios.tcsetattr(fd, termios.TCSANOW, a)
+
+fcntl.ioctl(fd, TIOCSETD, struct.pack('I', N_HCI))
+fcntl.ioctl(fd, HCIUARTSETPROTO, HCI_UART_BCM)
+print('hci_uart BCM attached on %s' % T, flush=True)
+
+while True:  # 持有 fd = 持有 ldisc = hci0 存活
+    time.sleep(3600)

@@ -44,8 +44,8 @@ DRM 按 EDID 自动选择首选模式。控制台字体保持系统默认 8x16�
 - `/dev/vcs1` 最后显示 `Armbian ... Jammy tty1` 和 `agibot login:`；
 - COM7 的 `ttyFIQ0` 登录保持正常。
 
-当前默认 DTB SHA-256(HDMI 控制台 + PCIe/WiFi 修复版,2026-08-16):
-`9f1c04daa5667013450aca47ac6bfc07dcef1a987f1063987086245ccb3ea135`。
+当前默认 DTB SHA-256(HDMI 控制台 + PCIe/WiFi + 蓝牙修复版,2026-08-16):
+`1dba2da79a008ede6f59bb6f6c2755b3d2df5d2be9a9bb494ea6ba273a506e1b`。
 旧稳定 v3 已在板端备份为 `/root/dtb.v3-pre-hdmi-console`,
 PCIe 修复前版本备份为 `/root/dtb.pre-pcie-fix`。
 
@@ -90,7 +90,47 @@ ACM8625P codec 驱动补丁；外置模块已通过 6.1.115 编译和 vermagic �
   热插)。M.2 物理走线(fe150000 直连还是 GSW switch 下游口)与槽位供电/PERST
   需实插终验:插卡重启后 `ls /sys/bus/pci/devices/` 出现新设备即确认。
 
+## 蓝牙:AP6275P BT(uart6 + BCM4362A2)(2026-08-16 实测)
+
+- **硬件**:AP6275P 的 BT 部分是 **BCM4362A2 走 uart6(ttyS6)**,HCI UART,ROM
+  波特率 115200;`BT_REG_ON=GPIO1_A6`(38,高=上电)、`BT_WAKE=GPIO3_B2`(106)。
+  芯片完全健康:裸 tty 发 Reset/Read_Local_Version/Read_BD_ADDR 全 ACK,
+  BD 地址 `B0:02:47:43:EA:3B`,subver 0x1111 精确对应 `brcm/BCM4362A2.hcd`。
+- **根因(绕了最久的坑)**:本板 BT 的 **ctsn 没接线**。DW apb UART 一旦
+  termios 打开 CRTSCTS,AFCE 生效,TX 被**恒为低的 nCTS 门死**——字节留在
+  TX FIFO,`/proc/tty/driver/serial` 表现 tx 涨、rx 恒 0,命令超时。实测
+  对照:同一进程 CRTSCTS off → 秒 ACK;ON → 零接收;off → 又 ACK。而内核
+  `hci_bcm` serdev(`hci_uart_setup` 会 `serdev_device_set_flow_control(true)`)
+  和 bluez `btattach` 都会开 CRTSCTS → **Reset(0x0c03)永远 tx timeout**。
+  这解释了此前 serdev(v2/v4/v6)与 btattach 全部失败的统一原因。
+- **修复(用户态挂载,vendor hciattach 同款思路)**:
+  - **DTB**(`_fix_bt_ldisc.py` 生成,已固化进 overlay 默认 DTB):
+    ① uart6 `pinctrl-0` 加 `uart6m1-rtsn`(0x1ac),**不加 bluetooth 子节点**
+    (ttyS6 保持普通串口);② vendor `wireless-bluetooth` 节点 **disabled**
+    (否则 rfkill-bt 抢 GPIO1_A6 并与 uart6 抢 pinctrl);③ gpio1/gpio3 加
+    **gpio-hog** 常拉高 BT_REG_ON/BT_WAKE(开机即上电,不依赖用户态时序)。
+  - **挂载服务** `overlay/etc/systemd/system/agibot-bt-attach.service` +
+    `overlay/usr/local/sbin/agibot-bt-attach`:python 直接
+    `TIOCSETD(N_HCI)` + `HCIUARTSETPROTO(HCI_UART_BCM=7)`,termios 全程
+    自控 115200 raw **绝不开 CRTSCTS**。ldisc 路线 `bcm_proto` 无
+    `oper_speed` → 内核不切速、不发 0xfc18,patchram 由 btbcm 自动加载
+    `brcm/BCM4362A2.hcd`(overlay 已带)。
+- **ioctl 语义坑(写挂载脚本必看)**:`HCIUARTSETPROTO` 在内核里用的是
+  **arg 原值当协议号**(`hci_uart_set_proto(hu, arg)`),python `fcntl.ioctl`
+  要**传裸 int**;传 packed buffer 会把指针值当协议号 → 恒
+  `EPROTONOSUPPORTED`。而 `TIOCSETD`/`TIOCMGET` 是指针语义,要用 buffer。
+- **实测结果**:开机全自动——服务 5.9s 挂载 → patchram 完成 →
+  `hci0: BCM43752A2 UART 37.4MHz Ampak AP6398 [Version: 1012.1017]`,
+  `btmgmt info`:`powered ssp br/edr le secure-conn`;LE/经典扫描命令均正常
+  执行(附近无可扫设备属环境问题)。bluetoothd(active)可直接用 bluetoothctl。
+- **回归**:postflash-test **PASS=25/FAIL=0**;WiFi 扫描、HDMI tty1、网口、
+  UART(含 ttyS6)无回退。
+- **留痕**:serdev 路线(内核自动 probe,无需服务)已验证不可行于本板硬件
+  (ctsn 未接线),除非硬件补线。HCI 工作在 115200(足够 BLE/控制类应用;
+  若日后需高吞吐 A2DP,可仿 vendor 用 brcm_patchram_plus 两段式升 1500000)。
+
 ## 固化:下次打包一次成功
+
 
 启动与 HDMI 控制台所需的持久化改动已经落在仓库:
 

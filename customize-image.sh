@@ -14,6 +14,8 @@ cp -a "$OVER"/lib/. /lib/ 2>/dev/null || true
 cp -a "$OVER"/usr/. /usr/ 2>/dev/null || true
 chmod 0755 /usr/local/sbin/agibot-usb-port-power 2>/dev/null || true
 chmod 0644 /etc/systemd/system/agibot-usb-port-power.service 2>/dev/null || true
+chmod 0755 /usr/local/sbin/agibot-bt-attach 2>/dev/null || true
+chmod 0644 /etc/systemd/system/agibot-bt-attach.service 2>/dev/null || true
 
 # 2) 把适配 6.1 的 agibot dtb 放进内核 dtb 目录
 #    /boot/dtb 是指向 dtb-<ver>-vendor-rk35xx 的 symlink，解析真实路径后写入
@@ -46,9 +48,10 @@ fi
 systemctl disable resize-rootfs.service 2>/dev/null || true
 rm -f /etc/systemd/system/resize-rootfs.service
 
-# 5) 启用 USB-A 端口供电和 HDMI tty1 登录
+# 5) 启用 USB-A 端口供电、HDMI tty1 登录、蓝牙 hci_uart 挂载
 systemctl enable agibot-usb-port-power.service 2>/dev/null || true
 systemctl enable getty@tty1.service 2>/dev/null || true
+systemctl enable agibot-bt-attach.service 2>/dev/null || true
 
 # 6) 清理备份文件（不该进镜像）
 find /boot -name '*.510-orig' -delete 2>/dev/null || true
