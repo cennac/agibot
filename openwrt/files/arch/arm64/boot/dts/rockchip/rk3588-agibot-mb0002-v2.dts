@@ -65,6 +65,18 @@
 		regulator-max-microvolt = <1100000>;
 		vin-supply = <&vcc5v0_sys>;
 	};
+
+	/* PCIe 3.3V 供电:GPIO3_C4 使能(高有效),取自 5.10 BSP(照搬 vcc3v3-pcie30) */
+	vcc3v3_pcie30: vcc3v3-pcie30 {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc3v3_pcie30";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		enable-active-high;
+		gpios = <&gpio3 RK_PC4 GPIO_ACTIVE_HIGH>;
+		startup-delay-us = <7500>;
+		vin-supply = <&vcc12v_dcin>;
+	};
 };
 
 /* CPU big 核供电:i2c0 rk8602@42(big0)/rk8603@43(big1) */
@@ -574,3 +586,40 @@
 &usb_host1_ehci { status = "okay"; };
 &usb_host1_ohci { status = "okay"; };
 &usb_host2_xhci { status = "okay"; };
+
+/*
+ * ===== PCIe 扩展(2026-08-17 增补)=====
+ * 引脚/供电值取自 5.10 BSP 的三路 okay 控制器;写法照 LEDE rk3588-armsom-sige7.dts
+ * (主线 pcie-dw-rockchip,板级只需 reset-gpios + 供电 + status)。
+ *   pcie3x4  (fe150000, Gen3 x4)= gpio4 RK_PB6 —— M.2/4G 主扩展(J5001 侧)
+ *   pcie2x1l0(fe170000, Gen2 x1)= gpio1 RK_PB4
+ *   pcie2x1l2(fe190000, Gen2 x1)= gpio3 RK_PD1
+ * 板上 WiFi(AP6275P)是 SDIO 接口,不占 PCIe;USB 口接的 4G 棒走 usb_host2_xhci。
+ *
+ * 与 armbian 路线的差异:armbian(vendor 6.1)侧 PCIe 三路 probe -22 未解
+ * (dmesg "invalid resource"/"Failed to initialize host",ranges 与 dfi 修复后仍在,
+ *  疑 vendor 驱动 patch 层问题,待拿回 patched 源码深挖);LEDE 用主线驱动,另一条路。
+ * 另:主线 6.12 无 rk3588 DMC/DDR devfreq 与 TRNG 驱动(armbian vendor 侧两者均已驱动),
+ * 故不移植 —— 见 docs/ARMBIAN-LINUX-BRINGUP.md 2026-08-17 一节。
+ */
+&pcie30phy {
+	status = "okay";
+};
+
+&pcie3x4 {
+	reset-gpios = <&gpio4 RK_PB6 GPIO_ACTIVE_HIGH>;
+	vpcie3v3-supply = <&vcc3v3_pcie30>;
+	status = "okay";
+};
+
+&pcie2x1l0 {
+	reset-gpios = <&gpio1 RK_PB4 GPIO_ACTIVE_HIGH>;
+	vpcie3v3-supply = <&vcc3v3_pcie30>;
+	status = "okay";
+};
+
+&pcie2x1l2 {
+	reset-gpios = <&gpio3 RK_PD1 GPIO_ACTIVE_HIGH>;
+	vpcie3v3-supply = <&vcc3v3_pcie30>;
+	status = "okay";
+};

@@ -517,3 +517,34 @@ fdtput -t s overlay/boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb /chosen bootar
 gpio2@fec30000=0x1af、gpio3@fec40000=0xf0、gpio4@fec50000;全局号=bank×32+pin。
 ⚠️ vendor `wireless-bluetooth` pinctrl `<0x1ac 0x1ad>` 里 **0x1ad 是 bt-gpio 组
 (非 ctsn)**,别再当 ctsn 用。
+
+## 2026-08-17 全功能回归 + DMC 修复 + NPU 固化 + PCIe 未解案
+
+**回归测试**:`flash/postflash-test.sh --scan --stress --net` 27 PASS / 0 FAIL。
+NPU 实测 mobilenet_v1 **251 FPS**(补装 RK3588 版 librknnrt 1.5.2 + rknnlite);
+8 核 60s 压力 33→40°C;eMMC 写速 232-246 MB/s;I2C 器件全景(i2cdetect 实证):
+i2c-0=42/43 rk8602/03(CPU 电源)、i2c-1=42 NPU rk8602+**15 ACM8625P 功放**、
+i2c-3=20/21 PCA9555×2、i2c-6=51 RTC hym8563+4e(husb311 Type-C PD,armbian 已禁)。
+
+**✅ DMC/DFI 修复(已上板验证)**:dmesg `rockchip-dfi: Failed to get pclk_ddr_mon_ch0`
+→ dtb `/dfi@fe060000` 缺 clocks。fdtput 补 `clocks=<&cru 722...725>`(pclk_ddr_mon_ch0..3,
+clk id 取自同内核 sige7 dtb)+ clock-names。重启后 `/sys/class/devfreq/dmc` 出现
+(dmesg "Failed to get leakage" 仅警告,无 efuse leakage 数据,不碍事)。
+
+**❌ PCIe 三路未解(fe150000/fe170000/fe190000 probe -22)**:
+- dmesg `dw-pcie xxx.pcie: invalid resource` + `Failed to initialize host`
+- 已排除:ranges(三路都带 5.10 残留非法首项 `<0x800 0x00 0xfX000000 ...>`,已 fdtput
+  删净,重启后仍 -22)、reg/reg-names/clocks/resets 与 sige7 逐属性一致、
+  msi-map→gic-its(msi-controller ✓)、phys→rk3588-pcie3-phy(okay ✓)、
+  reset-gpios/vpcie3v3-supply 正常。WiFi 不受影响(AP6275P 走 SDIO)。
+- **卡点**:"invalid resource"/"Failed to initialize host" 两字符串在本机 worktree 源码
+  grep 不到,但编译产物 vmlinux/Image 里有 → 内核 worktree(6.1__rk35xx__arm64)被
+  setup 重置,armbian 内核 patch 层源码丢失,无法定位打印出处。
+- **下次**:重跑一次内核 prepare(或 docker 编译)拿回 patched 源码,再定位;
+  或直接 LEDE 主线驱动路线(openwrt DTS 已加 PCIe,见 openwrt/README.md)。
+- 备份:`/root/dtb-pre-pcie-fix.bak`(板上)、`overlay/.../rk3588-...dtb.bak-*`(仓库)。
+
+**NPU 用户态固化进镜像**(2026-08-17):overlay 新增 `usr/lib/librknnrt.so`(RK3588 版,
+⚠️ 原厂 rootfs 备份里的是 RK356x 1.3.0 错版勿用)+ `root/npu_test/`(mobilenet_v1.rknn /
+resnet18.rknn / npu_test.py / wheels cp310+cp312);customize-image.sh §8 离线装
+rknnlite + numpy(容错不毁构建)。刷完板 NPU 开箱即用。

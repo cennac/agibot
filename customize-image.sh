@@ -8,10 +8,11 @@ set -e
 
 OVER=/tmp/overlay
 
-# 1) 复制 overlay 的 etc / lib / usr 到根（服务、板级工具、firmware）
+# 1) 复制 overlay 的 etc / lib / usr / root 到根（服务、板级工具、firmware、NPU 资产）
 cp -a "$OVER"/etc/. /etc/ 2>/dev/null || true
 cp -a "$OVER"/lib/. /lib/ 2>/dev/null || true
 cp -a "$OVER"/usr/. /usr/ 2>/dev/null || true
+cp -a "$OVER"/root/. /root/ 2>/dev/null || true
 chmod 0755 /usr/local/sbin/agibot-usb-port-power 2>/dev/null || true
 chmod 0644 /etc/systemd/system/agibot-usb-port-power.service 2>/dev/null || true
 chmod 0755 /usr/local/sbin/agibot-usb-hub-reset 2>/dev/null || true
@@ -80,5 +81,22 @@ echo acm8625p > /etc/modules-load.d/acm8625p.conf
 
 # 7) 清理备份文件（不该进镜像）
 find /boot -name '*.510-orig' -delete 2>/dev/null || true
+
+# 8) NPU 用户态开箱即用:librknnrt(RK3588 版,勿用出厂 RK356x 库)+ 模型 + rknnlite
+#    板上实测:mobilenet_v1 251 FPS / resnet18 ~118 FPS(内核 NPU driver v0.9.8)。
+#    numpy 缺则 apt 装;pip 缺则装 pip;wheel 离线装(cp310 jammy / cp312 noble)。
+#    全程容错——NPU 用户态失败不应毁掉镜像构建。
+chmod 0644 /usr/lib/librknnrt.so 2>/dev/null || true
+ldconfig
+python3 -c 'import numpy' 2>/dev/null || apt-get install -y -qq python3-numpy >/dev/null 2>&1 || true
+command -v pip3 >/dev/null 2>&1 || apt-get install -y -qq python3-pip >/dev/null 2>&1 || true
+if command -v pip3 >/dev/null 2>&1; then
+	pip3 install --no-index --find-links /root/npu_test/wheels rknn-toolkit-lite2 >/dev/null 2>&1 || true
+fi
+if python3 -c 'import rknnlite' 2>/dev/null; then
+	echo "NPU: rknnlite + librknnrt + 模型(/root/npu_test)就绪"
+else
+	echo "NPU: rknnlite 未装上(手跑: pip3 install --no-index --find-links /root/npu_test/wheels rknn-toolkit-lite2)"
+fi
 
 exit 0
