@@ -14,6 +14,7 @@
  */
 
 /dts-v1/;
+#include <dt-bindings/clock/rockchip,rk3588-cru.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/pinctrl/rockchip.h>
 #include <dt-bindings/pwm/pwm.h>
@@ -621,5 +622,16 @@
 &pcie2x1l2 {
 	reset-gpios = <&gpio3 RK_PD1 GPIO_ACTIVE_HIGH>;
 	vpcie3v3-supply = <&vcc3v3_pcie30>;
+	status = "okay";
+};
+
+/*
+ * TRNG 硬件随机数(2026-08-17 更正):LEDE 6.12 的 rk3588 dtsi 系列已带 rng@fe378000
+ * 节点(compatible "rockchip,trngv1",时钟/复位同 5.10 BSP),且 armv8/config-6.12
+ * 已开 CONFIG_HW_RANDOM_ROCKCHIP=y —— /dev/hwrng 本就可用。这里显式标 okay
+ * (自文档化;此前"主线无 TRNG 不移植"的注记系误判,已更正)。
+ * 真正主线没有的是 rk3588 DMC(DDR devfreq 调频)驱动,LEDE 侧不移植。
+ */
+&rng {
 	status = "okay";
 };

@@ -26,7 +26,8 @@ openwrt/
 │   └── arch/arm64/boot/dts/rockchip/
 │       └── rk3588-agibot-mb0002-v2.dts   # ★ 主线精简路由 DTS(电源树照搬 seewo srcm3588-io,双 GMAC 参考 nanopi-r6;
 │                                          #   2026-08-17 增补 PCIe 三路:3x4+2x1l0+2x1l2,引脚/供电取自 5.10 BSP,
-│                                          #   写法照 sige7;主线无 rk3588 DMC/TRNG 驱动故不移植)
+│                                          #   写法照 sige7;TRNG 经查 LEDE 原生已有(dtsi 节点+驱动+config 全在),
+│                                          #   已 &rng 显式启用;主线真正没有的是 rk3588 DMC(DDR 调频)驱动,不移植)
 ├── patches/
 │   ├── 001-rockchip-add-agibot-mb0002-v2-image.patch   # armv8.mk 加 DEVICE 块(UBOOT=generic-rk3588)
 │   ├── 002-uboot-rockchip-build-generic-rk3588-agibot.patch  # generic-rk3588 的 BUILD_DEVICES 追加本板
