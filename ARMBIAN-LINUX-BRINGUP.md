@@ -259,6 +259,28 @@ err/warn 全扫,结论:**无新的可修驱动 bug,全子系统绑定完整**。
   rk806 且 BOUND;USB 17 接口全 BOUND;声卡 3 张、hci0(BCM4362A2 固件
   已打)、can0/1、watchdog、thermal 全就绪。
 
+### 新镜像复检(2026-08-17 刷机后)+ 补修 pinctrl WARN
+
+新镜像(8-17 构建)刷机后全量重审,除上述结论外新抓到一个此前漏网的
+**真 WARN(已修)**:
+
+- **现象**:启动时 2 次
+  `WARNING ... pinctrl-rockchip.c:4195 rockchip_pmx_gpio_set_direction`,
+  完整文本 `pin 156/157 already requested by feb80000.serial; switch mux 10
+  to GPIO`,调用栈 `stmmac_mdio_reset ← stmmac_mdio_register`。
+- **根因**:`uart5m0-xfer` 引脚组(feb80000 uart5 的 tx/rx)复用的球位恰好
+  是 **GPIO4_D4/D5 = gmac1/gmac0 的 PHY 复位脚**(snps,reset-gpio)。
+  uart5 probe 先把两脚 mux 成 uart(function 10),stmmac 探测时再强切回
+  GPIO 触发告警。原厂 5.10 DT 同款冲突(其 pinctrl 驱动无此检查所以没报),
+  实际板厂意图就是 gmac 优先——uart5 引脚被抢,形同虚设。
+- **修法**:`/serial@feb80000`(uart5)`status="disabled"`(板上+仓库 DTB)。
+  uart5 无人使用(BT=uart6 feb90000,console=uart2),零功能损失。
+- **板上验证**:WARN 2→0,`/dev/ttyS5` 消失,eth0/eth1/can0/1/wlan0/hci0/
+  bt-attach 全部正常。
+- **顺带定性**:`rknpu_dev.10.auto` 未绑定无碍——rknpu 是 DRM 式驱动,
+  `[drm] Initialized rknpu` 已成功,接口在 `/dev/dri/renderD129`(card1),
+  rknn2 走 DRM;`.10.auto` 只是旧式 chardev 子设备失败,不影响 NPU。
+
 ## Type-C adb:usb@fc000000 peripheral + 原厂 adbd(2026-08-17 实测)
 
 Type-C 口(接电脑)原镜像是 adb 服务口。6.1 下该口**无任何功能**(电脑
