@@ -1,0 +1,24 @@
+#!/bin/bash
+# agibot-npu-setup — 首次开机自动补齐 NPU 用户态(rknnlite + numpy)
+#
+# 为什么在板上做而不是构建时:customize-image.sh 在 chroot 里经 qemu 模拟跑
+# apt/pip 偶发静默失败(2026-08-18 实测 rknnlite/numpy 未进镜像);板上原生
+# arm64 环境装一次即成。资产已固化在镜像内:/usr/lib/librknnrt.so +
+# /root/npu_test/(mobilenet_v1.rknn / resnet18.rknn / npu_test.py / wheels/)。
+# 成功后自禁用本服务;失败保留,下次开机重试。
+set -u
+export DEBIAN_FRONTEND=noninteractive
+
+python3 -c 'import numpy' 2>/dev/null || apt-get install -y -qq python3-numpy 2>/dev/null || true
+command -v pip3 >/dev/null 2>&1 || apt-get install -y -qq python3-pip 2>/dev/null || true
+if command -v pip3 >/dev/null 2>&1; then
+	pip3 install --no-index --find-links /root/npu_test/wheels rknn-toolkit-lite2 >/dev/null 2>&1 || true
+fi
+
+if python3 -c 'import rknnlite' 2>/dev/null; then
+	logger -t agibot-npu-setup "rknnlite+librknnrt+models ready (mobilenet/resnet18 in /root/npu_test)"
+	systemctl disable agibot-npu-setup.service 2>/dev/null || true
+else
+	logger -t agibot-npu-setup "WARN: rknnlite still missing; manual: pip3 install --no-index --find-links /root/npu_test/wheels rknn-toolkit-lite2"
+fi
+exit 0

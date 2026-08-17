@@ -1,0 +1,12 @@
+[Unit]
+Description=Agibot NPU userspace one-time setup (rknnlite+numpy, then self-disable)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/agibot-npu-setup
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
