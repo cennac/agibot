@@ -324,6 +324,9 @@ GPT 是**单分区**,p1=rootfs,`boot` 目录与 rootfs 同分区——见 `confi
 
 该 DTB 由 `customize-image.sh` 第 17-22 行复制进镜像的 `/boot/dtb-*-vendor-rk35xx/rockchip/`,
 所以改这个 overlay DTB 即完成固化,下次 `setup.sh && docker-build.sh` 直接产出可启动镜像。
+镜像产物可离线核验:`scripts/verify-image.sh`(基础)+ `scripts/check-session-fixes.sh`
+(本会话全部修复的定向核验,16 项:DTB 三改、服务 enable 状态、adbd、VPU 库、
+ACM 内建、BT firmware;2026-08-17 构建实测 16/16 通过)。
 随 DTB 一起固化的还有 overlay 服务,均由 `customize-image.sh` 安装:
 `agibot-usb-hub-reset.service`(hub 复位,enable)、`agibot-usb-port-power.service`
 (USB-A 供电,enable)、`agibot-usb-adb.service`(Type-C adb,**安装但默认不
