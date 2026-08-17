@@ -234,13 +234,19 @@ err/warn 全扫,结论:**无新的可修驱动 bug,全子系统绑定完整**。
   活着),只是没插对端线;eth1 1000Mbps UP(SSH 走它)。dmesg 里 gmac1
   `rx_delay set to 0xffffffff` 是 `rgmii-rxid`(RX 延迟在 PHY 内)的
   正常表达,非 bug。
-- **唯一硬件层异常:板载 hub port4 的 FS 设备(已判死刑)**:一个
-  full-speed 设备反复 `descriptor read/64, error -32 (EPIPE)` 被内核放弃。
-  2026-08-17 三重验证:①用户确认外设仅 U盘(8-1.4 DataTraveler ✓)+
-  键盘(9-1.1 ✓),均正常,失败者非用户外设;②重启后问题跟着设备换总线
-  (3-1.4→5-1.4),非控制器侧问题;③手动脉冲 hub 复位脚后仍不出现。
-  **结论:板内某 USB 外设硬件故障**(焊死在 fc800000/fc880000 EHCI 侧
-  hub 的 port4),远程不可修,到场检查。
+- **~~唯一硬件层异常:板载 hub port4 的 FS 设备(已判死刑)~~ → 冤案昭雪
+  (2026-08-17 现场定案)**:一个 full-speed/low-speed 设备反复
+  `descriptor read/64, error -32 (EPIPE)` 被内核放弃。当时三重"验证"后
+  判为板内焊死的故障设备——**现场实测推翻**:用户到板边用其 USB-C 多功能
+  扩展坞(一体式,HDMI+USB 口)插 J9200 复现,幽灵设备实时出现在
+  `3-1.3.1`(坞的 hub 口1),低速率+STALL 描述符;**真凶 = 扩展坞内部的
+  HDMI 桥/PD 控制芯片**,它预期 USB3/DP 完整 C 口,插在 USB2-only 的口上
+  半初始化即 STALL。历史 `3-1.4/5-1.4` 记录 = 同一只坞插在不同口(VL805
+  那排的 USB2 侧恰为 5-1.x,J3600=port4→5-1.4)。用户当时答"外设只有
+  U盘+键盘"没把坞算进去。**板子 USB 全部健康,无任何板内故障设备**;
+  fc880000(bus5)空与原厂一致(预留未引出),J9200 链路实测正常
+  (坞 hub ✓ + U盘 ✓)。副作用:测 USB 口时避开这只坞,或忽略其幽灵设备的
+  EPIPE 日志。
 - **已补:agibot-usb-hub-reset 服务**(2026-08-17):原厂 5.10 DT 有
   `hubrst-gpio` 节点(`compatible="usbhub_rst"`,usbhub1/2 复位脚=
   GPIO4_D2/D3,sysfs 154/155,mux GPIO/pull-none),其私有驱动开机脉冲
