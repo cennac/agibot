@@ -8,18 +8,20 @@
 #    --stress        附带短时压力 + 温度观察(需 stress-ng)
 #    --scan          允许 i2cdetect 扫总线(默认跳过,避免动到外设)
 #    --net           允许 ping 外网(默认只 ping 网关)
-#    --npu-model <p> 指定 rknn 模型(默认 /root/npu_test/resnet18.rknn)
+#    --npu-model <p> 指定 rknn 模型(默认自动选择 /root/npu_test/*.rknn)
 # =============================================================================
 
 # ---------- 参数 ----------
 OPT_STRESS=0; OPT_SCAN=0; OPT_NET=0
-OPT_NPU_MODEL="/root/npu_test/resnet18.rknn"
+OPT_NPU_MODEL=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --stress) OPT_STRESS=1; shift;;
     --scan)   OPT_SCAN=1; shift;;
     --net)    OPT_NET=1; shift;;
-    --npu-model) OPT_NPU_MODEL="$2"; shift 2;;
+    --npu-model)
+      [ $# -ge 2 ] || { echo "--npu-model 缺少路径"; exit 1; }
+      OPT_NPU_MODEL="$2"; shift 2;;
     -h|--help) sed -n '2,18p' "$0"; exit 0;;
     *) echo "未知参数: $1(用 --help 查看)"; exit 1;;
   esac
@@ -132,6 +134,19 @@ for ifc in eth0 eth1; do
   else skip "$ifc 不存在"; fi
 done
 for w in wlan0 wlan1; do [ -d /sys/class/net/$w ] && info "$w 存在(无线接口)"; done
+if [ -d /sys/class/net/wlan0 ]; then
+  wdrv=""
+  has ethtool && wdrv=$(ethtool -i wlan0 2>/dev/null | awk '/^driver:/{print $2; exit}')
+  [ -n "$wdrv" ] || wdrv=$(basename "$(readlink -f /sys/class/net/wlan0/device/driver 2>/dev/null)" 2>/dev/null)
+  [ -n "$wdrv" ] && ok "WiFi 驱动已绑定(wlan0: $wdrv)" || warn "wlan0 存在但未找到绑定驱动"
+else
+  warn "未发现 wlan0(检查 PCIe WiFi、驱动和固件)"
+fi
+if [ -d /sys/class/bluetooth/hci0 ]; then
+  ok "蓝牙 HCI 已注册(hci0)"
+else
+  warn "未发现蓝牙 hci0(检查 uart6、固件和 attach 服务)"
+fi
 # CAN 总线
 for c in can0 can1; do
   if ip link show "$c" >/dev/null 2>&1; then
@@ -207,9 +222,15 @@ if [ -r "$DRV" ]; then
   info "$(cat /sys/kernel/debug/rknpu/load 2>/dev/null)"
   ok "NPU 驱动已加载"
 else fail "NPU 驱动未加载(/sys/kernel/debug/rknpu 不可读)"; fi
+# 未显式指定时自动选择镜像内实际存在的模型。模型文件名不代表驱动状态。
+if [ -z "$OPT_NPU_MODEL" ]; then
+  for candidate in /root/npu_test/resnet18.rknn /root/npu_test/mobilenet_v1.rknn /root/npu_test/*.rknn; do
+    [ -f "$candidate" ] && { OPT_NPU_MODEL="$candidate"; break; }
+  done
+fi
 # 实跑推理(需要 librknnrt + rknnlite + 模型)
 if has python3 && python3 -c 'import rknnlite' 2>/dev/null && fexists /usr/lib/librknnrt.so && fexists "$OPT_NPU_MODEL"; then
-  info "运行 resnet18 推理(模型: $OPT_NPU_MODEL)..."
+  info "运行 RKNN 推理(模型: $OPT_NPU_MODEL)..."
   res=$(MODEL="$OPT_NPU_MODEL" python3 - 2>>"$LOG" <<'PY'
 import os,time,numpy as np
 from rknnlite.api import RKNNLite
@@ -227,7 +248,7 @@ PY
 else
   warn "NPU 用户态未就绪 —— 刷机后需重装:"
   info "  1) 换 RK3588 版 librknnrt.so (rknpu2 仓库 runtime/RK3588/Linux/librknn_api/aarch64/)"
-  info "  2) pip3 install rknn_toolkit_lite2  3) 放入 .rknn 模型(默认 $OPT_NPU_MODEL)"
+  info "  2) pip3 install rknn_toolkit_lite2  3) 放入 /root/npu_test/*.rknn 或用 --npu-model 指定"
 fi
 
 # =============================================================================
@@ -305,10 +326,31 @@ info "USB 主控: $usb_n;已识别设备:"
 for d in /sys/bus/usb/devices/*-*/product; do [ -e "$d" ] && info "  $(cat $d)"; done
 ok "USB 子系统在线"
 
+# PCIe:不依赖 lspci，直接读取 sysfs，适合最小系统。
+section "15. PCIe / M.2"
+pcie_ep=0
+for p in /sys/bus/pci/devices/*; do
+  [ -e "$p/vendor" ] || continue
+  class=$(cat "$p/class" 2>/dev/null)
+  # 跳过 Root Port，只报告端点。
+  [ "${class#0x0604}" != "$class" ] && continue
+  ven=$(cat "$p/vendor" 2>/dev/null); dev=$(cat "$p/device" 2>/dev/null)
+  drv=$(basename "$(readlink -f "$p/driver" 2>/dev/null)" 2>/dev/null)
+  info "$(basename "$p"): ${ven#0x}:${dev#0x} driver=${drv:-未绑定}"
+  [ -n "$drv" ] && pcie_ep=$((pcie_ep+1))
+done
+[ "$pcie_ep" -ge 2 ] && ok "PCIe 端点已绑定: $pcie_ep 个(WiFi + USB3 控制器预期)" \
+                      || warn "PCIe 已绑定端点仅 $pcie_ep 个(预期至少板载 WiFi + USB3)"
+if ls /sys/class/nvme/nvme* >/dev/null 2>&1; then
+  ok "M.2 NVMe 端点已枚举"
+else
+  info "M.2/NVMe 未枚举:空槽时属于正常状态,不能据此判定驱动缺失"
+fi
+
 # =============================================================================
 # 可选:压力 + 温升
 if [ "$OPT_STRESS" = "1" ]; then
-  section "15. 压力测试(stress-ng)"
+  section "16. 压力测试(stress-ng)"
   if has stress-ng; then
     t0=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
     info "运行 60s CPU 压力(8 核)..."

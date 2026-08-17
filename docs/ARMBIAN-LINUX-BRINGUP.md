@@ -518,7 +518,7 @@ gpio2@fec30000=0x1af、gpio3@fec40000=0xf0、gpio4@fec50000;全局号=bank×32+p
 ⚠️ vendor `wireless-bluetooth` pinctrl `<0x1ac 0x1ad>` 里 **0x1ad 是 bt-gpio 组
 (非 ctsn)**,别再当 ctsn 用。
 
-## 2026-08-17 全功能回归 + DMC 修复 + NPU 固化 + PCIe 未解案
+## 2026-08-17 全功能回归 + DMC 修复 + NPU 固化 + PCIe 历史排查
 
 **回归测试**:`flash/postflash-test.sh --scan --stress --net` 27 PASS / 0 FAIL。
 NPU 实测 mobilenet_v1 **251 FPS**(补装 RK3588 版 librknnrt 1.5.2 + rknnlite);
@@ -531,7 +531,8 @@ i2c-3=20/21 PCA9555×2、i2c-6=51 RTC hym8563+4e(husb311 Type-C PD,armbian 已�
 clk id 取自同内核 sige7 dtb)+ clock-names。重启后 `/sys/class/devfreq/dmc` 出现
 (dmesg "Failed to get leakage" 仅警告,无 efuse leakage 数据,不碍事)。
 
-**❌ PCIe 三路未解(fe150000/fe170000/fe190000 probe -22)**:
+**历史结论(已被后续实测推翻):曾判断 PCIe 三路未解
+(fe150000/fe170000/fe190000 probe -22)**:
 - dmesg `dw-pcie xxx.pcie: invalid resource` + `Failed to initialize host`
 - 已排除:ranges(三路都带 5.10 残留非法首项 `<0x800 0x00 0xfX000000 ...>`,已 fdtput
   删净,重启后仍 -22)、reg/reg-names/clocks/resets 与 sige7 逐属性一致、
@@ -543,6 +544,11 @@ clk id 取自同内核 sige7 dtb)+ clock-names。重启后 `/sys/class/devfreq/d
 - **下次**:重跑一次内核 prepare(或 docker 编译)拿回 patched 源码,再定位;
   或直接 LEDE 主线驱动路线(openwrt DTS 已加 PCIe,见 openwrt/README.md)。
 - 备份:`/root/dtb-pre-pcie-fix.bak`(板上)、`overlay/.../rk3588-...dtb.bak-*`(仓库)。
+
+> 2026-08-18 更正:上面的 `dw-pcie ... invalid resource` 只是早期探测噪声，
+> 随后 `rk-pcie` 已使 `fe170000` 的 Broadcom `14e4:449d` 和 `fe190000` 的
+> VIA `1106:3483` 成功枚举并绑定驱动；`fe150000` 是空置 M.2 槽，链路失败
+> 属正常。完整证据和待现场测试项见 [HARDWARE-VALIDATION-20260818.md](HARDWARE-VALIDATION-20260818.md)。
 
 **NPU 用户态固化进镜像**(2026-08-17):overlay 新增 `usr/lib/librknnrt.so`(RK3588 版,
 ⚠️ 原厂 rootfs 备份里的是 RK356x 1.3.0 错版勿用)+ `root/npu_test/`(mobilenet_v1.rknn /
