@@ -6,7 +6,7 @@
 #   2. 设好 arm64 的 .config(同板上 running config,存于 ~/kbuild/_acm_kconfig)
 #   3. 复刻 armbian family 补丁(见 ARMBIAN-LINUX-BRINGUP.md)
 #   4. 跑本脚本(在 WSL 里执行):
-#        bash /mnt/e/AIPorject/101/agibot-armbian/kernel/_acm_build.sh
+#        bash /mnt/e/AIPorject/101/agibot-armbian/kernel/acm-build.sh
 #   产物:~/kbuild/acm-mod/acm8625p.ko(vermagic 应为 6.1.115-vendor-rk35xx ...)
 #
 set -e

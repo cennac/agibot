@@ -152,7 +152,7 @@ ACM8625P codec 驱动补丁；外置模块已通过 6.1.115 编译和 vermagic �
   acm8625p.c(Wenhao Yang, acme-semi.com;I2C regmap codec,寄存器 REG_PAGE/
   DEVICE_STATE,DEEP_SLEEP/SLEEP/HIZ/PLAY/MUTE)。**建议做成内建**(obj-y),
   这样下次打包镜像直接编进内核,无需再带 .ko。
-- **外置模块复用内核构建**:`kernel/_acm_build.sh`(容器内跑)演示完整链路
+- **外置模块复用内核构建**:`kernel/acm-build.sh`(容器内跑)演示完整链路
   ——应用补丁 → `make olddefconfig`(注意必须重放 arm64 真 config,`make prepare`
   会按当前 config 覆盖)→ `make prepare` → 单目标编 acm8625p.o → 外置
   `M=` 产 .ko。**踩坑**:①在 x86 config 下 `make prepare` 会洗掉 arm64 config
@@ -435,7 +435,7 @@ OpenWrt 主线版 U-Boot 尚未接入 SW9200；AGIBOT Armbian vendor U-Boot 源�
 1. **CPU 一直高频(`no supported OPPs`)**:DTB 的 OPP 表带
    `nvmem-cells + opp-supported-hw` 硬件匹配,本板 OTP 读值与 opp 条目不匹配
    → 全部 OPP 被拒。修法:从 OPP 表删 `nvmem-cells`/`nvmem-cell-names`/
-   `rockchip,supported-hw`/`opp-supported-hw`(手术脚本 `_fix_dtb.py`)。
+   `rockchip,supported-hw`/`opp-supported-hw`(手术脚本 `tools/_fix_dtb.py`)。
    修后小核 1.2–1.8GHz、大核 1.2–2.2GHz,ondemand 正常调频。
 2. **tsadc probe -22(`Failed to find 'trips' node`)**:原厂 DTS 7 个 thermal
    zone 只有 soc-thermal 带 trips,6.1 内核要求每个 zone 都有。给
@@ -444,7 +444,7 @@ OpenWrt 主线版 U-Boot 尚未接入 SW9200；AGIBOT Armbian vendor U-Boot 源�
 3. **rkvenc2 视频编码器 OPP**:DTB 的 rkvenc-core 节点缺 opp 表。照 RK3588
    兄弟板 sige7 移植 `venc-opp-table`(800MHz/800mV,不带 nvmem 匹配),给
    `vdd_vdenc_s0` 加 phandle,两个 core 挂 `operating-points-v2`+`venc-supply`
-   (脚本 `_fix_venc.py`)。修后 `mpp-srv probe success`,零 rkvenc OPP 报错。
+   (脚本 `tools/_fix_venc.py`)。修后 `mpp-srv probe success`,零 rkvenc OPP 报错。
 4. **Linux 下 SW9200 按键阈值**:`1750uV` 过严(按下实测约 17mV),已改为
    30000uV。Linux input 事件的最终按压验收待有人在板旁执行;不影响 U-Boot
    的 SW9200→Loader 功能。
@@ -467,10 +467,10 @@ provider、旧 clk-port 接线和 VOP OPP 后,板端内核启动挂起,SSH/串�
 
 ```bash
 # 串口助手(Windows pyserial,COM5 @ 1500000 8N1)
-python _ser.py "命令" 捕获秒数
+python tools/_ser.py "命令" 捕获秒数
 
 # 抓 U-Boot 后擦 idbloader 进 Maskrom
-python _erase_to_maskrom.py
+python tools/_erase_to_maskrom.py
 
 # fdtput 改 overlay DTB 的 root=(固化时用过一次)
 fdtput -t s overlay/boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb /chosen bootargs \

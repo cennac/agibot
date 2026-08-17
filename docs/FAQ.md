@@ -1,6 +1,6 @@
 # FAQ — 板子常见操作问答
 
-按场景找答案。每条给出最快路径 + 详细的坑。刷机总方案见 [flash/README.md](flash/README.md),
+按场景找答案。每条给出最快路径 + 详细的坑。刷机总方案见 [flash/README.md](../flash/README.md),
 Linux bring-up 见 [ARMBIAN-LINUX-BRINGUP.md](ARMBIAN-LINUX-BRINGUP.md)。
 
 ## 目录
@@ -50,12 +50,12 @@ c.exec_command("(sleep 1; reboot -f) >/dev/null 2>&1 &")
 ### 方法 B:板子停在 U-Boot(有串口)
 
 ```sh
-python _ser.py "mmc dev 0" 3        # COM5 @ 1500000
-python _ser.py "mmc erase 0 0x8000" 5
-python _ser.py "reset" 3
+python tools/_ser.py "mmc dev 0" 3        # COM5 @ 1500000
+python tools/_ser.py "mmc erase 0 0x8000" 5
+python tools/_ser.py "reset" 3
 ```
 
-或直接用现成脚本 `python _erase_to_maskrom.py`(自动抓 U-Boot 提示符 → 擦 → reset)。
+或直接用现成脚本 `python tools/_erase_to_maskrom.py`(自动抓 U-Boot 提示符 → 擦 → reset)。
 
 ### 方法 C:U-Boot 命令直接进(不擦片)
 
@@ -103,7 +103,7 @@ python _ser.py "reset" 3
 `armbian-head.img` 和 `armbian-rootfs.img`。不要手工复用旧拆分件：不同构建的整盘镜像
 经常大小完全相同，仅按大小判断会把旧 U-Boot 再次刷回板子。
 
-详见 [flash/README.md](flash/README.md)。
+详见 [flash/README.md](../flash/README.md)。
 
 <a name="q5"></a>
 ## Q5 RKDevTool 报「下载 boot 失败 / Loading firmware err=-5」?
@@ -119,7 +119,7 @@ RKDevTool v3.37 比 v2.86 稳。raw img 别走「升级固件」页(要 RKFW/RKA
 - 波特率必须 **1500000** 8N1(不是 115200)
 - 系统跑起来后控制台是 **ttyFIQ0**(fiq-debugger 独占 uart2),不是 ttyS2——这是正常状态,别改 DTB
 - Maskrom 下串口**完全静默是正常的**(BROM 不说话)
-- 工具:`python _ser.py "命令" [捕获秒数]`(仓库根,pyserial)
+- 工具:`python tools/_ser.py "命令" [捕获秒数]`(仓库根,pyserial)
 
 <a name="q7"></a>
 ## Q7 板上的按键都是干嘛的?

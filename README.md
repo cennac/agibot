@@ -9,11 +9,11 @@
 
 `git clone --recursive` → `bash scripts/install-deps.sh` → `bash setup.sh` → `bash start-build.sh` → 刷机。板级配置与 WSL2 框架 hack 已全部入库,**干净 clone 即可编译,无需手动改框架源码**;脚本自动适配 Linux / WSL2 / macOS。
 
-> 完整步骤(WSL2 四大坑、5 处框架 hack、镜像验证、刷机、跨平台):见 **[BUILD-GUIDE.md](BUILD-GUIDE.md)**。
+> 完整步骤(WSL2 四大坑、5 处框架 hack、镜像验证、刷机、跨平台):见 **[BUILD-GUIDE.md](docs/BUILD-GUIDE.md)**。
 > OpenWrt/LEDE 路线见 **[§13 / openwrt/README.md](openwrt/README.md)**。
-> 板子怎么进 Maskrom/Loader、怎么刷、按键干嘛的、调试怎么不崩板……常见操作问答见 **[FAQ.md](FAQ.md)**。
-> 镜像 SHA、离线/实机验收状态及废弃版本见 **[RELEASES.md](RELEASES.md)**。
-> 显示 DTB 实验事故、当前板端恢复步骤和后续 HDMI/DP 分阶段规则见 **[DISPLAY-DTB-INCIDENT.md](DISPLAY-DTB-INCIDENT.md)**。
+> 板子怎么进 Maskrom/Loader、怎么刷、按键干嘛的、调试怎么不崩板……常见操作问答见 **[FAQ.md](docs/FAQ.md)**。
+> 镜像 SHA、离线/实机验收状态及废弃版本见 **[RELEASES.md](docs/RELEASES.md)**。
+> 显示 DTB 实验事故、当前板端恢复步骤和后续 HDMI/DP 分阶段规则见 **[DISPLAY-DTB-INCIDENT.md](docs/DISPLAY-DTB-INCIDENT.md)**。
 
 ## 板子规格
 - **SoC**:Rockchip RK3588
@@ -63,17 +63,22 @@
 │   ├── Dockerfile-lede / docker-lede-build.sh / setup-openwrt.sh
 │   └── README.md               #   LEDE 编译/刷机/验证
 ├── wsl-binfmt-setup.sh         # WSL2 qemu binfmt 注册
-├── ADAPT-NOTES.md              # 设备树 5.10 → 6.1 适配记录
-├── BUILD-GUIDE.md              # ★ 完整编译教程
-├── FAQ.md                      # ★ 板子操作问答(进 Maskrom/刷机/按键/调试安全)
-├── RELEASES.md                 # ★ 镜像 SHA/验收状态/废弃版本
-├── DISPLAY-DTB-INCIDENT.md     # ★ 显示 DTB 事故记录/U-Boot 恢复/后续规则
-└── README.md
+├── docs/                       # ★ 全部专题文档(互链同级)
+│   ├── BUILD-GUIDE.md          #   完整编译教程(WSL2 四大坑/5 处框架 hack/跨平台)
+│   ├── FAQ.md                  #   板子操作问答(进 Maskrom/刷机/按键/调试安全)
+│   ├── RELEASES.md             #   镜像 SHA/验收状态/废弃版本
+│   ├── ARMBIAN-LINUX-BRINGUP.md #  内核 bring-up 全记录(UART/BT/USB/HDMI…)
+│   ├── UBOOT-BRINGUP.md        #   U-Boot bring-up 记录
+│   ├── ADAPT-NOTES.md          #   设备树 5.10 → 6.1 适配记录
+│   └── DISPLAY-DTB-INCIDENT.md #   显示 DTB 事故记录/U-Boot 恢复/后续规则
+├── tools/                      # bring-up 期调试工具(串口 _ser.py / 抹 eMMC 进 Maskrom /
+│                               #   U-Boot 捕获 / HDMI testboot / ADC 监控 / DTB 手术等)
+└── scratch/                    # 本地工作残留(gitignored,不入库)
 ```
 
 ## 编译
 
-支持 **Linux / WSL2 / macOS**(Linux 需 Ubuntu 22.04+ 或 Debian 12+;macOS 需 Docker Desktop)。脚本自动检测平台,差异见 [BUILD-GUIDE §11](BUILD-GUIDE.md#11-附录在-linux-原生--macos-上编译)。
+支持 **Linux / WSL2 / macOS**(Linux 需 Ubuntu 22.04+ 或 Debian 12+;macOS 需 Docker Desktop)。脚本自动检测平台,差异见 [BUILD-GUIDE §11](docs/BUILD-GUIDE.md#11-附录在-linux-原生--macos-上编译)。
 
 ```bash
 # 1. Clone(含 submodule)
@@ -92,9 +97,9 @@ tail -f armbian-build/output/build.log        # 或 bash scripts/build-status.sh
 ```
 产物:`armbian-build/output/images/Armbian_..._Agibot_jammy_vendor_6.1.115_minimal.img`(~1.7G)
 
-桌面版:`./compile.sh agibot-desktop`(见 [BUILD-GUIDE §10](BUILD-GUIDE.md))。
+桌面版:`./compile.sh agibot-desktop`(见 [BUILD-GUIDE §10](docs/BUILD-GUIDE.md))。
 
-### Docker 编译(可选,[§12](BUILD-GUIDE.md#12-附录docker-容器编译可选统一三平台))
+### Docker 编译(可选,[§12](docs/BUILD-GUIDE.md#12-附录docker-容器编译可选统一三平台))
 不想在 host 装 apt 依赖 / 统一三平台环境?仓库 clone 到 WSL ext4(`~/docker-agibot-armbian`),`bash docker-build.sh` 起容器编译——容器内 ext4 自动避开 WSL2 的 9p 坑(fsync/fchmod),无需那 5 处 patch。前置:启动 Docker Desktop + 开 WSL 集成。
 
 ```bash
@@ -104,7 +109,7 @@ bash docker-build.sh --shell           # 进容器交互 shell 调试
 ```
 
 ## 刷机(写入 eMMC)
-先让板子进 **Maskrom**(能 SSH 时最快:`dd` 擦 eMMC 头部再 `reboot -f`,见 [FAQ Q1](FAQ.md#q1)),
+先让板子进 **Maskrom**(能 SSH 时最快:`dd` 擦 eMMC 头部再 `reboot -f`,见 [FAQ Q1](docs/FAQ.md#q1)),
 然后见 **[flash/README.md](flash/README.md)**。要点:RKDevTool「下载镜像」页加两项执行——
 - **Loader** `@0xCCCCCCCC` → `flash/rk3588_spl_loader_v1.16.113.bin`
 - **image** `@0x00000000` → 整盘 `.img`(等同 `dd`,不必拆分)
@@ -116,7 +121,7 @@ bash docker-build.sh --shell           # 进容器交互 shell 调试
 ```bash
 sudo bash wsl-binfmt-setup.sh      # 每次 WSL 重启后重跑
 ```
-其余三个 WSL2 坑(fsync 卡死、代理、overlay 注入)+ 5 处框架 hack 已由 `setup.sh` / `start-build.sh` 处理,见 [BUILD-GUIDE §2](BUILD-GUIDE.md)。Linux 原生 / macOS 见 [§11](BUILD-GUIDE.md#11-附录在-linux-原生--macos-上编译)。
+其余三个 WSL2 坑(fsync 卡死、代理、overlay 注入)+ 5 处框架 hack 已由 `setup.sh` / `start-build.sh` 处理,见 [BUILD-GUIDE §2](docs/BUILD-GUIDE.md)。Linux 原生 / macOS 见 [§11](docs/BUILD-GUIDE.md#11-附录在-linux-原生--macos-上编译)。
 
 ## OpenWrt / LEDE 构建(另一条路线)
 

@@ -101,22 +101,22 @@ Windows 进程锁住删不掉——用同目录解压版 `.img`(08-15)或 WSL `~
 bash setup-openwrt.sh
 
 # 1. helloworld feed 必须用 src-link(不能用 src-git:git+gnutls 过 Clash 代理握手崩)
-bash _helloworld_srclink.sh
+bash helloworld-srclink.sh
 #    —— curl 下 tarball → 解压到 /home/cennac/helloworld-feed → feeds.conf 写 src-link
 #      → feeds update/install(passwall 核心 shadowsocks-rust/ipt2socks 等来自这里)
 
 # 2. docker/dockerd 的 git-short-commit.sh 网络校验会卡死/失败,打补丁跳过
-python3 _patch_dockerd.py
+python3 patch-dockerd.py
 
 # 2.5 strace 6.6+musl io_uring 断言修复(干净树由 setup 的 003 补丁自动打;
-#      已在用的 ~/lede 可手动 python3 _patch_strace.py)
-python3 _patch_strace.py
+#      已在用的 ~/lede 可手动 python3 patch-strace.py)
+python3 patch-strace.py
 
 # 3. 编译(内置代理 env + GOPROXY=goproxy.cn;GOPROXY 不设会走 proxy.golang.org 国内挂)
-bash _build_make.sh
+bash build-make.sh
 ```
 
-`_build_make.sh` 内部还会:剥掉 WSL 继承的 Windows PATH(含括号,否则 u-boot binman `bash -c` 报 syntax error)、`make defconfig` 落 .config、`make -j$(nproc)`、拷 sysupgrade 回本目录。**注意** `_build_make.sh` 依赖 `~/lede` 软链(本机 `~/lede → /home/cennac/lede`),从零 clone 时改成实际路径。
+`build-make.sh` 内部还会:剥掉 WSL 继承的 Windows PATH(含括号,否则 u-boot binman `bash -c` 报 syntax error)、`make defconfig` 落 .config、`make -j$(nproc)`、拷 sysupgrade 回本目录。**注意** `build-make.sh` 依赖 `~/lede` 软链(本机 `~/lede → /home/cennac/lede`),从零 clone 时改成实际路径。
 
 ## 刷机(写 eMMC,复用 `flash/`)
 

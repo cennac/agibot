@@ -68,7 +68,7 @@ DTB 并重启;显示 v5 实验与本板 vendor 6.1 驱动不兼容,内核起来�
 
 1. Windows 先启动自动抓 U-Boot:
    ```sh
-   python -X utf8 _catch_uboot.py 1800
+   python -X utf8 tools/_catch_uboot.py 1800
    ```
    工具打开 COM5@1500000,持续发 Ctrl+C,抓到 `=>` 后释放串口。
 2. 轻按一次 **SW9201 或 SW8900**。不要按住 SW9200(避免误触下载键路径)。
@@ -156,14 +156,14 @@ DTB 并重启;显示 v5 实验与本板 vendor 6.1 驱动不兼容,内核起来�
   `#clock-cells=<0>` + `clock-output-names="clk_hdmiphy_pixel0"`(fed70000 同理);
   ②display-subsystem 删 `clocks/clock-names`(hdmi0/1_phy_pll);③hdmi@fde80000 /
   fdea0000 的 `link_clk` 由 clk-port phandle(0x2d/0x2e)改指 hdmiphy 节点本身
-  (0xe4/0x183)。对应 sige7 6.1 写法。脚本 `_fix_hdmi_ab.py`,测试 DTB `_test_ab.dtb`。
+  (0xe4/0x183)。对应 sige7 6.1 写法。脚本 `tools/_fix_hdmi_ab.py`,测试 DTB `_test_ab.dtb`。
 - **验证**:U-Boot 手动加载测试 DTB 启动,`rockchip-hdptx-phy-hdmi fed60000.hdmiphy:
   hdptx phy init success`,原 `failed to register clock: -12` 消失。
-- **测试基建坑(重要)**:`_hdmi_testboot.py` 里 ext4load 的 DTB 路径两次踩坑:
+- **测试基建坑(重要)**:`tools/_hdmi_testboot.py` 里 ext4load 的 DTB 路径两次踩坑:
   ①MSYS/Git-Bash 把 `/boot/...` 转成 `D:/DTools/PortableGit/boot/...`(用
   `MSYS_NO_PATHCONV=1` 且走脚本内置默认路径);②脚本参数顺序 arg1=路径 arg2=秒数,
   误传 `75` 被当路径。两次都导致 fdt 没加载、内核悄悄用了默认 DTB,测试结果无效。
-  现在脚本默认路径可直接 `python _hdmi_testboot.py` 无参运行。
+  现在脚本默认路径可直接 `python tools/_hdmi_testboot.py` 无参运行。
 
 ### 已解决:C/D 阶段 DRM master 与 HDMI tty1
 

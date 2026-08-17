@@ -25,3 +25,7 @@ flash/armbian-rootfs.img
 _test_ab.dtb
 _hdmi_testboot.log
 _hdmi_ab.dts
+
+# 2026-08-17 整理:根目录下划线前缀=调试残留一律不入库(正式调试工具在 tools/)
+/_*
+/scratch/

@@ -367,11 +367,11 @@ lspci                                 # WiFi(14c3:0608)/USB3(VL805)
 dmesg | grep -iE "mali|rknn|gpu"      # GPU / NPU
 ```
 
-> 仓库回归脚本,刷完跑全套:**`flash/postflash-test.sh`**(CAN/UART/GPIO/watchdog/NPU/温度,非破坏性,日志写 `/var/log`)和 **`flash/npu_test.py`**(RKNN resnet18 smoke + FPS 采样)。用法见 [flash/README.md](flash/README.md)。
+> 仓库回归脚本,刷完跑全套:**`flash/postflash-test.sh`**(CAN/UART/GPIO/watchdog/NPU/温度,非破坏性,日志写 `/var/log`)和 **`flash/npu_test.py`**(RKNN resnet18 smoke + FPS 采样)。用法见 [flash/README.md](../flash/README.md)。
 
 ### 写入 eMMC
 
-SD 卡上功能正常后,把镜像烧进板载 eMMC。**完整方案见 [`flash/README.md`](flash/README.md)**,要点:
+SD 卡上功能正常后,把镜像烧进板载 eMMC。**完整方案见 [`flash/README.md`](../flash/README.md)**,要点:
 
 - **主推:整盘写**。RKDevTool「下载镜像」页加两项 —— Loader `@0xCCCCCCCC`(用本仓库 `flash/rk3588_spl_loader_v1.16.113.bin`)+ 整盘 img `@0x00000000`,一次执行。等同整盘 dd,**不必拆分**。
 - **备选:拆分写**(整盘单文件写报错时)。`python flash/gen-armbian-cfg.py` 自动从 img 拆 head/rootfs + 生成 config.cfg,导入 RKDevTool。
@@ -518,7 +518,7 @@ PROXY_PORT=7890 bash docker-build.sh   # 代理端口非默认 7897 时
 
 ## 13. 附录:OpenWrt / LEDE 构建(另一条路线)
 
-本仓库除 armbian 路线外,还为这块**双千兆**板子提供一条 **OpenWrt/LEDE 路由固件**路线(主线 6.12 内核 + LuCI + passwall/openclash/docker)。完整说明见 **[openwrt/README.md](openwrt/README.md)**;本节列要点与差异。
+本仓库除 armbian 路线外,还为这块**双千兆**板子提供一条 **OpenWrt/LEDE 路由固件**路线(主线 6.12 内核 + LuCI + passwall/openclash/docker)。完整说明见 **[openwrt/README.md](../openwrt/README.md)**;本节列要点与差异。
 
 ### 13.1 与 armbian 路线的本质差异
 
@@ -578,6 +578,6 @@ RK806@SPI2 略少见(PMIC 多在 I2C),电源树已照搬同构板;console 改主
 | `start-build.sh` | ★ 原生编译入口:代理 / NO_HOST_RELEASE_CHECK / git resilience / 后台(§6);容器内自动转前台 |
 | `Dockerfile` + `docker-build.sh` + `.dockerignore` | ★ Docker 编译:ubuntu:22.04 builder 镜像 + 入口(§12) |
 | `flash/` | 刷机:loader + gen-armbian-cfg.py + dump-cfg-any.py + postflash-test + npu_test + README(§8) |
-| `scripts/` | 辅助脚本:install-deps / preflight / build-status / verify-image(见 [scripts/README.md](scripts/README.md)) |
-| `openwrt/` | 【另一条路线】OpenWrt/LEDE 路由固件(主线 6.12 + 双 GbE):lede submodule + 主线 DTS + 补丁 + Dockerfile-lede + setup/docker 脚本(见 [openwrt/README.md](openwrt/README.md)、§13) |
+| `scripts/` | 辅助脚本:install-deps / preflight / build-status / verify-image(见 [scripts/README.md](../scripts/README.md)) |
+| `openwrt/` | 【另一条路线】OpenWrt/LEDE 路由固件(主线 6.12 + 双 GbE):lede submodule + 主线 DTS + 补丁 + Dockerfile-lede + setup/docker 脚本(见 [openwrt/README.md](../openwrt/README.md)、§13) |
 | `BUILD-GUIDE.md` | 本文档 |
