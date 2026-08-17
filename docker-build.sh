@@ -98,6 +98,8 @@ TARGET="${ARG:-agibot}"
 echo ">>> 启动容器编译 [$TARGET]:挂载 $ROOT → $MNT"
 echo ">>> 容器内执行 setup.sh + start-build.sh $TARGET(前台编译,日志实时输出)..."
 # 先设 safe.directory:容器以 root 跑,访问 ext4 上 host 用户拥有的仓库会触发 git dubious ownership
-docker run "${COMMON[@]}" "$IMG" bash -c "git config --global --add safe.directory '*' && bash setup.sh && bash start-build.sh $TARGET"
+# ref2info fallback 补丁在 setup 之后、编译之前打(幂等):armbian 流程可能 reset submodule,
+# raw.githubusercontent 被 Clash 出口 429 限流时,u-boot Makefile 从本地 git-bare 缓存取。
+docker run "${COMMON[@]}" "$IMG" bash -c "git config --global --add safe.directory '*' && bash setup.sh && python3 $MNT/scripts/patch-ref2info-fallback.py $MNT/armbian-build && bash start-build.sh $TARGET"
 echo ""
 echo ">>> 完成。产物:$ROOT/armbian-build/output/images/"
