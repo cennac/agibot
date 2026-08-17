@@ -260,8 +260,12 @@ if [ "$i2c_n" -gt 0 ]; then
   info "I2C 总线: $(ls /dev/i2c-* 2>/dev/null | xargs -n1 basename | tr '\n' ' ')"
   ok "I2C: $i2c_n 条总线"
   if [ "$OPT_SCAN" = "1" ] && has i2cdetect; then
-    for b in $(ls -d /dev/i2c-* | grep -o '[0-9]*'); do
-      info "i2cdetect -$b: $(i2cdetect -y $b 2>/dev/null | grep -c '[0-9a-f]2') 个应答设备"
+    for b in $(ls /dev/i2c-* 2>/dev/null | grep -o '[0-9]*$'); do
+      scan=$(i2cdetect -y "$b" 2>/dev/null | tail -n +2 | sed 's/^[0-9a-f]*: //')
+      resp=$(printf '%s\n' $scan | grep -cE '^[0-9a-f]{2}$')
+      uu=$(printf '%s\n' $scan | grep -c '^UU$')
+      info "i2c-$b: 应答 $resp 个 + 内核占用(UU) $uu 个"
+      [ $((resp+uu)) -eq 0 ] && warn "i2c-$b 总线空(无应答无占用)"
     done
   else info "(I2C 扫描已跳过,加 --scan 用 i2cdetect 扫描)"; fi
 else warn "无 I2C 设备节点"; fi
