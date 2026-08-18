@@ -35,13 +35,29 @@ openwrt/
 ├── config-agibot-openwrt      # .config 种子(Target/Profile + 全功能选包:LuCI/docker/passwall/sqm)
 ├── Dockerfile-lede            # LEDE builder 镜像(ubuntu:22.04,纯交叉编译,无 qemu/binfmt)
 ├── docker-lede-build.sh       # 容器编译入口(WSL 内跑,挂 ext4 仓库;无 -v /dev:/dev)
-├── setup-openwrt.sh           # 装配:init submodule + apply patch + 装 DTS + feeds + defconfig
+├── macos-lede-build.sh        # macOS 本机编译入口(不使用 Docker,Homebrew GNU 工具链)
+├── setup-openwrt.sh           # 装配:init submodule + apply patch + 装 DTS + helloworld/feed + defconfig
 └── README.md                  # 本文件
 ```
 
 ## 编译
 
-支持 **Docker(推荐,三平台统一)/ WSL2 原生 / Linux 原生**。脚本自动检测平台。LEDE 是纯交叉编译 —— 无需 qemu/binfmt、无需 host `/dev`(自带 ptgen 打镜像)。
+支持 **macOS 本机 / WSL2 原生 / Linux 原生 / Docker**。脚本自动检测平台。LEDE 是纯交叉编译 —— 无需 qemu/binfmt、无需 host `/dev`(自带 ptgen 打镜像)。
+
+### macOS 本机编译(不使用 Docker)
+
+完整记录见 [`docs/MACOS-LEDE-BUILD.md`](../docs/MACOS-LEDE-BUILD.md)。要点:
+
+```bash
+brew install bash coreutils diffutils findutils gawk gpatch gnu-getopt gnu-sed grep gnu-tar \
+  make ncurses openssl@3 perl python@3.12 rsync unzip wget xz zstd gettext pkgconf swig
+
+cd openwrt
+bash macos-lede-build.sh                       # 完整编译
+bash macos-lede-build.sh target/linux/compile  # 只验证 DTS/内核目标
+```
+
+仓库所在卷必须大小写敏感;若 GitHub 直连慢,先 `export http_proxy=http://127.0.0.1:7897` 后重跑。
 
 ### Docker 编译(推荐)
 
@@ -70,7 +86,7 @@ bash setup-openwrt.sh                 # 装配:submodule + patch + DTS + feeds +
 cd lede && make -j$(nproc) V=s
 ```
 
-代理:WSL2 自动走 Windows 网关 Clash(7897);Linux 检测本地 7897 或继承 `http_proxy`。
+代理:WSL2 自动走 Windows 网关 Clash(7897);Linux/macOS 检测本地 7897 或继承 `http_proxy`。
 Docker 下 `DIRECT=1 bash docker-lede-build.sh` 不传代理(feeds 已装 / cache 齐时更稳)。
 
 ## 已构建产物(2026-08-15 完善版,398 包)
@@ -85,7 +101,7 @@ Windows 进程锁住删不掉——用同目录解压版 `.img`(08-15)或 WSL `~
 
 **推荐 squashfs**(官方惯例:支持 sysupgrade + 恢复出厂;rootfs 用 squashfs xz,剩余空间给 overlay/docker)。ext4 为可扩容全盘分区(2 GB),两者分区布局一致。
 
-**已含(398 包,见同目录 `.manifest`)**:`luci-app-passwall 26.4.6`(+shadowsocks-rust-sslocal/ssserver + ipt2socks + v2ray-plugin + simple-obfs)+ `luci-app-openclash` + `luci-app-homeproxy` + `dockerd/docker-compose` + LuCI 中文 + `luci-app-sqm`。
+**已含(见同目录 `.manifest`)**:`luci-app-passwall 26.4.6`(+shadowsocks-rust-sslocal/ssserver + ipt2socks + v2ray-plugin,不含 simple-obfs)+ `luci-app-openclash` + `luci-app-homeproxy` + `dockerd/docker-compose` + LuCI 中文 + `luci-app-sqm`。
 
 **2026-08-15 增补(完善版)**:
 - 网络诊断:iperf3 / ethtool / bash / jq / bc / lsof / strace / uuid
@@ -105,7 +121,7 @@ bash setup-openwrt.sh
 
 # 1. helloworld feed 必须用 src-link(不能用 src-git:git+gnutls 过 Clash 代理握手崩)
 bash helloworld-srclink.sh
-#    —— curl 下 tarball → 解压到 /home/cennac/helloworld-feed → feeds.conf 写 src-link
+#    —— curl 下 tarball → 解压到 openwrt/.tmp/helloworld-feed → feeds.conf 写 src-link
 #      → feeds update/install(passwall 核心 shadowsocks-rust/ipt2socks 等来自这里)
 
 # 2. docker/dockerd 的 git-short-commit.sh 网络校验会卡死/失败,打补丁跳过

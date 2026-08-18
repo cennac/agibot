@@ -1,61 +1,139 @@
 #!/usr/bin/env bash
-# 绕开 git(gnutls 过 Clash 代理崩):curl 下 helloworld tarball,改用 src-link 本地 feed。
-set -uo pipefail
-cd ~/lede || exit 1
-git config --global --add safe.directory '*'
-export PATH="$(echo "$PATH" | tr ':' '\n' | grep -vE '^/mnt/[a-zA-Z]/' | paste -sd:)"
-GW=$(ip route | awk '/^default/{print $3; exit}')
-export http_proxy="http://${GW}:7897" https_proxy="http://${GW}:7897"
-export HTTP_PROXY="$http_proxy" HTTPS_PROXY="$https_proxy"
-export no_proxy="goproxy.cn,mirrors.tuna.tsinghua.edu.cn,127.0.0.1,localhost"
-export NO_PROXY="$no_proxy"
+# helloworld-srclink.sh — 用 src-link 本地 feed 补齐 passwall 代理核心包。
+#
+# 直接 git clone fw876/helloworld 在部分代理环境会 TLS/gnutls 握手失败,因此这里用
+# codeload tarball 下载后解压成本地 feed,再写入 lede/feeds.conf。
+#
+# 用法:
+#   cd openwrt && bash helloworld-srclink.sh
+#   HELLOWORLD_FEEDS_ONLY=1 bash helloworld-srclink.sh   # 只准备 src-link,不 update/install
+set -euo pipefail
 
-HW=/home/cennac/helloworld-feed
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LEDE="${LEDE:-$SCRIPT_DIR/lede}"
+HW="${HELLOWORLD_DIR:-$SCRIPT_DIR/.tmp/helloworld-feed}"
+TARBALL="${TMPDIR:-/tmp}/agibot-helloworld.tar.gz"
+HW_NEW="${TMPDIR:-/tmp}/agibot-helloworld-feed.$$"
+FEEDS_ONLY="${HELLOWORLD_FEEDS_ONLY:-0}"
 
-echo "=== [1] 清掉 feeds.conf 里失败的 src-git helloworld 行 ==="
-sed -i '/src-git helloworld/d' feeds.conf
-rm -rf feeds/helloworld feeds/helloworld.tmp feeds/helloworld.index 2>/dev/null
-echo "  已清"
+setup_macos_path() {
+	[ "$(uname -s)" = Darwin ] || return 0
+	local brew_prefix
+	brew_prefix="$(brew --prefix 2>/dev/null || true)"
+	[ -n "$brew_prefix" ] || return 0
+	for d in \
+		"$brew_prefix/opt/coreutils/libexec/gnubin" \
+		"$brew_prefix/opt/findutils/libexec/gnubin" \
+		"$brew_prefix/opt/gawk/libexec/gnubin" \
+		"$brew_prefix/opt/gpatch/libexec/gnubin" \
+		"$brew_prefix/opt/gnu-getopt/bin" \
+		"$brew_prefix/opt/gnu-sed/libexec/gnubin" \
+		"$brew_prefix/opt/grep/libexec/gnubin" \
+		"$brew_prefix/opt/gnu-tar/libexec/gnubin" \
+		"$brew_prefix/opt/make/libexec/gnubin" \
+		"$brew_prefix/opt/gettext/bin" \
+		"$brew_prefix/opt/ncurses/bin" \
+		"$brew_prefix/opt/openssl@3/bin" \
+		"$brew_prefix/opt/python@3.12/libexec/bin" \
+		"$brew_prefix/opt/unzip/bin"; do
+		[ -d "$d" ] && PATH="$d:$PATH"
+	done
+	export PATH
+}
+setup_macos_path
+
+setup_proxy() {
+	if [ -n "${http_proxy:-}" ]; then
+		echo ">>> proxy: 继承 http_proxy=$http_proxy"
+	elif [ "$(uname -s)" = Darwin ] && curl -s --max-time 1 -o /dev/null http://127.0.0.1:7897 2>/dev/null; then
+		export http_proxy="http://127.0.0.1:7897"
+		export https_proxy="$http_proxy"
+		export HTTP_PROXY="$http_proxy"
+		export HTTPS_PROXY="$https_proxy"
+		export no_proxy="localhost,127.0.0.1,::1"
+		export NO_PROXY="$no_proxy"
+		echo ">>> proxy: macOS 检测到本地 127.0.0.1:7897"
+	elif [ -r /proc/version ] && grep -qi microsoft /proc/version 2>/dev/null; then
+		GW="$(ip route show default | awk '{print $3; exit}')"
+		export http_proxy="http://${GW}:7897"
+		export https_proxy="$http_proxy"
+		export HTTP_PROXY="$http_proxy"
+		export HTTPS_PROXY="$https_proxy"
+		export no_proxy="goproxy.cn,mirrors.tuna.tsinghua.edu.cn,127.0.0.1,localhost"
+		export NO_PROXY="$no_proxy"
+		echo ">>> proxy: WSL 网关 ${GW}:7897"
+	else
+		echo ">>> proxy: 无。若 codeload 慢,先 export http_proxy=..."
+	fi
+}
+
+[ -d "$LEDE" ] || { echo "[!] 未找到 LEDE 树: $LEDE"; exit 1; }
+command -v curl >/dev/null 2>&1 || { echo "[!] 缺 curl"; exit 1; }
+command -v tar >/dev/null 2>&1 || { echo "[!] 缺 tar"; exit 1; }
+
+setup_proxy
+
+cd "$LEDE"
+git config --global --add safe.directory '*' 2>/dev/null || true
+[ -f feeds.conf ] || cp feeds.conf.default feeds.conf
+
+echo "=== [1] 清掉 feeds.conf 里旧 helloworld 行 ==="
+sed -i.bak '/src-git helloworld/d;/src-link helloworld/d' feeds.conf
+rm -f feeds.conf.bak
+rm -rf feeds/helloworld feeds/helloworld.tmp feeds/helloworld.index
+
+if [ -f "$HW/shadowsocks-rust/Makefile" ] && [ -f "$HW/ipt2socks/Makefile" ]; then
+	echo
+	echo "=== [2] 复用已有 helloworld feed: $HW ==="
+else
+	echo
+	echo "=== [2] curl 下载 fw876/helloworld tarball(main→master) ==="
+	rm -rf "$TARBALL" "$HW_NEW"
+	mkdir -p "$(dirname "$HW")" "$HW_NEW"
+	ok=0
+	for BR in main master; do
+		URL="https://codeload.github.com/fw876/helloworld/tar.gz/refs/heads/$BR"
+		echo "  试 $BR ..."
+		if curl -fL --http1.1 --connect-timeout 20 --retry 5 --retry-all-errors -m 180 -o "$TARBALL" "$URL" \
+			&& [ -s "$TARBALL" ] && tar tzf "$TARBALL" >/dev/null 2>&1; then
+			echo "  ✓ $BR 下载成功($(du -h "$TARBALL" | awk '{print $1}'))"
+			ok=1
+			break
+		fi
+	done
+	[ "$ok" = 1 ] || { rm -rf "$HW_NEW"; echo "  ✗ helloworld tarball 下载失败"; exit 1; }
+
+	tar xzf "$TARBALL" -C "$HW_NEW" --strip-components=1
+	rm -rf "$HW"
+	mv "$HW_NEW" "$HW"
+	echo "  解压到 $HW ($(find "$HW" -maxdepth 1 -mindepth 1 | wc -l | awk '{print $1}') 顶层条目)"
+fi
 
 echo
-echo "=== [2] curl 下 helloworld tarball(走代理;试 main→master)==="
-rm -rf "$HW" /tmp/hw.tar.gz 2>/dev/null
-ok=0
-for BR in main master; do
-  URL="https://codeload.github.com/fw876/helloworld/tar.gz/refs/heads/$BR"
-  echo "  试 $BR ..."
-  if curl -sSL -m 90 -o /tmp/hw.tar.gz "$URL" && [ -s /tmp/hw.tar.gz ] && tar tzf /tmp/hw.tar.gz >/dev/null 2>&1; then
-    echo "  ✓ $BR 下载成功($(du -h /tmp/hw.tar.gz|cut -f1))"; ok=1; break
-  fi
-done
-[ "$ok" = 1 ] || { echo "  ✗ 两个分支都下载失败"; exit 1; }
-mkdir -p "$HW"
-tar xzf /tmp/hw.tar.gz -C "$HW" --strip-components=1
-echo "  解压到 $HW ($(ls "$HW" | wc -l) 顶层条目)"
-ls "$HW" | head
-
-echo
-echo "=== [3] feeds.conf 改用 src-link ==="
+echo "=== [3] feeds.conf 写入 src-link helloworld ==="
 echo "src-link helloworld $HW" >> feeds.conf
 grep -n helloworld feeds.conf
 
-echo
-echo "=== [4] feeds update + install(src-link 不走 git)==="
-./scripts/feeds update helloworld 2>&1 | tail -3
-./scripts/feeds install -a 2>&1 | grep -iE 'passwall|conflict|already defined' | head
-echo "INSTALL done"
+if [ "$FEEDS_ONLY" = 1 ]; then
+	echo "HELLOWORLD_SRCLINK_READY"
+	exit 0
+fi
 
 echo
-echo "=== [5] 代理核心包是否补齐 ==="
-for pkg in shadowsocks-rust-sslocal shadowsocks-rust-ssserver v2ray-plugin ipt2socks simple-obfs-client hysteria naiveproxy tuic-client shadow-tls xray-plugin; do
-  if find package/feeds -name Makefile -exec grep -l "Package/$pkg " {} \; 2>/dev/null | grep -q .; then
-    echo "  ✓ $pkg"
-  else
-    echo "  ✗ $pkg 仍缺"
-  fi
+echo "=== [4] feeds update/install ==="
+./scripts/feeds update helloworld
+./scripts/feeds install -a
+
+echo
+echo "=== [5] 代理核心包检查 ==="
+missing=0
+for pkg in shadowsocks-rust v2ray-plugin ipt2socks simple-obfs; do
+	if [ -e "package/feeds/helloworld/$pkg" ]; then
+		echo "  ✓ $pkg"
+	else
+		echo "  ✗ $pkg 仍缺"
+		missing=1
+	fi
 done
-
-echo
-echo "=== [6] passwall 同名冲突?(coolsnowwolf/luci vs helloworld)==="
-find package/feeds -path '*luci-app-passwall*' -maxdepth 4 2>/dev/null
+[ "$missing" = 0 ] || exit 1
 echo "HELLOWORLD_SRCLINK_DONE"

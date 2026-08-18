@@ -82,7 +82,7 @@
 │   ├── files/.../rk3588-agibot-mb0002-v2.dts   #   主线精简路由 DTS
 │   ├── patches/                #   armv8.mk DEVICE 块 + generic-rk3588 u-boot
 │   ├── config-agibot-openwrt   #   .config 种子(全功能:LuCI/docker/passwall/sqm)
-│   ├── Dockerfile-lede / docker-lede-build.sh / setup-openwrt.sh
+│   ├── Dockerfile-lede / docker-lede-build.sh / macos-lede-build.sh / setup-openwrt.sh
 │   └── README.md               #   LEDE 编译/刷机/验证
 ├── wsl-binfmt-setup.sh         # WSL2 qemu binfmt 注册
 ├── docs/                       # ★ 全部专题文档(互链同级)
@@ -151,8 +151,9 @@ sudo bash wsl-binfmt-setup.sh      # 每次 WSL 重启后重跑
 
 ```bash
 cd openwrt
-bash docker-lede-build.sh                       # Docker 完整编译(推荐)
-bash docker-lede-build.sh target/linux/compile  # 只验证 DTS 能否编出 .dtb(快速)
+bash macos-lede-build.sh                        # macOS 本机完整编译(不使用 Docker)
+bash macos-lede-build.sh target/linux/compile   # macOS 本机只验证 DTS/内核目标
+bash docker-lede-build.sh                       # Docker 完整编译(可选)
 ```
 
 产物 `openwrt/lede/bin/targets/rockchip/armv8/*agibot*sysupgrade.img.gz` 是整盘镜像,**刷机方式与 armbian 完全相同**(RKDevTool Loader@0xCCCCCCCC + image@0,复用 `flash/`)。与 armbian 的本质差异:用**主线内核 + 可编译主线 .dts**(armbian 用 vendor 6.1 BSP + 二进制 dtb)。
