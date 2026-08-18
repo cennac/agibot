@@ -18,9 +18,9 @@ const inspectorToggle = document.querySelector('#toggle-inspector');
 const circledNumbers = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', '⑪', '⑫', '⑬', '⑭', '⑮', '⑯', '⑰', '⑱', '⑲', '⑳', '㉑', '㉒', '㉓', '㉔', '㉕', '㉖', '㉗', '㉘', '㉙'];
 const markerNames = {
   eth: '双千兆网口', hdmi: 'HDMI 输出', '4g-typec': 'J9200 USB2 · 480M',
-  flash: '刷机 USB', 'ttl-usb': 'TTL 控制台', 'debug-headers': 'J8900 SWD · J8901 UART0', j9702: 'J9702 CAN-A', j9703: 'J9703 CAN-B', j2500: 'J2500 双口 USB2',
+  flash: '刷机 USB', 'ttl-usb': 'TTL 控制台', 'debug-headers': 'J8900 SWD · J8901 UART0', j9702: 'J9702 差分 A', j9703: 'J9703 差分 B', j2500: 'J2500 双口 USB2',
   antennas: '无线天线', 'usb-c-bank': '四口 USB3 · 5Gbps', fan: '风扇电源', power: '主电源',
-  j7000: 'J7000 扬声器', j7001: 'J7001 扬声器', 'right-harness': '主线束座', j9701: 'J9701 CAN-A+12V', 'aux-top': '两针辅助座',
+  j7000: 'J7000 扬声器', j7001: 'J7001 扬声器', 'right-harness': '主线束座', j9701: 'J9701 差分 A+12V', 'aux-top': '两针辅助座',
   core: '核心板连接器', buttons: '六按键 · SW9200 LOADER · SW9201 RESET', 'm2-slot': 'M.2 插槽', j5001: 'J5001 辅助座',
   usb3000: 'USB3000 USB3 · 5Gbps',
   'j3000-lower': 'J3000 下口 USB3 · 5Gbps',
