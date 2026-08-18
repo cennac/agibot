@@ -1,0 +1,13 @@
+[Unit]
+Description=Agibot eth0 PHY first-autoneg watchdog (re-probe if no carrier)
+After=NetworkManager.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/agibot-eth-revive
+TimeoutStartSec=400
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

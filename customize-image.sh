@@ -95,4 +95,10 @@ chmod 0755 /usr/local/sbin/agibot-npu-setup 2>/dev/null || true
 chmod 0644 /etc/systemd/system/agibot-npu-setup.service 2>/dev/null || true
 systemctl enable agibot-npu-setup.service 2>/dev/null || true
 
+# 9) eth0 PHY 首次自协商卡死自愈(2026-08-18 实测:换标准 U-Boot 后 RTL8211F
+#    初次协商失败,驱动 rebind 后 ~2min 恢复 1Gbps;服务开机按需触发)
+chmod 0755 /usr/local/sbin/agibot-eth-revive 2>/dev/null || true
+chmod 0644 /etc/systemd/system/agibot-eth-revive.service 2>/dev/null || true
+systemctl enable agibot-eth-revive.service 2>/dev/null || true
+
 exit 0
