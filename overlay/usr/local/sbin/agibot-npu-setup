@@ -12,7 +12,11 @@ export DEBIAN_FRONTEND=noninteractive
 python3 -c 'import numpy' 2>/dev/null || apt-get install -y -qq python3-numpy 2>/dev/null || true
 command -v pip3 >/dev/null 2>&1 || apt-get install -y -qq python3-pip 2>/dev/null || true
 if command -v pip3 >/dev/null 2>&1; then
-	pip3 install --no-index --find-links /root/npu_test/wheels rknn-toolkit-lite2 >/dev/null 2>&1 || true
+	# 在线优先(清华源,自动补 ruamel.yaml/psutil 等依赖——离线 wheel 不含它们,
+	# 2026-08-18 实测 --no-index 会因缺 ruamel.yaml 整体失败);失败再离线兜底
+	pip3 install -q -i https://pypi.tuna.tsinghua.edu.cn/simple rknn-toolkit-lite2 2>/dev/null \
+		|| pip3 install -q --no-index --find-links /root/npu_test/wheels rknn-toolkit-lite2 2>/dev/null \
+		|| true
 fi
 
 if python3 -c 'import rknnlite' 2>/dev/null; then
