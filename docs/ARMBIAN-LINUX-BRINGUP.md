@@ -148,7 +148,7 @@ ACM8625P codec 驱动补丁；外置模块已通过 6.1.115 编译和 vermagic �
   WSL 本机 Ubuntu 24.04 的 gcc-13 **不行**,必须用 Debian trixie 的
   gcc-14-aarch64-linux-gnu(**版本串逐字一致 14.2.0-19**)。
 - **库内补丁**:`kernel/rk35xx-vendor-6.1/0001-ASoC-add-ACM8625P-amplifier.patch`
-  在 `sound/soc/codecs/Makefile` 加 `obj-y += acm8625p.o` + 新增 565 行
+  在 `sound/soc/codecs/Makefile` 加 `obj-y += acm8625p.o` + 新增 566 行
   acm8625p.c(Wenhao Yang, acme-semi.com;I2C regmap codec,寄存器 REG_PAGE/
   DEVICE_STATE,DEEP_SLEEP/SLEEP/HIZ/PLAY/MUTE)。**建议做成内建**(obj-y),
   这样下次打包镜像直接编进内核,无需再带 .ko。
@@ -160,8 +160,10 @@ ACM8625P codec 驱动补丁；外置模块已通过 6.1.115 编译和 vermagic �
   `ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu-`(否则 MODPOST 在 x86 上下文
   报 `__x86_return_thunk` undefined)。
 - **上板(已远程验证)**:`modprobe acm8625p` → I2C probe 成功
-  (`acm8625p 1-0015`),DSP 固件 `acm8625p_dsp_stereo_btl_48khz.bin` 缺失为
-  非致命 warn(DSP 参数跳过,codec 照常注册)。`/proc/asound/cards` 出
+  (`acm8625p 1-0015`)。旧镜像缺少设备树请求的 DSP 文件时会出现非致命
+  firmware warn,驱动转用内置 `dsp_cfg_default`;现已将同一份 90 字节默认
+  寄存器表导出为 `overlay/lib/firmware/acm8625p_dsp_stereo_btl_48khz.bin`,
+  新镜像不再缺文件且初始化行为不变。`/proc/asound/cards` 出
   `2 [rockchipacm8625]`,`/dev/snd/pcmC2D0p/c/d1p`;ASOC 机器
   `rockchip,acm8625p-codec`,dai1 = `fe480000.i2s → acm8625p-hifi`。
   `acm8625p-sound` 从 deferred 消失。**开机自启**:`/etc/modules-load.d/
@@ -169,8 +171,9 @@ ACM8625P codec 驱动补丁；外置模块已通过 6.1.115 编译和 vermagic �
   `of:Nacm8625pT(null)Cacme,acm8625p` 与驱动 compatible 匹配。
 - **放音**:按约定只到「声卡就绪」,**未执行任何 aplay/播放**。用户到场后用
   `aplay -D hw:2,1 /usr/share/sounds/alsa/Front_Center.wav` 试音(注意
-  modules-load.d 确保开机即加载)。DSP 固件(acme-semi 提供)若需装载性能参数,
-  后续放 /lib/firmware 即可。
+  modules-load.d 确保开机即加载)。当前文件是驱动 GPL 默认表,不是针对本机
+  扬声器腔体的厂商 EQ/DRC 调音；若后续拿到 ACME Audio Tuning 导出的板级
+  参数,应以同名文件替换并重新做音量、失真、温升和扬声器保护测试。
 
 ## 看门狗:watchdog@feaf0000(2026-08-17 实测)
 
@@ -231,9 +234,10 @@ err/warn 全扫,结论:**无新的可修驱动 bug,全子系统绑定完整**。
   (xhci_hcd 绑定,板上 USB3 Hub/U盘全挂它下面);fe150000(Gen3x4)空槽,
   `PCIe Link Fail, LTSSM 0x0` 属正常(无对端设备)。
 - **eth0 `NO-CARRIER`/DOWN**:网口本身健康(能报载波状态=PHY 链路监视
-  活着),只是没插对端线;eth1 1000Mbps UP(SSH 走它)。dmesg 里 gmac1
-  `rx_delay set to 0xffffffff` 是 `rgmii-rxid`(RX 延迟在 PHY 内)的
-  正常表达,非 bug。
+  活着),只是没插对端线;eth1 1000Mbps UP(SSH 走它)。两个 GMAC 都是
+  `rgmii-rxid`(RX 延迟由 RTL8211F PHY 提供),因此 DTB 现已显式设置
+  `rx_delay = <0>`。这会消除属性缺失和 `0xffffffff` fallback,同时不改变
+  已验证的千兆链路时序。
 - **~~唯一硬件层异常:板载 hub port4 的 FS 设备(已判死刑)~~ → 冤案昭雪
   (2026-08-17 现场定案)**:一个 full-speed/low-speed 设备反复
   `descriptor read/64, error -32 (EPIPE)` 被内核放弃。当时三重"验证"后

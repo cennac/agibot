@@ -5,24 +5,35 @@
 # apt/pip 偶发静默失败(2026-08-18 实测 rknnlite/numpy 未进镜像);板上原生
 # arm64 环境装一次即成。资产已固化在镜像内:/usr/lib/librknnrt.so +
 # /root/npu_test/(mobilenet_v1.rknn / resnet18.rknn / npu_test.py / wheels/)。
-# 成功后自禁用本服务;失败保留,下次开机重试。
-set -u
+# 成功后自禁用本服务;失败返回非零并保留,下次开机重试。
+set -eu
 export DEBIAN_FRONTEND=noninteractive
 
-python3 -c 'import numpy' 2>/dev/null || apt-get install -y -qq python3-numpy 2>/dev/null || true
-command -v pip3 >/dev/null 2>&1 || apt-get install -y -qq python3-pip 2>/dev/null || true
-if command -v pip3 >/dev/null 2>&1; then
-	# 在线优先(清华源,自动补 ruamel.yaml/psutil 等依赖——离线 wheel 不含它们,
-	# 2026-08-18 实测 --no-index 会因缺 ruamel.yaml 整体失败);失败再离线兜底
-	pip3 install -q -i https://pypi.tuna.tsinghua.edu.cn/simple rknn-toolkit-lite2 2>/dev/null \
-		|| pip3 install -q --no-index --find-links /root/npu_test/wheels rknn-toolkit-lite2 2>/dev/null \
-		|| true
+if python3 -c 'import numpy, psutil, ruamel.yaml, rknnlite' 2>/dev/null; then
+	logger -t agibot-npu-setup "rknnlite userspace already ready"
+	systemctl disable agibot-npu-setup.service 2>/dev/null || true
+	exit 0
 fi
 
-if python3 -c 'import rknnlite' 2>/dev/null; then
-	logger -t agibot-npu-setup "rknnlite+librknnrt+models ready (mobilenet/resnet18 in /root/npu_test)"
-	systemctl disable agibot-npu-setup.service 2>/dev/null || true
-else
-	logger -t agibot-npu-setup "WARN: rknnlite still missing; manual: pip3 install --no-index --find-links /root/npu_test/wheels rknn-toolkit-lite2"
+# RKNNLite declares three Python dependencies. Install their distro packages first,
+# then install the bundled ABI-matched wheel without asking PyPI for unavailable
+# Rockchip packages. Refresh lists only when the first install attempt needs it.
+if ! apt-get install -y -qq python3-numpy python3-psutil python3-ruamel.yaml python3-pip; then
+	apt-get update -qq
+	apt-get install -y -qq python3-numpy python3-psutil python3-ruamel.yaml python3-pip
 fi
-exit 0
+
+pyabi="cp$(python3 -c 'import sys; print(str(sys.version_info.major) + str(sys.version_info.minor))')"
+wheel=$(find /root/npu_test/wheels -maxdepth 1 -type f -name "rknn_toolkit_lite2-*-${pyabi}-${pyabi}-*.whl" -print -quit)
+if [ -z "$wheel" ]; then
+	logger -t agibot-npu-setup "ERROR: no RKNNLite wheel for ${pyabi}"
+	exit 1
+fi
+
+pip3 install -q --no-index --no-deps "$wheel"
+python3 -c 'import numpy, psutil, ruamel.yaml, rknnlite; from rknnlite.api import RKNNLite'
+test -r /usr/lib/librknnrt.so
+test -r /root/npu_test/resnet18.rknn
+
+logger -t agibot-npu-setup "rknnlite+librknnrt+models ready (mobilenet/resnet18 in /root/npu_test)"
+systemctl disable agibot-npu-setup.service 2>/dev/null || true

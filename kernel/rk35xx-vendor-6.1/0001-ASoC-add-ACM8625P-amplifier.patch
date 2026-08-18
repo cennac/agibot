@@ -15,7 +15,7 @@ new file mode 100644
 index 0000000..a3dbe7a
 --- /dev/null
 +++ b/sound/soc/codecs/acm8625p.c
-@@ -0,0 +1,565 @@
+@@ -0,0 +1,566 @@
 +// SPDX-License-Identifier: GPL-2.0
 +//
 +// Driver for the ACM8625P Audio Amplifier
@@ -580,4 +580,5 @@ index 0000000..a3dbe7a
 +
 +MODULE_AUTHOR("Wenhao Yang <wenhaoy@acme-semi.com>");
 +MODULE_DESCRIPTION("ACM8625P Audio Amplifier Driver");
++MODULE_FIRMWARE("acm8625p_dsp_stereo_btl_48khz.bin");
 +MODULE_LICENSE("GPL v2");

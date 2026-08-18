@@ -13,7 +13,7 @@ ck() { if [ "$2" = OK ]; then echo "  [OK]   $1"; pass=$((pass+1)); else echo " 
 KVER=6.1.115-vendor-rk35xx
 DTB_IN="/boot/dtb-$KVER/rockchip/rk3588-agibot-mb0002-v2.dtb"
 
-# --- DTB 三处 ---
+# --- DTB ---
 debugfs -R "dump $DTB_IN $T/dtb" "$T/v.ext4" >/dev/null 2>&1
 [ "$(fdtget "$T/dtb" /usbdrd3_0/usb@fc000000 dr_mode 2>/dev/null)" = "peripheral" ] \
   && ck "DTB dr_mode=peripheral(Type-C adb)" OK || ck "DTB dr_mode=peripheral" FAIL
@@ -21,6 +21,10 @@ debugfs -R "dump $DTB_IN $T/dtb" "$T/v.ext4" >/dev/null 2>&1
   && ck "DTB husb311=disabled(断依赖环)" OK || ck "DTB husb311=disabled" FAIL
 [ "$(fdtget "$T/dtb" /watchdog@feaf0000 status 2>/dev/null)" = "okay" ] \
   && ck "DTB watchdog=okay" OK || ck "DTB watchdog=okay" FAIL
+for node in fe1b0000 fe1c0000; do
+  [ "$(fdtget -t x "$T/dtb" "/ethernet@$node" rx_delay 2>/dev/null)" = "0" ] \
+    && ck "DTB ethernet@$node rx_delay=0" OK || ck "DTB ethernet@$node rx_delay=0" FAIL
+done
 BA="$(fdtget "$T/dtb" /chosen bootargs 2>/dev/null)"
 echo "$BA" | grep -q "console=tty1" && echo "$BA" | grep -q "root=/dev/mmcblk0p1" \
   && ck "DTB bootargs(HDMI tty1 + 通用 root)" OK || ck "DTB bootargs" "FAIL: $BA"
@@ -56,6 +60,15 @@ grep -q "sound/soc/codecs/acm8625p" "$MB" 2>/dev/null \
   && ck "ACM8625P 驱动内建(modules.builtin)" OK || ck "ACM8625P 内建" "not-in-builtin"
 ML=$(debugfs -R "cat /etc/modules-load.d/acm8625p.conf" "$T/v.ext4" 2>/dev/null | tr -d "\n")
 [ "$ML" = "acm8625p" ] && ck "modules-load acm8625p.conf" OK || ck "acm8625p.conf" "got=$ML"
+ACM_FW="$T/acm8625p_dsp_stereo_btl_48khz.bin"
+ACM_SHA256="9a8d3d5542e2a32cada1716ad99efbba661ca31037e6590c2c32419f61ba4ac4"
+debugfs -R "dump /lib/firmware/acm8625p_dsp_stereo_btl_48khz.bin $ACM_FW" "$T/v.ext4" >/dev/null 2>&1
+if [ -f "$ACM_FW" ] && [ "$(wc -c < "$ACM_FW")" -eq 90 ] && \
+  [ "$(sha256sum "$ACM_FW" | cut -d' ' -f1)" = "$ACM_SHA256" ]; then
+  ck "ACM8625P DSP firmware(90B, SHA-256)" OK
+else
+  ck "ACM8625P DSP firmware" "missing-or-corrupt"
+fi
 
 # --- BT ldisc 服务依赖的 firmware(nvram) ---
 FW=$(debugfs -R "ls /lib/firmware/brcm" "$T/v.ext4" 2>/dev/null | grep -c "BCM4362A2")

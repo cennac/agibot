@@ -9,6 +9,7 @@
 |------|----------------|----------------|------|
 | /iommu@fdca0000 | rockchip,iommu-av1 | rockchip,iommu-av1d | AV1视频解码IOMMU,节点已启用 |
 | /csi2-dphy0~5 | rockchip,rk3568-csi2-dphy | rockchip,rk3588-csi2-dphy | CSI相机DPHY(节点disabled,接相机时还需补phys引用) |
+| /ethernet@fe1b0000、/ethernet@fe1c0000 | 缺少 rx_delay | rx_delay = <0x00> | 两口均为 rgmii-rxid,RX 时延由 RTL8211F 提供;显式声明 MAC RX 时延为 0,消除属性缺失且不改变链路时序 |
 
 ## 未改动(已验证兼容)
 - NPU: rockchip,rk3588-rknpu (5.10/6.1一致)

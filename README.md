@@ -45,7 +45,7 @@
 │   ├── etc/{hostname,systemd/system/agibot-usb-port-power.service}
 │   ├── usr/local/sbin/agibot-usb-port-power
 │   ├── boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb   # 设备树,5.10 → 6.1 适配
-│   └── lib/firmware/           # Mali / AP6275P WiFi+BT(WiFi6 PCIe) / regulatory
+│   └── lib/firmware/           # Mali / AP6275P WiFi+BT / ACM8625P DSP / regulatory
 ├── flash/                      # eMMC 刷机 + 板端回归测试
 │   ├── rk3588_spl_loader_v1.16.113.bin   # ★ 正确的 RK3588 loader(别用 RKDevTool 自带的 MiniLoaderAll)
 │   ├── gen-armbian-cfg.py      # 拆分 img → head/rootfs + 生成 config.cfg

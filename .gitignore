@@ -3,6 +3,7 @@
 *.img.xz
 *.img.gz
 *.img.sha
+*.img.txt
 
 # Build artifacts
 output/
