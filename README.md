@@ -28,6 +28,13 @@
 > 镜像 SHA、离线/实机验收状态及废弃版本见 **[RELEASES.md](docs/RELEASES.md)**。
 > 显示 DTB 实验事故、当前板端恢复步骤和后续 HDMI/DP 分阶段规则见 **[DISPLAY-DTB-INCIDENT.md](docs/DISPLAY-DTB-INCIDENT.md)**。
 
+## 板卡 3D 标注图
+
+仓库内置 AGIBOT MB0002 V2 的交互式 3D 标注图，包含接口、按键及已验证功能说明。
+下载或 clone 仓库后，无需安装依赖和编译，直接双击
+**[`board-3d/dist/index.html`](board-3d/dist/index.html)** 即可离线打开。
+需要修改源码时，开发和重新打包方法见 [`board-3d/README.md`](board-3d/README.md)。
+
 ## 板子规格
 - **SoC**:Rockchip RK3588
 - **板子**:AGIBOT MB0002 V2(IP: 192.168.88.101)
@@ -60,6 +67,7 @@
 │   ├── usr/share/doc/agibot/README.md           # 发行信息、开发历程和验证基线
 │   ├── boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb   # 设备树,5.10 → 6.1 适配
 │   └── lib/firmware/           # Mali / AP6275P WiFi+BT / ACM8625P DSP / regulatory
+├── board-3d/                   # 板卡交互式 3D 标注图(含可直接打开的 dist/index.html)
 ├── flash/                      # eMMC 刷机 + 板端回归测试
 │   ├── rk3588_spl_loader_v1.16.113.bin   # ★ 正确的 RK3588 loader(别用 RKDevTool 自带的 MiniLoaderAll)
 │   ├── gen-armbian-cfg.py      # 拆分 img → head/rootfs + 生成 config.cfg

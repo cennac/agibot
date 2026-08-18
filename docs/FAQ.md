@@ -130,12 +130,47 @@ RKDevTool v3.37 比 v2.86 稳。raw img 别走「升级固件」页(要 RKFW/RKA
 |---|---|---|
 | **SW9200** | 上电长按进下载模式(**2026-08-16 已恢复**:U-Boot adc-keys 节点须带 `u-boot,dm-spl` 标记,见 Q2) | SARADC **ch1** → `adc-keys`(Linux input1) |
 | **SW9201** | **硬复位**(瞬时断电重启,无软件日志) | 硬件复位线 |
-| **SW9202** | **关机**(systemd 关停 + BL31 virtual poweroff) | PMIC PWRON → `rk805 pwrkey`(input2) |
-| **SW8900** | **重启**(轻触即重启) | 复位/重启线 |
-| **SW8901** | 无重启、无 ADC 事件、不在 I2C 扩展器 | 无 Linux 可见功能(疑空焊/占位) |
-| **SW8902** | 不重启;无干净 ADC 事件 | 未知 |
+| **SW9202** | **电源键**(短按关机,关机后再短按开机;2026-08-18 实测通过) | PMIC PWRON → `rk805 pwrkey`(input2) |
+| **SW8900** | **硬复位/重启**(轻触即重启;2026-08-18 复测通过) | 复位/重启线 |
+| **SW8901** | 不重启、不关机;无 Linux input 或干净 ADC 事件(2026-08-18 复测) | 无当前 Linux 可见功能 |
+| **SW8902** | 不重启、不关机;无 Linux input 或干净 ADC 事件(2026-08-18 复测) | 未知 |
 
 Linux 只注册 3 个输入键:bt-powerkey、adc-keys(SW9200)、rk805-pwrkey(SW9202)。
+
+2026-08-18 SW9202 实机复测:第一次短按后 SSH/网络断开、COM7 完全静默,确认进入
+关机态;风扇因常供电电源轨仍继续转动。再次短按后 BootROM/U-Boot/Linux 完整启动,
+boot ID 由 `81203fa6-7074-4d96-8241-18af65f0cb10` 更新为
+`6779efa8-8ecb-4145-ba4e-86b508d5526c`,eth0 恢复 `UP/LOWER_UP`。因此风扇转动
+不能作为系统仍在运行的判断依据。
+
+2026-08-18 SW8902 短按复测:同时监听 COM7、SSH、`event1/event2` 和 SARADC
+ch0..ch7 共 125 秒。按键前后 SSH 保持连接、boot ID 不变、串口接收 0 字节、
+input 事件计数为 0;ch0/ch1/ch3/ch5 无阶跃,ch2/ch4 仅有原有缓慢漂移,ch6/ch7
+仍为已知浮空噪声。结论仅限于“当前 Linux 和可见 ADC 无响应且不会复位/关机”,
+不能据此推断该键未连接或没有硬件功能。
+
+2026-08-18 SW8901 短按复测采用同一套只读联合监听。boot ID 前后均为
+`6779efa8-8ecb-4145-ba4e-86b508d5526c`,SSH 未断、COM7 接收 0 字节、input
+事件计数为 0。ch0..ch5 最大相邻跳变仅 4..32 个计数,没有按键阶跃;ch6/ch7
+仍为浮空噪声。当前只能确认其短按不触发 Linux 可见事件或电源动作。
+
+2026-08-18 SW8900 短按复测:COM7 立即重新出现 DDR 初始化、SPL、BL31、U-Boot、
+`Starting kernel` 和 Armbian 登录提示,没有 systemd 关机序列。boot ID 从
+`6779efa8-8ecb-4145-ba4e-86b508d5526c` 更新为
+`af39a85c-d38b-4cb9-b489-f9a27521e57a`,eth0 随后恢复 `UP/LOWER_UP`。
+确认该键为硬复位/重启键。
+
+待 2026-08-19 现场复测:用与 SW8900 完全相同的 COM7 + SSH 监听流程再测
+SW9201,对比 DDR/SPL/BL31 启动链、U-Boot `reboot reason`、风扇/电源轨状态和
+boot ID,确认两个硬复位键是同一复位网的冗余入口,还是分别控制 SoC 与整板/PMIC
+复位域。在完成 A/B 对照前,只记录“两者都会硬复位”,不推断电气接线相同。
+
+SW9202 关机时风扇不能由当前软件直接关闭。J9301 是两针风扇供电座,实测系统进入
+virtual poweroff 后仍转;原厂和当前 DT 均无风扇节点,16 路 PWM 全部 disabled,
+运行系统也没有 PWM 平台设备、`pwm-fan`、风扇 hwmon 或 cooling device。下一步应
+分别测量 J9301 在运行/关机态的电压并断电追线,确认是否存在负载开关/MOSFET 使能脚。
+若直接接常供电轨,必须增加可控负载开关或 MOSFET 才能联动关机;若找到现有使能脚,
+再用 DT `gpio-fan`/regulator 或 `pwm-fan` 描述并配置关机默认关闭。禁止盲试未占用 GPIO。
 
 <a name="q8"></a>
 ## Q8 怎么判断板子是软重启还是硬复位?
