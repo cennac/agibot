@@ -518,12 +518,13 @@
 
 /* ===== 双千兆 RGMII(值取自 5.10 BSP;节点结构参考 LEDE nanopi-r6)===== */
 /*
- * PHY 复位:用 stmmac 驱动原生的 snps,reset-gpio(照搬 5.10 BSP,已验证)。
- * 之前用 phylib 的 reset-gpios 复位时机太晚 —— stmmac_open 跑 DMA 复位时 PHY 的
- * 125MHz RGMII 参考时钟还没稳(clock_in_out=input 时 MAC 时钟由 PHY 供给),
- * 报 "Failed to reset the dma";gmac0 的 PHY 甚至来不及上 MDIO。
- * snps,reset-gpio 在 stmmac probe 阶段就按 <0 20000 100000> 复位 PHY,
- * open 时时钟已就绪,DMA 复位能过。delays: <复位前0 / 复位脉冲20000us / 释放后100000us>。
+ * PHY 复位(2026-08-18 v2):phy 节点用主线 phylib 标准的 reset-gpios +
+ * reset-assert-us / reset-deassert-us(同 nanopi-r6 等主线在产板)。
+ * 初版照搬 5.10 BSP 把 snps,reset-gpio 写在 gmac 节点 —— 那是 vendor stmmac
+ * 私有属性,主线 6.12 完全不认 → PHY 永不复位,实机反馈"网口没识别"。
+ * 历史教训(vendor 5.10 语境,主线未必复现):phylib 复位时机偏晚,当时报过
+ * "Failed to reset the dma"(clock_in_out=input 时 MAC 时钟由 PHY 供给);
+ * 若主线实机再遇此症,再考虑 clock_in_out="output" 或调 pinctrl 上拉。
  */
 &gmac0 {
 	clock_in_out = "input";
@@ -535,9 +536,6 @@
 		     &gmac0_rx_bus2
 		     &gmac0_rgmii_clk
 		     &gmac0_rgmii_bus>;
-	snps,reset-gpio = <&gpio4 RK_PD5 GPIO_ACTIVE_LOW>;
-	snps,reset-active-low;
-	snps,reset-delays-us = <0 20000 100000>;
 	rx_delay = <0x00>;
 	tx_delay = <0x43>;
 	status = "okay";
@@ -553,9 +551,6 @@
 		     &gmac1_rx_bus2
 		     &gmac1_rgmii_clk
 		     &gmac1_rgmii_bus>;
-	snps,reset-gpio = <&gpio4 RK_PD4 GPIO_ACTIVE_LOW>;
-	snps,reset-active-low;
-	snps,reset-delays-us = <0 20000 100000>;
 	rx_delay = <0x00>;
 	tx_delay = <0x42>;
 	status = "okay";
@@ -566,6 +561,13 @@
 		compatible = "ethernet-phy-ieee802.3-c22";
 		reg = <0x1>;
 		phy-supply = <&vcc_3v3_s0>;
+		/* 主线 phylib 标准复位(stmmac_open 扫 MDIO 前执行)。
+		 * 2026-08-18 实机反馈"网口没识别":此前写在 gmac 节点的
+		 * snps,reset-gpio 是 vendor 5.10 私有属性,主线 6.12 stmmac
+		 * 不认 → PHY 永不复位、链路起不来。 */
+		reset-gpios = <&gpio4 RK_PD5 GPIO_ACTIVE_LOW>;
+		reset-assert-us = <20000>;
+		reset-deassert-us = <100000>;
 	};
 };
 
@@ -574,6 +576,9 @@
 		compatible = "ethernet-phy-ieee802.3-c22";
 		reg = <0x0>;
 		phy-supply = <&vcc_3v3_s0>;
+		reset-gpios = <&gpio4 RK_PD4 GPIO_ACTIVE_LOW>;
+		reset-assert-us = <20000>;
+		reset-deassert-us = <100000>;
 	};
 };
 
