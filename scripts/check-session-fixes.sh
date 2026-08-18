@@ -2,7 +2,7 @@
 # check-session-fixes.sh — 定向核验本轮修复是否全部进入镜像。
 # 用法: wsl bash /mnt/e/AIPorject/101/agibot-armbian/scripts/check-session-fixes.sh <img>
 set -uo pipefail
-IMG="${1:-/home/cennac/docker-agibot-armbian/armbian-build/output/images/Armbian-unofficial_26.08.0-trunk_Agibot_jammy_vendor_6.1.115_minimal.img}"
+IMG="${1:-/home/cennac/docker-agibot-armbian/armbian-build/output/images/Agibot-Armbian_26.08.0-trunk_Agibot_jammy_vendor_6.1.115_minimal.img}"
 T="$(mktemp -d)"
 trap 'rm -rf "$T"' EXIT
 dd if="$IMG" of="$T/v.ext4" bs=1M skip=16 status=none
@@ -73,6 +73,20 @@ fi
 # --- BT ldisc 服务依赖的 firmware(nvram) ---
 FW=$(debugfs -R "ls /lib/firmware/brcm" "$T/v.ext4" 2>/dev/null | grep -c "BCM4362A2")
 [ "$FW" -ge 1 ] && ck "BT firmware BCM4362A2" OK || ck "BT firmware" FAIL
+
+# --- 发行身份与镜像内文档 ---
+README_IN="$T/README.md"
+debugfs -R "dump /usr/share/doc/agibot/README.md $README_IN" "$T/v.ext4" >/dev/null 2>&1
+if [ -f "$README_IN" ] && grep -q '^# Agibot-Armbian for AGIBOT MB0002' "$README_IN" && \
+  grep -q 'cennac@163.com' "$README_IN"; then
+  ck "发行 README 与作者邮箱" OK
+else
+  ck "发行 README 与作者邮箱" FAIL
+fi
+debugfs -R "cat /etc/issue" "$T/v.ext4" 2>/dev/null | grep -q '^Agibot-Armbian ' \
+  && ck "/etc/issue 发行者 Agibot-Armbian" OK || ck "/etc/issue 发行者" FAIL
+debugfs -R "stat /root/README.md" "$T/v.ext4" 2>/dev/null | grep -q '/usr/share/doc/agibot/README.md' \
+  && ck "/root/README.md 文档入口" OK || ck "/root/README.md 文档入口" FAIL
 
 echo
 echo ">>> 结果: $pass 通过, $fail 失败"

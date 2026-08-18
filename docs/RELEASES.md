@@ -31,6 +31,22 @@
 
 ## Armbian 镜像(armbian 路线)
 
+### 2026-08-18 Agibot-Armbian 品牌与系统内开发历程版
+
+- 文件:`Agibot-Armbian_26.08.0-trunk_Agibot_jammy_vendor_6.1.115_minimal.img`
+- 大小:`1,832,910,848` bytes（1.71 GiB）
+- SHA-256:`df777c1e917174cd94fd779fcbbad3555d68c2a56edc5eb5898453408bb47ffa`
+- 本地刷机目录:`flash/agibot-armbian/`
+- 发行元数据:`Vendor: Agibot-Armbian`，`Maintainer: cennac <cennac@163.com>`；
+  文件名、`/etc/issue` 和构建指纹三处一致。
+- 系统文档:`/usr/share/doc/agibot/README.md`，并提供 `/root/README.md` 入口；
+  内容归纳 2026-08-14 至 2026-08-18 的构建、启动、显示、USB、无线、音频、
+  VPU/NPU、双网口和日志治理历程。
+- 离线验收:`verify-image.sh` 12/12，`check-session-fixes.sh` 22/22；DTB、
+  GMAC `rx_delay=0`、ACM8625P DSP、initramfs、服务、发行身份与文档全部通过。
+- 状态:**构建和镜像内容验证完成，尚未单独刷入本品牌版**。其硬件功能内容与
+  已上板验证的 `rx-delay-clean` 版一致，仅增加发行身份和系统内 README。
+
 ### 2026-08-18 重编(DMC 修复 + NPU 固化 + 全部当日修复,构建 commit 19ed37f)
 
 - minimal(jammy):`89b5b2fad67778ab10d1215c61e3561000ca06f16882ea0c6084bd47e5e996fa`(1.71 GiB,`armbian-build/output/images/`)

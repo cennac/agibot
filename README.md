@@ -7,6 +7,19 @@
 
 两条路线刷机方式相同(RKDevTool 整盘写 eMMC,复用 `flash/`)。
 
+## 发行身份
+
+- **发行者**:`Agibot-Armbian`
+- **板卡**:`AGIBOT MB0002 V2`
+- **维护者**:`cennac`
+- **联系邮箱**:`cennac@163.com`
+
+这是由维护者构建和验证的社区定制镜像，不是 Armbian 或 AGIBOT 厂商官方发布。
+完整开发历程和最终验证基线见
+[`overlay/usr/share/doc/agibot/README.md`](overlay/usr/share/doc/agibot/README.md)；
+构建后该文档安装到系统的 `/usr/share/doc/agibot/README.md`，并可从
+`/root/README.md` 直接访问。
+
 `git clone --recursive` → `bash scripts/install-deps.sh` → `bash setup.sh` → `bash start-build.sh` → 刷机。板级配置与 WSL2 框架 hack 已全部入库,**干净 clone 即可编译,无需手动改框架源码**;脚本自动适配 Linux / WSL2 / macOS。
 
 > 完整步骤(WSL2 四大坑、5 处框架 hack、镜像验证、刷机、跨平台):见 **[BUILD-GUIDE.md](docs/BUILD-GUIDE.md)**。
@@ -44,6 +57,7 @@
 ├── overlay/                    # 注入 rootfs 的文件
 │   ├── etc/{hostname,systemd/system/agibot-usb-port-power.service}
 │   ├── usr/local/sbin/agibot-usb-port-power
+│   ├── usr/share/doc/agibot/README.md           # 发行信息、开发历程和验证基线
 │   ├── boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb   # 设备树,5.10 → 6.1 适配
 │   └── lib/firmware/           # Mali / AP6275P WiFi+BT / ACM8625P DSP / regulatory
 ├── flash/                      # eMMC 刷机 + 板端回归测试

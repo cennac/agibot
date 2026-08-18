@@ -4,14 +4,14 @@
 # 以及 dtb 5.10→6.1 适配是否生效。对应 BUILD-GUIDE §7。
 #
 # 用法:
-#   bash scripts/verify-image.sh                # 自动找最新 Armbian-*.img
+#   bash scripts/verify-image.sh                # 自动找最新 *_Agibot_*.img
 #   bash scripts/verify-image.sh <path-to.img>
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 IMG="${1:-}"
 if [ -z "$IMG" ]; then
-	IMG=$(ls -t "$ROOT"/armbian-build/output/images/Armbian-*.img 2>/dev/null | head -1)
+	IMG=$(ls -t "$ROOT"/armbian-build/output/images/*_Agibot_*.img 2>/dev/null | head -1)
 fi
 [ -n "$IMG" ] && [ -f "$IMG" ] || { echo "未找到镜像。用法: bash scripts/verify-image.sh <path-to.img>"; exit 1; }
 echo ">>> 镜像: $IMG ($(du -h "$IMG" | cut -f1))"
@@ -50,6 +50,10 @@ else
 fi
 
 echo ">>> (3) firmware / service / hostname / armbianEnv"
+case "$(basename "$IMG")" in
+	Agibot-Armbian_*) check "镜像文件名品牌 Agibot-Armbian" OK ;;
+	*) check "镜像文件名品牌 Agibot-Armbian" FAIL ;;
+esac
 debugfs -R "stat lib/firmware/mali_csffw.bin" "$TMP/v.ext4" 2>/dev/null | grep -q Inode && check "mali_csffw firmware" OK || check "mali_csffw firmware" FAIL
 ACM_FW="$TMP/acm8625p_dsp_stereo_btl_48khz.bin"
 ACM_SHA256="9a8d3d5542e2a32cada1716ad99efbba661ca31037e6590c2c32419f61ba4ac4"
@@ -81,6 +85,18 @@ else
 	check "ACM8625P DSP firmware in initramfs" FAIL
 fi
 debugfs -R "cat usr/lib/systemd/system/armbian-resize-filesystem.service" "$TMP/v.ext4" 2>/dev/null | head -1 | grep -q . && check "armbian-resize-filesystem.service" OK || check "armbian-resize-filesystem.service" FAIL
+IMAGE_README="$TMP/agibot-README.md"
+debugfs -R "dump usr/share/doc/agibot/README.md $IMAGE_README" "$TMP/v.ext4" >/dev/null 2>&1
+if [ -f "$IMAGE_README" ] && grep -q '^# Agibot-Armbian for AGIBOT MB0002' "$IMAGE_README" && \
+	grep -q 'cennac@163.com' "$IMAGE_README"; then
+	check "镜像内开发历程 README 与作者邮箱" OK
+else
+	check "镜像内开发历程 README 与作者邮箱" FAIL
+fi
+debugfs -R "cat etc/issue" "$TMP/v.ext4" 2>/dev/null | grep -q '^Agibot-Armbian ' \
+	&& check "/etc/issue 发行者 Agibot-Armbian" OK || check "/etc/issue 发行者 Agibot-Armbian" FAIL
+debugfs -R "stat root/README.md" "$TMP/v.ext4" 2>/dev/null | grep -q '/usr/share/doc/agibot/README.md' \
+	&& check "/root/README.md 文档入口" OK || check "/root/README.md 文档入口" FAIL
 echo -n "  hostname: "; debugfs -R "cat etc/hostname" "$TMP/v.ext4" 2>/dev/null
 echo -n "  fdtfile:  "; debugfs -R "cat boot/armbianEnv.txt" "$TMP/v.ext4" 2>/dev/null | grep fdtfile || echo "(无 fdtfile 行)"
 
