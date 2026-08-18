@@ -5,6 +5,12 @@
 
 ## OpenWrt/LEDE 固件(openwrt/ 路线)
 
+### 2026-08-18 全功能重编(PCIe + TRNG 增补)
+
+- squashfs.gz:`f98fa9d747ebe4d7f2c5da465c6e81ca750597c3e2f573491c189c0719411b21`(136 MB gz;解压整盘 `.img` 2.13 GiB 同目录,刷机用它)
+- DTS 增补:**PCIe 三路**(3x4 + 2x1l0 + 2x1l2,引脚/供电取自 5.10 BSP:gpio4_PB6 / gpio1_PB4 / gpio3_PD1,vcc3v3_pcie30=GPIO3_C4)+ **&rng 显式启用**(LEDE 原生 trngv1 支持,此前"主线无 TRNG"系误判)
+- 状态:构建成功(rc=0)、dts 链验证(pcie3x4=2 / trngv1=1 / vcc3v3×5 编进内核树);**未实机刷入**
+
 ### 2026-08-15 完善版(398 包)
 
 - squashfs:`77660b980df2e184679ff3caaea4c206860b2fa5bf005c2f948957a96f262c56`(136 MB gz / 2.13 GiB)
@@ -24,6 +30,18 @@
   (RKDevTool 已关仍锁),带 `_STALE-*.txt` 标记;有效 ext4 用解压版 .img(08-15)
 
 ## Armbian 镜像(armbian 路线)
+
+### 2026-08-18 重编(DMC 修复 + NPU 固化 + 全部当日修复,构建 commit 19ed37f)
+
+- minimal(jammy):`89b5b2fad67778ab10d1215c61e3561000ca06f16882ea0c6084bd47e5e996fa`(1.71 GiB,`armbian-build/output/images/`)
+- desktop(noble+xfce):`2e175a049573eda927c3233003f6e8f0867b22184d962e2c4ff0a62094ad92d4`(5.43 GiB)
+- 内容(两镜像均镜像内 fdtget/ls 实证):**DMC/DFI 修复**(dfi 4×pclk_ddr_mon → devfreq/dmc)、
+  **pcie3x4 ranges 5.10 残留清理**、**NPU 开箱即用**(librknnrt 1.5.2 + mobilenet/resnet18
+  双模型 + cp310/cp312 wheels + agibot-npu-setup 首启自装 rknnlite 服务,enabled)、
+  既有全部修复(uart5 禁用/Type-C adb opt-in/BT attach 等)
+- 构建流水线修复(11 次迭代):ref2info git-bare 兜底 + apt 代理分流 + ldconfig 容错
+  (见 docker-build.sh 头注释与 scripts/patch-*.py)
+- 状态:构建成功、镜像内容验证;**未实机刷入**(刷机方式同旧版:Loader@0xCCCCCCCC + img@0)
 
 ### 2026-08-16 板载 U-Boot P986b(按键恢复版,就地上板)
 
