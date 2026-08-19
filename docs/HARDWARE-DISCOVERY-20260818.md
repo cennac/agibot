@@ -45,6 +45,12 @@ levels were sampled without changing direction or output state.
 | `3-0020` | 15 | 4G | output high | input, level 0 | Strong external cellular-module power/enable |
 | `3-0021` | 13 | HDMI_PWR_EN | output high | input, level 1 | Strong HDMI auxiliary power enable; J5000 already works at this level |
 
+The chip/offset split is now confirmed by the original 5.10 system rather than
+inferred from probe order: its live bases were `3-0021=477` and `3-0020=493`.
+Thus vendor gpio490 is `3-0021.off13`, while gpio493..508 are
+`3-0020.off0..15`. All scripted lines except the commented PCIE30X4 line were
+observed as output-high after vendor boot.
+
 The current direction/value combination explains why USB and HDMI work while
 the external audio/lidar/4G domains can remain off. These lines must be tested
 one at a time with current observation; they should not all be asserted just to
@@ -54,7 +60,7 @@ make the boot log look cleaner.
 
 | Connector | Best current identification | Evidence level | Remaining uncertainty |
 |---|---|---|---|
-| Dual RJ45/J6700 area | Two RTL8211F 1000BASE-T ports | Confirmed | Physical left/right mapping to eth0/eth1; eth1 tested at 1000M/full with DHCP and 0% ping loss on 2026-08-19 |
+| Dual RJ45/J6700 area | HDMI-side: eth1/fe1b0000; board-edge leftmost: eth0/fe1c0000; both RTL8211F 1000BASE-T | Confirmed | Both have negotiated 1000M/full; eth1 passed DHCP and 20 pings with 0% loss, while eth0 had carrier and zero RX/TX errors/drops on 2026-08-19 |
 | J5000 | HDMI0 output | Confirmed | CEC/audio and long-duration display test |
 | USB3000, J3000, J2900, J2901 | Six USB 3.0 Type-A host ports through Genesys hubs | Confirmed | None for basic USB; per-port power-offset mapping remains |
 | J3300..J3600 | Four USB 3.0 Type-C host ports through VL805 | Confirmed | No evidence for PD or video on these four ports |
@@ -137,14 +143,28 @@ began at 00:09 local board time:
 - The J2901-upper UVC camera streamed 120 MJPEG frames at 720p without frame
   errors; `v4l2-ctl` reported about 23.70 FPS. The nominal camera format remains
   30 FPS, so this measures the current camera/link, not a changed controller.
-- `eth1` acquired DHCP address `192.168.88.88/24`, negotiated RTL8211F
+- The HDMI-side port was physically confirmed as `eth1` / `fe1b0000`; the
+  board-edge leftmost port is `eth0` / `fe1c0000`. `eth1` acquired DHCP address
+  `192.168.88.88/24`, negotiated RTL8211F
   1000 Mb/s full duplex, reached its gateway with 20/20 pings (0% loss, average
   0.604 ms), and showed zero RX/TX drops/errors and zero relevant PHY counters.
+- After moving the cable to the board-edge leftmost port, `eth0` acquired
+  `192.168.88.89/24`, negotiated 1000 Mb/s full duplex with carrier, and showed
+  zero RX/TX errors and drops.
+- The original 5.10.110 system independently confirmed the same physical
+  mapping. Its HDMI-side `eth1/fe1b0000` acquired `192.168.88.69`; after the
+  cable was moved, board-edge `eth0/fe1c0000` acquired `192.168.88.97`, passed
+  20/20 gateway pings (0% loss, 0.688 ms average), and retained zero RX/TX,
+  CRC, carrier, FIFO and fatal-bus errors. The original kernel prints the same
+  optional GMAC clock and `eth_lpi` messages while both links operate normally.
 - With `wlan0` temporarily up, the AP6275P Wi-Fi path scanned nine BSS/SSID
   entries; the interface was restored DOWN afterward. UART Bluetooth `hci0`
   loaded the BCM4362A2 patch and enumerated through ttyS6.
 - Both `can0` and `can1` passed classic-CAN internal-loopback send/receive tests
   at 500 kbit/s (`0x123/AGB-C0` and `0x456/AGB-C1`) and were restored DOWN.
+- On the original 5.10.110 system, direct J9702↔J9703 loopback failed at
+  125/250/500/1000 kbit/s in both differential polarities. Controlled 500 kbit/s
+  transmission plus a multimeter showed only a weak can0→J9703 differential shift
 - ACM8625P remained card 1 with both PCM devices and its Master control at 75%.
   No speaker was connected, so this is still a digital-path check only.
 - The NPU runtime loaded the preinstalled ResNet18 RKNN model and completed 100
@@ -177,10 +197,13 @@ began at 00:09 local board time:
    temperature and sustained I/O.
 6. Trace J7002, J9400, J5001, J9303 and J2000 pin 3 with power removed. Do not
    infer protocols from connector shape alone.
-7. Completed on 2026-08-19: SW9201 short-press produces the same externally
-   visible cold-boot chain as SW8900 (DDR, SPL, BL31, U-Boot, kernel, Armbian),
-   with U-Boot reboot reason `(none)` and no systemd shutdown. Electrical
-   reset-net identity remains unproven. Continue boot-held SW8901/SW8902 tests
-   as a low-priority follow-up.
+7. Completed on 2026-08-19: SW9201 and SW8900 both produce the same externally
+   visible hard-reset chain in Armbian and the original system. Electrical
+   reset-net identity remains unproven. SW8901/SW8902 produced no input event
+   on short press in either system; holding each across reset for about ten
+   seconds still booted the original image with `androidboot.mode=normal`.
+   SW9202 reports PMIC `KEY_POWER`; original userspace maps short press to a
+   currently failing Wi-Fi-blocked suspend and a three-second hold to clean
+   `poweroff`/BL31 virtual poweroff.
 8. J9301 measured 5 V with a multimeter on 2026-08-19. Continue tracing with
    power removed to determine whether a load-switch/MOSFET enable exists.

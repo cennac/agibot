@@ -18,7 +18,7 @@ WARN 对应当时未接显示器、第二网口无载波和没有摄像头。NPU
 | CPU / CPUFreq | 8 核在线，调频正常 | 已实测 |
 | 内存 | 15.6 GiB | 已实测 |
 | eMMC | 233 GiB，临时 256 MiB direct 写约 231 MB/s | 已实测 |
-| 千兆网口 | eth0 1000 Mbps Full，网关可达；eth1 无线缆 | eth0 已实测，eth1 仅驱动 |
+| 千兆网口 | 靠 HDMI=`eth1`/`fe1b0000`，靠板边左数第一=`eth0`/`fe1c0000`；Armbian 两口均实测 1000 Mbps Full；原版 5.10.110 再次确认相同映射，eth0 通过 DHCP、20 次 ping 0 丢包且 RX/TX/CRC/载波/FIFO/总线错误均为 0 | 双口驱动及物理映射已由两个系统交叉实测 |
 | Wi-Fi | `14e4:449d`，`wl` 驱动；扫描到 12 个 BSS | 已实测，测试后恢复 DOWN |
 | 蓝牙 | `hci0`，uart6/ttyS6，BCM4362A2 固件加载 | 内核/HCI 已实测，缺管理工具 |
 | GPU | Mali DRM `/dev/dri/renderD128` | 驱动与节点已确认 |
@@ -26,11 +26,12 @@ WARN 对应当时未接显示器、第二网口无载波和没有摄像头。NPU
 | VPU/MPP | MPP 节点和工具存在；历史硬解 30 帧测试通过 | 驱动已确认，当前轮未重跑码流 |
 | 音频 | ACM8625P `i2c 1-0015`；S32_LE/48 kHz/双声道无声 PCM 写入成功 | 数字通路已实测，仍需扬声器听音 |
 | HDMI / DP | J5000 热插拔已识别 2560×1440p60，TMDS 241.5MHz，HDMI PHY lane locked；拔出后正常回到 disconnected | EDID、时序与驱动链路已实测，屏幕实际画面待人工确认 |
-| CAN | can0=`fea50000`、can1=`fea60000`，均由 `rockchip_canfd` 注册；500 kbit/s 内部回环均通过；`can-utils` 已安装并加入固件包列表 | 控制器、驱动及 pinmux 已确认，J970x 与控制器的物理映射仍待查 |
+| CAN | can0=`fea50000`、can1=`fea60000`，均由 `rockchip_canfd` 注册；500 kbit/s 内部回环均通过；J9702↔J9703 两种极性、四档波特率外部回环失败；万用表仅观察到 can0→J9703 微弱差分变化 | 控制器、驱动及 pinmux 已确认；can0 疑似 J9703 但需示波器/USB-CAN 定案，J9702 与 can1 映射未知 |
 | UART | 7 个 ttyS；UART2 为调试控制台 | 驱动已确认，未逐口回环 |
 | I2C | 7 条 `/dev/i2c-*`，已绑定 RTC/PMIC/功放等 | 已确认；本轮未冒险扫描 |
 | GPIO | 8 个 gpiochip | 仅存在性确认，禁止裸扫 |
 | RTC / watchdog | rtc0 与 watchdog 节点存在 | 驱动已确认，watchdog 未触发 |
+| 六按键 | SW9200=ADC `KEY_VOLUMEUP`/LOADER；SW9202=PMIC `KEY_POWER`；SW8900/SW9201=硬复位；SW8901/SW8902 两系统短按及原版启动保持均无可见功能 | 两系统实测；未知两键仍不能判定为未连接 |
 | 摄像头 | `1bcf:0b09` UVC 相机生成 video0/video1/media0；MJPEG/YUYV，最高 1920x1080；mmap 连续读取 30 帧约 20.36 FPS | 枚举、格式和真实取流已实测 |
 | SPI | 无 spidev | 多为 DT 安全策略，不能判 SPI 控制器失败 |
 
@@ -84,7 +85,7 @@ J2600 刷机口才是 HUSB311 控制的 `fc000000` OTG Type-C，其 DTS Source P
 
 ## 尚需现场完成
 
-1. eth1 插网线，核对 1000 Mbps、双向 iperf3 和稳定性。
+1. 双网口基础链路及物理映射已确认；仍可补做两口双向 iperf3 长时间压力和掉线恢复测试。
 2. HDMI 接显示器，验证分辨率、热插拔、tty1 和 HDMI 音频。
 3. J8600 插 NVMe，核对 `lspci -vv` / `nvme list`、Gen3 x4 和读写温度。
 4. J7000/J7001 接匹配扬声器，使用 S32_LE/48 kHz 小音量听音并确认左右声道。

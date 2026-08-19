@@ -203,14 +203,20 @@ dmesg | grep -iE 'usb|xhci|ehci|uas|storage' | tail -n 80
 
 ### 以太网（2 个口）
 
-| GMAC（dts） | phy-mode | status | 实测 |
-|---|---|---|---|
-| `fe1b0000` gmac0（ethernet0） | rgmii-rxid | okay | 2026-08-19：**eth0 NO-CARRIER/DOWN**（网线已移至另一口） |
-| `fe1c0000` gmac1（ethernet1） | rgmii-rxid | okay | 2026-08-19：**eth1 UP**，DHCP `192.168.88.88`，RTL8211F 千兆全双工，20 次 ping 0 丢包 |
+| GMAC 控制器（dts） | Linux 接口 | 物理位置 | phy-mode / status | 实测 |
+|---|---|---|---|---|
+| `fe1b0000` | `eth1` | 靠 HDMI | rgmii-rxid / okay | 2026-08-19：DHCP `192.168.88.88`，RTL8211F 千兆全双工，20 次 ping 0 丢包，RX/TX 错误计数为 0 |
+| `fe1c0000` | `eth0` | 靠板边（左数第一个） | rgmii-rxid / okay | 2026-08-19：DHCP `192.168.88.89`，RTL8211F 千兆全双工，carrier=1，RX/TX errors 与 dropped 均为 0 |
+
+物理映射由 2026-08-19 现场换线确认。设备树中的 gmac0/gmac1 名称与 Linux 的 eth0/eth1 枚举次序不能直接等同，排障时应以控制器地址和物理位置为准。
 
 ### CAN 控制器（2 路启用，物理接口尚未映射）
 
 `rockchip_canfd` 在 `fea50000 / fea60000` 注册 **can0 / can1**，内部回环已通过。机器人软件确实通过 CAN 与下位机通信，但这不能证明 J970x 就是对应物理口；其协议和控制器映射仍需 U970x 丝印或示波器波形定案。
+
+2026-08-19 原版系统复测：J9702↔J9703 外部回环在 125/250/500/1000 kbit/s、两种极性下均失败。受控发送加万用表仅观察到 `can0→J9703` 出现约 `-0.03V↔0.01V` 的微弱差分变化；`can0→J9702`、`can1→J9702`、`can1→J9703` 均未见可见变化。因此只能记为 `can0` 疑似对应 J9703，不能当作已确认映射。
+
+U9700/U9701 顶面被三防漆覆盖，无法读取丝印；最终确认仍需示波器或 USB-CAN 分析仪。
 
 ### 无线
 
@@ -247,9 +253,10 @@ PCIe `fe170000` 上的 **Broadcom 449d**（WiFi 6E）当前枚举 `wlan0`；2026
 ### 隐藏硬件与摄像头补测（2026-08-18）
 
 - 原厂 `/etc/rc.local` 会调用 `/home/.qc/USB_Monitor.sh`。PCA9555 `3-0020` 除 12 路 USB VBUS 外，还命名了 `AUDIO`、`PCIE30X4`、`LIDAR`、`4G`；`3-0021` 另有 `HDMI_PWR_EN`。当前只初始化 12 路 USB，实测其余电平为 `0/1/0/0/1`。其中 `PCIE30X4` 的输出代码在原厂脚本中被注释，不能标成原厂默认使能。
-  - **2026-08-19 修正**：上段的「哪个名字在哪片 0x20/0x21」来自我们自移植 DT 的 line names，而那份分配无独立出处，存在循环论证风险。原厂脚本（现已有全文，见 `../agibot-mb0002-analysis/AGIBOT-引脚与架构深度分析.md` §5）的连续编号 490–508 与「0x20 先 probe 得 base 490」的自然切分给出的是 **HDMI=490=0x20.off0，PCIE30X4/LIDAR/4G=506-508=0x21.off0-2** ——与本段写法相反。原厂 DT 节点本身无 gpio-line-names，两片切分应以原厂脚本+编号区间为准；`名字↔功能` 的映射（HUB/HDMI/AUDIO/LIDAR/4G 等 19 域）不受影响，且 HUB2=fcd00000、HUB20=fc800000(J9200) 已与逐口实测强咬合。
+  - **2026-08-19 原系统实机定案**：原厂 5.10 启动后的实际 base 为 `3-0021=477`、`3-0020=493`，因此 `gpio490=3-0021.off13=HDMI_PWR_EN`，`gpio493..508=3-0020.off0..15=HUB/AUDIO/PCIE30X4/LIDAR/4G`。原厂现场方向/电平与上段映射一致；先前按假定 probe 顺序进行的反向切分已被实机证伪。
 - J2600 的 HUSB311 在 I2C6 `0x4e` 实读标准 ID 为 `2e99:0311`。原厂 DT 定义双数据角色、双电源角色、5V PDO 与 DP Alt Mode；当前为保证 ADB 稳定而禁用 TCPC。
 - 新插入的 `1bcf:0b09 SYX-230524-J HD Camera` 位于 J2901 上层的 USB2 伴随路径 `9-1.3`。`/dev/video0` 支持 MJPEG/YUYV 的 640×480、1280×720、1920×1080；V4L2 mmap 连读 30 帧约 20.36 FPS，帧哈希全部不同。`video1` 是辅助元数据节点。
+- 2026-08-19 原厂系统同一路径连续采集 60 帧成功并收敛到约 26 FPS；Wi-Fi 扫描 9 个 BSS。原厂 `rkwifibt` 错用 ttyS9，服务虽 active 但没有 hci0，反而证明当前 Armbian 改用本板 UART6/ttyS6 的修复是必要的。
 - 原机器人使用四路 USB Berxel iHawk100 深度相机，并兼容 Orbbec/Astra。原厂和当前 DT 的六路 CSI、DSI 父控制器均为 disabled；残留 panel 模板不等于已装 MIPI 屏或相机。
 - 完整证据分级和后续测试顺序见 `../docs/HARDWARE-DISCOVERY-20260818.md`。
 
@@ -262,15 +269,17 @@ PCIe `fe170000` 上的 **Broadcom 449d**（WiFi 6E）当前枚举 `wlan0`；2026
 | 第一行 | `SW8902` | `SW8901` | `SW8900` |
 | 第二行 | `SW9202` | `SW9200`（LOADER） | `SW9201` |
 
-`SW9200` 已由实物操作确认是 LOADER 按键；`SW9201` 已由实测确认是系统复位/重启按键，按下后系统重新启动。`SW9202` 已于 2026-08-18 实测确认为 PMIC 电源键：第一次短按后 SSH、网络和 COM7 均停止，系统进入关机态；风扇所在常供电电源轨仍保持工作；再次短按后系统完成全新启动，boot ID 更新且 eth0 恢复连接。
+`SW9200` 已由实物操作确认是 LOADER 按键；2026-08-19 原版系统运行态短按还在 `event2` 产生 `KEY_VOLUMEUP`（code 115）的按下/释放事件，约 310 ms。`SW9201` 已由两套系统实测确认是硬复位/重启按键，按下后系统重新启动。
 
-同日复测 `SW8902`：在 125 秒内联合监听 COM7、SSH、Linux `event1/event2` 与 SARADC ch0–ch7，短按前后未重启、未关机，SSH 与 boot ID 保持不变，串口接收 0 字节，input 事件计数为 0，也没有与按键同步的干净 ADC 阶跃。该结果只能确认当前 Linux 软件路径不可见且按键不触发电源动作，不能据此断定其未连接或没有硬件功能。
+`SW9202` 是 RK805 PMIC 电源键，产生 `KEY_POWER`（code 116）。Armbian 于 2026-08-18 短按后进入 `virtual poweroff`，再次短按完成全新启动。原版系统策略不同：`HandlePowerKey=ignore`，由 triggerhappy 调用 `/usr/bin/power-key.sh`；短按执行 `pm-suspend`，但 AP6275P 的 `dhdpcie_pci_suspend` 返回 -1，挂起失败并恢复；按住超过 3 秒执行完整 systemd `poweroff` 并进入 BL31 `virtual poweroff`，再次短按正常开机。两套系统关机后风扇所在 5V 常供电轨仍保持工作。
 
-随后以同一方法复测 `SW8901`：boot ID 前后均为 `6779efa8-8ecb-4145-ba4e-86b508d5526c`，SSH 未断、COM7 接收 0 字节、input 事件计数为 0；ch0–ch5 最大相邻跳变仅 4–32 个 ADC 计数，未发现按键阶跃，ch6/ch7 仍为已知浮空噪声。当前只能确认其短按没有 Linux 可见事件或电源动作。
+同日复测 `SW8902`：在 125 秒内联合监听 COM7、SSH、Linux `event1/event2` 与 SARADC ch0–ch7，短按前后未重启、未关机，SSH 与 boot ID 保持不变，串口接收 0 字节，input 事件计数为 0，也没有与按键同步的干净 ADC 阶跃。2026-08-19 原版系统再次得到 0 个 input 事件；按住它并用 SW9201 复位、继续保持约 10 秒后，系统仍以 `androidboot.mode=normal` 从 eMMC 启动。该结果只能确认已测试的软件与启动阶段不可见，不能据此断定其未连接或没有其他硬件功能。
 
-同日短按 `SW8900` 后，COM7 立即重新出现 DDR 初始化、SPL、BL31、U-Boot、`Starting kernel` 与 Armbian 登录提示，过程中没有 systemd 关机序列；boot ID 从 `6779efa8-8ecb-4145-ba4e-86b508d5526c` 更新为 `af39a85c-d38b-4cb9-b489-f9a27521e57a`，eth0 随后恢复连接。因此 `SW8900` 已确认是硬复位/重启键。所有未知功能均不按编号猜测。
+随后以同一方法复测 `SW8901`：boot ID 前后均为 `6779efa8-8ecb-4145-ba4e-86b508d5526c`，SSH 未断、COM7 接收 0 字节、input 事件计数为 0；ch0–ch5 最大相邻跳变仅 4–32 个 ADC 计数，未发现按键阶跃，ch6/ch7 仍为已知浮空噪声。2026-08-19 原版系统短按和复位启动保持约 10 秒也均为 0 个 input 事件，启动模式保持 normal。当前只能确认已测试路径没有可见事件或电源动作。
 
-2026-08-19 已完成 `SW9201` 复测：轻按后 COM7 立即出现 DDR、SPL、BL31、U-Boot、`Starting kernel` 和 Armbian 登录提示，U-Boot `reboot reason` 为 `(none)`，没有 systemd 关机序列，boot ID 更新且 eth0 恢复。确认它是硬复位/重启键。它与 `SW8900` 外部行为一致，但是否同一电气复位网络仍未证明。
+同日短按 `SW8900` 后，COM7 立即重新出现 DDR 初始化、SPL、BL31、U-Boot、`Starting kernel` 与 Armbian 登录提示，过程中没有 systemd 关机序列；boot ID 从 `6779efa8-8ecb-4145-ba4e-86b508d5526c` 更新为 `af39a85c-d38b-4cb9-b489-f9a27521e57a`，eth0 随后恢复连接。2026-08-19 原版系统复测也出现 SSH 离线/上线和新 boot ID `7990d6dd-...`，确认它是发行版无关的硬复位/重启键。所有未知功能均不按编号猜测。
+
+2026-08-19 已完成 `SW9201` 复测：轻按后 COM7 立即出现 DDR、SPL、BL31、U-Boot、`Starting kernel` 和登录提示，U-Boot `reboot reason` 为 `(none)`，没有 systemd 关机序列，boot ID 更新且 eth0 恢复；原版系统两次用于启动保持测试时也得到相同行为。确认它是硬复位/重启键。它与 `SW8900` 外部行为一致，但是否同一电气复位网络仍未证明。
 
 ### J9301 风扇关机联动结论（2026-08-18）
 

@@ -26,14 +26,14 @@ export const connectors = [
   {
     id: 'eth', index: 1, name: '双千兆网口', designator: 'J6700 区域', category: '网络', confidence: 'verified',
     position: [-6.82, -4.72],
-    summary: '两路 1000BASE-T，以 eth0 / eth1 出现在在线系统中。未发现 PoE 供电证据。',
-    evidence: ['实机 ip link：eth0、eth1', '设备树：gmac0/gmac1 均为 okay'],
+    summary: '两路 RTL8211F 1000BASE-T：靠 HDMI 的网口对应 eth1 / fe1b0000，靠板边（左数第一个）的网口对应 eth0 / fe1c0000。两口均已稳定协商千兆全双工；未发现 PoE 供电证据。',
+    evidence: ['实机 ip link：eth0、eth1', '设备树：fe1b0000、fe1c0000 均为 okay', '2026-08-19 靠 HDMI 口：eth1 取得 192.168.88.88，DHCP 成功，20 次 ping 0 丢包，RX/TX 错误计数为 0', '2026-08-19 靠板边左数第一口：eth0 取得 192.168.88.89，carrier=1，1000Mb/s Full，RX/TX errors 与 dropped 均为 0', '2026-08-19 原厂 5.10 复核：靠 HDMI 口仍为 eth1 / fe1b0000，取得 192.168.88.69 并协商千兆全双工'],
     pinout: [
       ['1', 'BI_DA+', '双向差分对 A+'], ['2', 'BI_DA-', '双向差分对 A-'], ['3', 'BI_DB+', '双向差分对 B+'],
       ['4', 'BI_DC+', '双向差分对 C+'], ['5', 'BI_DC-', '双向差分对 C-'], ['6', 'BI_DB-', '双向差分对 B-'],
       ['7', 'BI_DD+', '双向差分对 D+'], ['8', 'BI_DD-', '双向差分对 D-'],
     ],
-    note: '支持 Auto MDI-X；照片不能确定左、右口分别对应 eth0 还是 eth1。',
+    note: '支持 Auto MDI-X。Linux 接口枚举次序与设备树中的 gmac0/gmac1 命名不可直接等同；长期定位应同时记录物理位置、eth 名称和控制器地址。',
   },
   {
     id: 'hdmi', index: 2, name: 'HDMI 输出', designator: 'J5000', category: '显示', confidence: 'verified',
@@ -189,17 +189,17 @@ export const connectors = [
   {
     id: 'buttons', index: 18, name: '板载按键组', designator: 'SW8902 / SW8901 / SW8900 · SW9202 / SW9200 / SW9201', category: '控制', confidence: 'documented',
     position: [-6.08, -1.03],
-    summary: '六个板载轻触按键按实物排列为 2 行 × 3 列；SW9200 是 LOADER 键，SW9202 是 PMIC 电源键，SW9201 与 SW8900 均会触发硬复位。SW8901/SW8902 短按在当前 Linux 下无可见事件。',
-    evidence: ['用户实物确认按钮丝印与 2 行 × 3 列排列', 'SW9200 实测进入 LOADER', 'SW9202 实测短按关机、再次短按开机', 'SW8900 实测出现完整 DDR/SPL/BL31/U-Boot 启动链且 boot ID 更新', 'SW9201 实测会重新启动', 'SW8901/SW8902 联合监听无 input、ADC、电源或复位动作'],
+    summary: '六个板载轻触按键按实物排列为 2 行 × 3 列；SW9200 是 ADC/LOADER 键，SW9202 是 PMIC 电源键，SW9201 与 SW8900 均会触发硬复位。SW8901/SW8902 在两系统运行态短按及原版启动保持测试中均无可见功能。',
+    evidence: ['用户实物确认按钮丝印与 2 行 × 3 列排列', 'SW9200 实测进入 LOADER，原版 event2 报 KEY_VOLUMEUP(code 115)', 'SW9202 原版 event0 报 KEY_POWER(code 116)：短按尝试挂起，按住 3 秒正常关机，再按开机', 'SW8900/SW9201 在两系统均出现完整启动链且 boot ID 更新', 'SW8901/SW8902 两系统短按均无 input 事件，原版复位启动保持 10 秒仍为 normal 模式'],
     pinout: [
-      ['第一行左', 'SW8902', '短按无当前 Linux 可见功能'],
-      ['第一行中', 'SW8901', '短按无当前 Linux 可见功能'],
+      ['第一行左', 'SW8902', '短按/启动保持均无已知可见功能'],
+      ['第一行中', 'SW8901', '短按/启动保持均无已知可见功能'],
       ['第一行右', 'SW8900', '硬复位 / 重启'],
-      ['第二行左', 'SW9202', 'PMIC 电源键 / 关机与开机'],
-      ['第二行中', 'SW9200', 'LOADER'],
+      ['第二行左', 'SW9202', 'PMIC KEY_POWER / 短按策略 / 长按关机 / 开机'],
+      ['第二行中', 'SW9200', 'ADC KEY_VOLUMEUP / LOADER'],
       ['第二行右', 'SW9201', '系统复位 / 重启'],
     ],
-    note: '六键短按行为已逐键实测。计划 2026-08-19 对 SW9201/SW8900 做同规格串口 A/B 测试，以区分两者是否属于同一复位网；当前不推断其电气接线相同。SW8901/SW8902 仍可能连接未启用 GPIO、独立 MCU 或其他硬件路径。',
+    note: '六键已完成两系统交叉实测。SW9201/SW8900 外部复位行为一致，但尚无电气证据证明属于同一复位网。SW8901/SW8902 仍可能连接未启用 GPIO、独立 MCU 或其他硬件路径。原版 SW9202 短按挂起会因 Wi-Fi PCIe suspend 返回 -1 而失败。',
   },
   {
     id: 'm2-slot', index: 19, name: 'M.2 扩展插槽', designator: 'J8600', category: '扩展', confidence: 'verified',
@@ -269,7 +269,7 @@ export const connectors = [
 export const liveFacts = [
   ['板卡', 'Rockchip RK3588 AGIBOT MB0002 V2 Board'],
   ['内核', 'Linux 5.10.110 · 2024-05-10'],
-  ['网络', 'eth0 UP · eth1 DOWN · 双 GMAC'],
+  ['网络', '靠 HDMI：eth1 / fe1b0000 · 靠板边左数第一：eth0 / fe1c0000 · 双千兆已验证'],
   ['CAN', 'can0 / can1 · Rockchip CAN FD · 99 MHz'],
   ['调试串口', 'UART2 · ttyFIQ0 · 1,500,000 baud'],
   ['外设串口', 'UART0/1/3/4/6/7/9；UART5 因与双网口 PHY 复位脚冲突已禁用'],
@@ -360,8 +360,8 @@ export const usbPortTests = [
 
 export const pinmuxGroups = [
   { title: 'CAN（当前设备树）', rows: [
-    ['can0', 'okay', 'GPIO0C0 / GPIO0B7', '物理线束座待对应'],
-    ['can1', 'okay', 'GPIO4B2 / GPIO4B3', '物理线束座待对应'],
+    ['can0', 'okay', 'GPIO0C0 / GPIO0B7', '疑似 J9703（万用表弱线索，待示波器/USB-CAN 确认）'],
+    ['can1', 'okay', 'GPIO4B2 / GPIO4B3', 'J9702/J9703 未见万用表可见活动，待确认'],
     ['can2', 'disabled', 'GPIO3C4 / GPIO3C5', '未启用'],
   ] },
   { title: 'UART（启用项）', rows: [

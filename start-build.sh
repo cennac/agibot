@@ -83,12 +83,18 @@ if [ "$PLATFORM" = linux ]; then
 	fi
 fi
 
-# ---- git resilience:大 kernel clone 经代理偶发 TLS 中断,放宽超时 ----
-git config --global http.lowSpeedLimit 0
-git config --global http.lowSpeedTime 999999
-git config --global http.postBuffer 1048576000
-git config --global http.version HTTP/1.1
-git config --global --add safe.directory '*'
+# ---- git resilience: only for this build, without changing the user's global git config ----
+export GIT_CONFIG_COUNT=5
+export GIT_CONFIG_KEY_0=http.lowSpeedLimit
+export GIT_CONFIG_VALUE_0=0
+export GIT_CONFIG_KEY_1=http.lowSpeedTime
+export GIT_CONFIG_VALUE_1=999999
+export GIT_CONFIG_KEY_2=http.postBuffer
+export GIT_CONFIG_VALUE_2=1048576000
+export GIT_CONFIG_KEY_3=http.version
+export GIT_CONFIG_VALUE_3=HTTP/1.1
+export GIT_CONFIG_KEY_4=safe.directory
+export GIT_CONFIG_VALUE_4="$SCRIPT_DIR/armbian-build"
 
 # ---- 容器内:前台编译(容器 PID1 退出会杀后台进程,不能 setsid)----
 if [ -f /.dockerenv ]; then
