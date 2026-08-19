@@ -446,6 +446,8 @@ RELEASE=noble                 # ★ 必须 noble，jammy 缺 libcamera/glmark2 �
 
 `setup.sh` / `start-build.sh` 已自动检测平台(`uname` + `/proc/version`),三平台都能跑。与 WSL2 主线(§1–§10)的差异:
 
+> 66 服务器的 Ubuntu 26.04 实战编译记录、代理参数、依赖差异和产物校验见 **[BUILD-SERVER-66.md](BUILD-SERVER-66.md)**。
+
 | | WSL2(主线) | Linux 原生 | macOS |
 |---|---|---|---|
 | 框架 hack patch | apply 5 处(§2) | **不 apply**(ext4 正常,fchmod hack 有害) | **不 apply** |

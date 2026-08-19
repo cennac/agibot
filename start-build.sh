@@ -87,7 +87,7 @@ if [ "$PLATFORM" = linux ]; then
 fi
 
 # ---- git resilience: only for this build, without changing the user's global git config ----
-export GIT_CONFIG_COUNT=5
+export GIT_CONFIG_COUNT=6
 export GIT_CONFIG_KEY_0=http.lowSpeedLimit
 export GIT_CONFIG_VALUE_0=0
 export GIT_CONFIG_KEY_1=http.lowSpeedTime
@@ -98,6 +98,8 @@ export GIT_CONFIG_KEY_3=http.version
 export GIT_CONFIG_VALUE_3=HTTP/1.1
 export GIT_CONFIG_KEY_4=safe.directory
 export GIT_CONFIG_VALUE_4="$SCRIPT_DIR/armbian-build"
+export GIT_CONFIG_KEY_5=core.filemode
+export GIT_CONFIG_VALUE_5=false
 
 # ---- 容器内:前台编译(容器 PID1 退出会杀后台进程,不能 setsid)----
 if [ -f /.dockerenv ]; then
