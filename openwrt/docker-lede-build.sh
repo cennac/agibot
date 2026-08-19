@@ -68,6 +68,7 @@ COMMON=(
 	-v "$ROOT":"$MNT" -w "$WD"
 	-e TERM="${TERM:-xterm}"
 	-e FORCE_UNSAFE_CONFIGURE=1
+	-e CURL_OPTIONS="--retry-all-errors --http1.1"
 	"${PROXY_ENV[@]}"
 )
 
