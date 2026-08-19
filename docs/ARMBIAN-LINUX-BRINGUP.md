@@ -234,7 +234,10 @@ err/warn 全扫,结论:**无新的可修驱动 bug,全子系统绑定完整**。
   (xhci_hcd 绑定,板上 USB3 Hub/U盘全挂它下面);fe150000(Gen3x4)空槽,
   `PCIe Link Fail, LTSSM 0x0` 属正常(无对端设备)。
 - **eth0 `NO-CARRIER`/DOWN**:网口本身健康(能报载波状态=PHY 链路监视
-  活着),只是没插对端线;eth1 1000Mbps UP(SSH 走它)。两个 GMAC 都是
+  活着),只是没插对端线;eth1 1000Mbps UP(SSH 走它)。2026-08-19 换线实测:
+  eth1 获得 DHCP `192.168.88.88/24` 和默认路由,RTL8211F 协商 1000Mb/s
+  Full Duplex,20 次网关 ping 0 丢包、平均 0.604ms,RX/TX errors/drops
+  与 PHY 错误计数均为 0。两个 GMAC 都是
   `rgmii-rxid`(RX 延迟由 RTL8211F PHY 提供),因此 DTB 现已显式设置
   `rx_delay = <0>`。这会消除属性缺失和 `0xffffffff` fallback,同时不改变
   已验证的千兆链路时序。

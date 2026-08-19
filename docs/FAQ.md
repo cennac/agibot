@@ -129,7 +129,7 @@ RKDevTool v3.37 比 v2.86 稳。raw img 别走「升级固件」页(要 RKFW/RKA
 | 按键 | 行为 | 接线 |
 |---|---|---|
 | **SW9200** | 上电长按进下载模式(**2026-08-16 已恢复**:U-Boot adc-keys 节点须带 `u-boot,dm-spl` 标记,见 Q2) | SARADC **ch1** → `adc-keys`(Linux input1) |
-| **SW9201** | **硬复位**(瞬时断电重启,无软件日志) | 硬件复位线 |
+| **SW9201** | **硬复位**(瞬时断电重启,无软件日志;2026-08-19 复测通过) | 硬件复位线 |
 | **SW9202** | **电源键**(短按关机,关机后再短按开机;2026-08-18 实测通过) | PMIC PWRON → `rk805 pwrkey`(input2) |
 | **SW8900** | **硬复位/重启**(轻触即重启;2026-08-18 复测通过) | 复位/重启线 |
 | **SW8901** | 不重启、不关机;无 Linux input 或干净 ADC 事件(2026-08-18 复测) | 无当前 Linux 可见功能 |
@@ -160,17 +160,21 @@ input 事件计数为 0;ch0/ch1/ch3/ch5 无阶跃,ch2/ch4 仅有原有缓慢漂�
 `af39a85c-d38b-4cb9-b489-f9a27521e57a`,eth0 随后恢复 `UP/LOWER_UP`。
 确认该键为硬复位/重启键。
 
-待 2026-08-19 现场复测:用与 SW8900 完全相同的 COM7 + SSH 监听流程再测
-SW9201,对比 DDR/SPL/BL31 启动链、U-Boot `reboot reason`、风扇/电源轨状态和
-boot ID,确认两个硬复位键是同一复位网的冗余入口,还是分别控制 SoC 与整板/PMIC
-复位域。在完成 A/B 对照前,只记录“两者都会硬复位”,不推断电气接线相同。
+2026-08-19 SW9201 现场复测:轻按后 COM7 立即重新出现 DDR 初始化、U-Boot SPL、
+BL31、U-Boot、`ANDROID: reboot reason: "(none)"`、`Starting kernel` 和 Armbian
+登录提示,没有 systemd 关机序列。两次 boot ID 分别更新为
+`eeb8c880-5a1d-4624-a655-f82ca9fdc766` 和
+`042bbcf0-1d0e-4d0f-a7c9-918b8212f5d3`,eth0 均随后恢复 `UP/LOWER_UP`。
+确认该键为硬复位/重启键。它与 SW8900 的外部可见行为一致,但 `reboot reason`
+为 `(none)` 只说明 BootROM/U-Boot 没拿到软件重启原因,不能证明两键属于同一
+电气复位网络;在原理图或实测接线前,仅记录“两者都会硬复位”。
 
 SW9202 关机时风扇不能由当前软件直接关闭。J9301 是两针风扇供电座,实测系统进入
 virtual poweroff 后仍转;原厂和当前 DT 均无风扇节点,16 路 PWM 全部 disabled,
-运行系统也没有 PWM 平台设备、`pwm-fan`、风扇 hwmon 或 cooling device。下一步应
-分别测量 J9301 在运行/关机态的电压并断电追线,确认是否存在负载开关/MOSFET 使能脚。
-若直接接常供电轨,必须增加可控负载开关或 MOSFET 才能联动关机;若找到现有使能脚,
-再用 DT `gpio-fan`/regulator 或 `pwm-fan` 描述并配置关机默认关闭。禁止盲试未占用 GPIO。
+运行系统也没有 PWM 平台设备、`pwm-fan`、风扇 hwmon 或 cooling device。下一步应断电追线,确认是否存在负载开关/MOSFET 使能脚。2026-08-19 现场万用表
+实测风扇电压为 5V(本次记录未区分运行/关机态读数)。若直接接常供电轨,必须增加
+可控负载开关或 MOSFET 才能联动关机;若找到现有使能脚,再用 DT `gpio-fan`/
+regulator 或 `pwm-fan` 描述并配置关机默认关闭。禁止盲试未占用 GPIO。
 
 <a name="q8"></a>
 ## Q8 怎么判断板子是软重启还是硬复位?

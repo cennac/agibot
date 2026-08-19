@@ -199,14 +199,14 @@ dmesg | grep -iE 'usb|xhci|ehci|uas|storage' | tail -n 80
 | `fe180000` | 1× Gen2 | disabled | — |
 | `fe190000` | 1× Gen2 | okay | ✅ VIA **VL805**（4×USB3，即 J3300–J3600） |
 
-当前存储为 eMMC（`mmcblk0` 233G），无 NVMe。
+当前存储为 eMMC（`mmcblk0` 233G，2026-08-19 512MiB 顺序读约 325MiB/s），无 NVMe。
 
 ### 以太网（2 个口）
 
 | GMAC（dts） | phy-mode | status | 实测 |
 |---|---|---|---|
-| `fe1b0000` gmac0（ethernet0） | rgmii-rxid | okay | **eth0 UP**（192.168.88.101） |
-| `fe1c0000` gmac1（ethernet1） | rgmii-rxid | okay | **eth1 DOWN（NO-CARRIER）** → 第二口存在，未插线 |
+| `fe1b0000` gmac0（ethernet0） | rgmii-rxid | okay | 2026-08-19：**eth0 NO-CARRIER/DOWN**（网线已移至另一口） |
+| `fe1c0000` gmac1（ethernet1） | rgmii-rxid | okay | 2026-08-19：**eth1 UP**，DHCP `192.168.88.88`，RTL8211F 千兆全双工，20 次 ping 0 丢包 |
 
 ### CAN 控制器（2 路启用，物理接口尚未映射）
 
@@ -214,7 +214,7 @@ dmesg | grep -iE 'usb|xhci|ehci|uas|storage' | tail -n 80
 
 ### 无线
 
-PCIe `fe170000` 上的 **Broadcom 449d**（WiFi 6E），实测 `wlan0` + `wlan1` 两个接口（含第二射频或蓝牙侧）。
+PCIe `fe170000` 上的 **Broadcom 449d**（WiFi 6E）当前枚举 `wlan0`；2026-08-19 临时拉起扫描到 9 个 BSS，测试后已恢复 DOWN。UART 侧 `hci0` 已加载 BCM4362A2 patch。
 
 ### SATA：未启用
 
@@ -233,9 +233,9 @@ PCIe `fe170000` 上的 **Broadcom 449d**（WiFi 6E），实测 `wlan0` + `wlan1`
 | USB host 控制器（当前空载） | `fc880000`（Bus 02 空），J2500 候选上游 | dts + 实机；待插设备映射 |
 | USB OTG / device | `fc000000`（adb gadget 设备口） | 实机 UDC |
 | PCIe | 3 条启用：VL805 / Broadcom WiFi / **空 4×Gen3 M.2 槽** | lspci |
-| 以太网 | **2 口**（eth0 用、eth1 空载） | ip + dts |
+| 以太网 | **2 口**；2026-08-19 eth1 DHCP/千兆/0 丢包，eth0 空载 | ip + dts + ethtool |
 | CAN 控制器 | **2 路**（can0 / can1） | 内部回环实机；尚未证明对应 J970x |
-| WiFi | Broadcom 449d（wlan0 / wlan1） | lspci |
+| WiFi / 蓝牙 | Broadcom 449d（当前 wlan0）+ hci0 | lspci / sysfs / dmesg |
 | SATA | 3 节点全 disabled，未用 | dts + 实机 |
 | 显示 | HDMI0 已实测；DP0 为 J2600 的休眠 Alt Mode 能力 | dts + 实机；HDMI1/eDP/DSI 未作为板级接口启用 |
 | UART | ttyS0/1/3/4/6/7/9 + UART2 调试控制台 | dts + 实机；UART5 引脚冲突不可用 |
@@ -247,6 +247,7 @@ PCIe `fe170000` 上的 **Broadcom 449d**（WiFi 6E），实测 `wlan0` + `wlan1`
 ### 隐藏硬件与摄像头补测（2026-08-18）
 
 - 原厂 `/etc/rc.local` 会调用 `/home/.qc/USB_Monitor.sh`。PCA9555 `3-0020` 除 12 路 USB VBUS 外，还命名了 `AUDIO`、`PCIE30X4`、`LIDAR`、`4G`；`3-0021` 另有 `HDMI_PWR_EN`。当前只初始化 12 路 USB，实测其余电平为 `0/1/0/0/1`。其中 `PCIE30X4` 的输出代码在原厂脚本中被注释，不能标成原厂默认使能。
+  - **2026-08-19 修正**：上段的「哪个名字在哪片 0x20/0x21」来自我们自移植 DT 的 line names，而那份分配无独立出处，存在循环论证风险。原厂脚本（现已有全文，见 `../agibot-mb0002-analysis/AGIBOT-引脚与架构深度分析.md` §5）的连续编号 490–508 与「0x20 先 probe 得 base 490」的自然切分给出的是 **HDMI=490=0x20.off0，PCIE30X4/LIDAR/4G=506-508=0x21.off0-2** ——与本段写法相反。原厂 DT 节点本身无 gpio-line-names，两片切分应以原厂脚本+编号区间为准；`名字↔功能` 的映射（HUB/HDMI/AUDIO/LIDAR/4G 等 19 域）不受影响，且 HUB2=fcd00000、HUB20=fc800000(J9200) 已与逐口实测强咬合。
 - J2600 的 HUSB311 在 I2C6 `0x4e` 实读标准 ID 为 `2e99:0311`。原厂 DT 定义双数据角色、双电源角色、5V PDO 与 DP Alt Mode；当前为保证 ADB 稳定而禁用 TCPC。
 - 新插入的 `1bcf:0b09 SYX-230524-J HD Camera` 位于 J2901 上层的 USB2 伴随路径 `9-1.3`。`/dev/video0` 支持 MJPEG/YUYV 的 640×480、1280×720、1920×1080；V4L2 mmap 连读 30 帧约 20.36 FPS，帧哈希全部不同。`video1` 是辅助元数据节点。
 - 原机器人使用四路 USB Berxel iHawk100 深度相机，并兼容 Orbbec/Astra。原厂和当前 DT 的六路 CSI、DSI 父控制器均为 disabled；残留 panel 模板不等于已装 MIPI 屏或相机。
@@ -269,13 +270,13 @@ PCIe `fe170000` 上的 **Broadcom 449d**（WiFi 6E），实测 `wlan0` + `wlan1`
 
 同日短按 `SW8900` 后，COM7 立即重新出现 DDR 初始化、SPL、BL31、U-Boot、`Starting kernel` 与 Armbian 登录提示，过程中没有 systemd 关机序列；boot ID 从 `6779efa8-8ecb-4145-ba4e-86b508d5526c` 更新为 `af39a85c-d38b-4cb9-b489-f9a27521e57a`，eth0 随后恢复连接。因此 `SW8900` 已确认是硬复位/重启键。所有未知功能均不按编号猜测。
 
-计划于 2026-08-19 使用同一套 COM7 + SSH 流程复测 `SW9201`，逐项对比两个复位键的 DDR/SPL/BL31 启动链、U-Boot `reboot reason`、风扇/电源轨状态和 boot ID，以判断两者是同一复位网的冗余入口，还是分别控制 SoC 与整板/PMIC 复位域。在完成 A/B 对照前，只确认两者都会硬复位，不推断电气接线相同。
+2026-08-19 已完成 `SW9201` 复测：轻按后 COM7 立即出现 DDR、SPL、BL31、U-Boot、`Starting kernel` 和 Armbian 登录提示，U-Boot `reboot reason` 为 `(none)`，没有 systemd 关机序列，boot ID 更新且 eth0 恢复。确认它是硬复位/重启键。它与 `SW8900` 外部行为一致，但是否同一电气复位网络仍未证明。
 
 ### J9301 风扇关机联动结论（2026-08-18）
 
 SW9202 触发 virtual poweroff 后，系统网络和串口均停止，但 J9301 上的两线风扇继续转动。原厂 `agibot.dts` 与当前运行 DT 均无风扇节点，16 路 PWM 全部为 `disabled`；板端也没有 PWM 平台设备、`pwm-fan`、风扇 hwmon 或 cooling device。因此当前固件没有可用于关机联动的风扇控制接口，不能靠增加一条关机脚本可靠解决。
 
-下一步需实测 J9301 在运行态和关机态的电压，并在断电状态追线确认是否存在负载开关/MOSFET 使能脚。若 J9301 直接连接常供电轨，需要增加 GPIO/PMIC 控制的负载开关或 MOSFET；若板上已有使能脚，再将其建模为 DT `gpio-fan`/regulator 或 `pwm-fan`，并配置关机默认关闭。严禁为找风扇控制脚盲目切换未占用 GPIO。
+2026-08-19 现场万用表实测风扇电压为 5V（本次记录未区分运行/关机态读数）。下一步应在断电状态追线确认是否存在负载开关/MOSFET 使能脚。若 J9301 直接连接常供电轨，需要增加 GPIO/PMIC 控制的负载开关或 MOSFET；若板上已有使能脚，再将其建模为 DT `gpio-fan`/regulator 或 `pwm-fan`，并配置关机默认关闭。严禁为找风扇控制脚盲目切换未占用 GPIO。
 
 ## 未知连接器功能推导(2026-08-17,现场会话沉淀)
 

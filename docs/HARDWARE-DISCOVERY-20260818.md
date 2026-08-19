@@ -54,7 +54,7 @@ make the boot log look cleaner.
 
 | Connector | Best current identification | Evidence level | Remaining uncertainty |
 |---|---|---|---|
-| Dual RJ45/J6700 area | Two RTL8211F 1000BASE-T ports | Confirmed | Physical left/right mapping to eth0/eth1; eth1 traffic test |
+| Dual RJ45/J6700 area | Two RTL8211F 1000BASE-T ports | Confirmed | Physical left/right mapping to eth0/eth1; eth1 tested at 1000M/full with DHCP and 0% ping loss on 2026-08-19 |
 | J5000 | HDMI0 output | Confirmed | CEC/audio and long-duration display test |
 | USB3000, J3000, J2900, J2901 | Six USB 3.0 Type-A host ports through Genesys hubs | Confirmed | None for basic USB; per-port power-offset mapping remains |
 | J3300..J3600 | Four USB 3.0 Type-C host ports through VL805 | Confirmed | No evidence for PD or video on these four ports |
@@ -71,7 +71,7 @@ make the boot log look cleaner.
 | J9701/J9702 | Same terminated differential pair plus GND; J9701 adds +12 V | Confirmed topology / candidate protocol | CAN vs RS-485, polarity, controller mapping |
 | J9703 | Independent terminated differential pair plus GND | Confirmed electrical shape / candidate protocol | CAN vs RS-485, polarity, controller mapping |
 | J5001/J9303 | One GND plus one high-impedance low-level signal each | Confirmed electrical shape | Function unknown; do not inject voltage |
-| J9301 | Two-wire fan supply, remains powered after virtual poweroff | Confirmed | Voltage and whether a load switch exists |
+| J9301 | Two-wire 5 V fan supply, remains powered after virtual poweroff | Confirmed | Whether a load switch exists; this record does not distinguish running/off voltage |
 | J2000 | Main input: center positive, inner negative, third pin unknown | Partially confirmed | Input range/current and third-pin function |
 | ANT6300/ANT6301 | Two RF antenna connectors for the AP6275P-class module | Confirmed | Antenna-chain assignment |
 
@@ -127,6 +127,29 @@ test read 30 frames in 1.473 s (20.36 FPS); all 30 SHA-256 prefixes differed,
 with compressed frame sizes from 99,706 to 272,147 bytes. `/dev/video1` is the
 same camera's auxiliary metadata node, not a second image sensor.
 
+## 2026-08-19 regression snapshot
+
+The following checks were run on the Armbian `6.1.115-vendor-rk35xx` boot that
+began at 00:09 local board time:
+
+- No systemd units were failed. HYM8563 `rtc0` tracked NTP-synchronized system
+  time. The 233 GiB eMMC read 512 MiB sequentially in 1.649 s (about 325 MiB/s).
+- The J2901-upper UVC camera streamed 120 MJPEG frames at 720p without frame
+  errors; `v4l2-ctl` reported about 23.70 FPS. The nominal camera format remains
+  30 FPS, so this measures the current camera/link, not a changed controller.
+- `eth1` acquired DHCP address `192.168.88.88/24`, negotiated RTL8211F
+  1000 Mb/s full duplex, reached its gateway with 20/20 pings (0% loss, average
+  0.604 ms), and showed zero RX/TX drops/errors and zero relevant PHY counters.
+- With `wlan0` temporarily up, the AP6275P Wi-Fi path scanned nine BSS/SSID
+  entries; the interface was restored DOWN afterward. UART Bluetooth `hci0`
+  loaded the BCM4362A2 patch and enumerated through ttyS6.
+- Both `can0` and `can1` passed classic-CAN internal-loopback send/receive tests
+  at 500 kbit/s (`0x123/AGB-C0` and `0x456/AGB-C1`) and were restored DOWN.
+- ACM8625P remained card 1 with both PCM devices and its Master control at 75%.
+  No speaker was connected, so this is still a digital-path check only.
+- The NPU runtime loaded the preinstalled ResNet18 RKNN model and completed 100
+  inferences in 0.70 s (142.9 FPS, single-core fallback by model configuration).
+
 ## Capabilities that must not be advertised as baseboard interfaces
 
 - All six MIPI CSI hosts, CSI DPHYs and ISP paths are disabled in both the
@@ -154,5 +177,10 @@ same camera's auxiliary metadata node, not a second image sensor.
    temperature and sustained I/O.
 6. Trace J7002, J9400, J5001, J9303 and J2000 pin 3 with power removed. Do not
    infer protocols from connector shape alone.
-7. Re-test SW9201 against SW8900 on COM, including reset reason and power rails;
-   test SW8901/SW8902 as boot-held keys as well as short-press keys.
+7. Completed on 2026-08-19: SW9201 short-press produces the same externally
+   visible cold-boot chain as SW8900 (DDR, SPL, BL31, U-Boot, kernel, Armbian),
+   with U-Boot reboot reason `(none)` and no systemd shutdown. Electrical
+   reset-net identity remains unproven. Continue boot-held SW8901/SW8902 tests
+   as a low-priority follow-up.
+8. J9301 measured 5 V with a multimeter on 2026-08-19. Continue tracing with
+   power removed to determine whether a load-switch/MOSFET enable exists.
