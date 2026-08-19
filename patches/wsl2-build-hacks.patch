@@ -1,5 +1,5 @@
 # wsl2-build-hacks.patch
-# 让 armbian/build (@ 70a242f) 在 WSL2 + 代理 + 9p(drvfs) 下编译通过的 5 个框架源码改动。
+# 让 armbian/build (@ 70a242f) 在 WSL2 + 代理 + 9p(drvfs) 下编译通过的 6 个框架源码改动。
 # 用法: cd armbian-build && git apply ../patches/wsl2-build-hacks.patch
 # (setup.sh 会自动 apply;幂等——apply 前先 git checkout -- . 重置)
 #
@@ -16,6 +16,8 @@
 #      注入 APT::Sandbox::User "root" —— 9p 上 _apt 用户 fchmod 报 EPERM
 #   5. lib/functions/rootfs/apt-install.sh
 #      apt-get update 前打印 SDCARD 文件系统类型 —— 9p workaround 诊断告警
+#   6. lib/functions/general/git-ref2info.sh
+#      Makefile 探测 curl 增加连接/总超时 —— raw 源偶发无响应时避免构建无限挂起
 diff --git a/lib/functions/general/git.sh b/lib/functions/general/git.sh
 index 5c5042c..4f4000a 100644
 --- a/lib/functions/general/git.sh
@@ -119,3 +121,15 @@ index e2036ec..3aa2ea8 100644
  	debootstrap_wanted_dir="${SRC}/cache/sources/${debootstrap_name}"
  	debootstrap_version="$(sed 's/^## \[\([^]]*\)\].*/\1/; q' "${debootstrap_wanted_dir}/CHANGELOG.md")"
  	debootstrap_bin="${debootstrap_wanted_dir}/mmdebstrap"
+diff --git a/lib/functions/general/git-ref2info.sh b/lib/functions/general/git-ref2info.sh
+--- a/lib/functions/general/git-ref2info.sh
++++ b/lib/functions/general/git-ref2info.sh
+@@ -237,7 +237,7 @@ function memoized_git_ref_to_info() {
+ 		}
+ 
+ 		function obtain_makefile_body_from_url() {
+-			makefile_body="$(curl -sL --fail "${1}")" || {
++			makefile_body="$(curl -sL --fail --connect-timeout 10 --max-time 60 "${1}")" || {
+ 				display_alert "Failed to fetch Makefile from URL" "${1}" "warn"
+ 				return 1
+ 			}

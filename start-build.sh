@@ -57,8 +57,9 @@ setup_proxy() {
 		GW=$(ip route show default | awk '{print $3; exit}')
 		export http_proxy="http://${GW}:7897" https_proxy="http://${GW}:7897" \
 			ftp_proxy="http://${GW}:7897" all_proxy="http://${GW}:7897"
-		# github.armbian.com 直连 200、走代理 502,必须排除;其余国内镜像直连更快
+		# Keep only local and package mirrors direct; GitHub/GHCR must use Clash.
 		export no_proxy="localhost,127.0.0.1,::1,192.168.0.0/16,10.0.0.0/8,.tuna.tsinghua.edu.cn,.bfsu.edu.cn,.aliyun.com,.ustc.edu.cn,github.armbian.com"
+		export NO_PROXY="$no_proxy"
 		echo "===== proxy: WSL 网关 ${GW}:7897 (Clash Verge) ====="
 	else
 		# Linux / macOS:优先用用户已有的 http_proxy;否则检测本地 7897;否则直连
@@ -74,6 +75,8 @@ setup_proxy() {
 	fi
 }
 setup_proxy
+export GITHUB_MIRROR=direct
+export GHCR_MIRROR=nju
 
 # ---- binfmt 预检(Linux 原生;qemu 没装会在 chroot 阶段 Exec format error)----
 if [ "$PLATFORM" = linux ]; then
