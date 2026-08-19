@@ -67,6 +67,7 @@ COMMON=(
 	--add-host host.docker.internal:host-gateway
 	-v "$ROOT":"$MNT" -w "$WD"
 	-e TERM="${TERM:-xterm}"
+	-e FORCE_UNSAFE_CONFIGURE=1
 	"${PROXY_ENV[@]}"
 )
 
