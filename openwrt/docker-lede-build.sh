@@ -14,7 +14,8 @@
 #   bash docker-lede-build.sh                       # 完整编译(装配 + make -jN)
 #   bash docker-lede-build.sh target/linux/compile  # 只编内核/DTS(快速验证 DTS,bring-up 用)
 #   bash docker-lede-build.sh --shell               # 进容器交互 shell(调试)
-#   PROXY_PORT=7890 bash docker-lede-build.sh       # 改代理端口(默认 7897 = Clash Verge)
+#   PROXY_HOST=192.168.88.128 PROXY_PORT=7897 bash docker-lede-build.sh
+#                                                     # Linux 服务器代理不在 Docker 宿主机本机时指定
 #   DIRECT=1 bash docker-lede-build.sh              # 不传代理(feeds 已装/cache 齐时用)
 set -euo pipefail
 
@@ -25,6 +26,7 @@ IMG="agibot-lede-builder"
 MNT="/agibot"                 # 容器内挂载点 = 仓库根
 WD="$MNT/openwrt"             # 工作目录 = openwrt/(含 lede/ 子树)
 PROXY_PORT="${PROXY_PORT:-7897}"
+PROXY_HOST="${PROXY_HOST:-host.docker.internal}"
 NP="localhost,127.0.0.1,::1"
 DIRECT="${DIRECT:-0}"
 
@@ -50,11 +52,11 @@ if [ "$DIRECT" = 1 ]; then
 	echo ">>> DIRECT=1:不传代理(feeds 已装 / cache 齐时用)"
 else
 	PROXY_ENV=(
-		-e http_proxy="http://host.docker.internal:${PROXY_PORT}"
-		-e https_proxy="http://host.docker.internal:${PROXY_PORT}"
+		-e http_proxy="http://${PROXY_HOST}:${PROXY_PORT}"
+		-e https_proxy="http://${PROXY_HOST}:${PROXY_PORT}"
 		-e no_proxy="$NP" -e NO_PROXY="$NP"
-		-e HTTP_PROXY="http://host.docker.internal:${PROXY_PORT}"
-		-e HTTPS_PROXY="http://host.docker.internal:${PROXY_PORT}"
+		-e HTTP_PROXY="http://${PROXY_HOST}:${PROXY_PORT}"
+		-e HTTPS_PROXY="http://${PROXY_HOST}:${PROXY_PORT}"
 	)
 fi
 COMMON=(
