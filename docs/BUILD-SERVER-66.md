@@ -1,24 +1,24 @@
-# Armbian on the 66 build server
+# 66 服务器 Armbian 编译指南
 
-This is the reproducible procedure used to build the AGIBOT Armbian image on the Ubuntu 26.04 server at `192.168.88.66`. The examples assume the SSH user is `cennac`; use your normal SSH authentication method and do not store the password in the repository.
+本文记录在 `192.168.88.66` 的 Ubuntu 26.04 服务器上编译 AGIBOT Armbian 镜像的可复现流程。示例假设 SSH 用户为 `cennac`；请使用自己的认证方式，不要把密码写进仓库。
 
-## Tested environment
+## 实测环境
 
-- Host: Ubuntu 26.04 LTS, 20 CPU cores, 30 GiB RAM
-- Build root: `/home/cennac/agibot-armbian`
-- Armbian framework: submodule commit `70a242faa308c57be5ed636897dfee77de350773`
-- Repository baseline: `cennac/agibot@78e2875d329ec8156e0e3180fed9ded47b29a758`
-- Proxy: `http://192.168.88.128:7897`
-- GHCR mirror: `nju`
+- 服务器：Ubuntu 26.04 LTS，20 核 CPU，30 GiB 内存
+- 编译目录：`/home/cennac/agibot-armbian`
+- Armbian 框架：submodule 提交 `70a242faa308c57be5ed636897dfee77de350773`
+- 仓库基准：`cennac/agibot@78e2875d329ec8156e0e3180fed9ded47b29a758`
+- 代理：`http://192.168.88.128:7897`
+- GHCR 镜像：`nju`
 
-The successful build on 2026-08-20 took 49 minutes 43 seconds from a cold cache and produced:
+2026-08-20 的成功构建耗时 49 分 43 秒，产物为：
 
 ```text
 Agibot-Armbian_26.08.0-trunk_Agibot_jammy_vendor_6.1.115_minimal.img
 SHA256: 00b4a79e520803a188d79045a937272881328d141ca512e5d2e77bf6cfc53569
 ```
 
-## 1. Clone with the proxy
+## 1. 使用代理克隆仓库
 
 ```bash
 cd ~
@@ -33,11 +33,11 @@ git clone https://github.com/cennac/agibot.git agibot-armbian
 cd agibot-armbian
 ```
 
-GitHub direct connections timed out from this server, while the proxy above worked. Keep local LAN addresses and Chinese package mirrors in `no_proxy`.
+这台服务器直连 GitHub 会超时，走上面的代理可用。`no_proxy` 需要保留本地网段和国内软件源，避免局域网与镜像站流量绕代理。
 
-## 2. Install host dependencies
+## 2. 安装编译依赖
 
-On Ubuntu 26.04, `qemu-user-static` is effectively replaced by the binfmt package. If the generic dependency script fails on that package name, install `qemu-user-binfmt` directly:
+Ubuntu 26.04 上 `qemu-user-static` 已变成过渡/虚拟包，实际应安装 `qemu-user-binfmt`：
 
 ```bash
 sudo apt update
@@ -49,18 +49,18 @@ sudo systemctl restart systemd-binfmt
 test -f /proc/sys/fs/binfmt_misc/qemu-aarch64
 ```
 
-The final `test` command must succeed; otherwise the arm64 rootfs chroot will later fail with `Exec format error`.
+最后的 `test` 必须成功；否则后续 arm64 rootfs chroot 会报 `Exec format error`。
 
-## 3. Assemble and build
+## 3. 装配仓库并启动编译
 
 ```bash
 cd ~/agibot-armbian
 bash setup.sh
 ```
 
-On this native Linux ext4 path, `setup.sh` initializes the pinned Armbian submodule, skips the WSL2-only filesystem patch, and installs the board userpatches.
+服务器是原生 Linux ext4 路径，`setup.sh` 会初始化锁定的 Armbian submodule、跳过 WSL2 专用补丁，并装配板级 userpatches。
 
-Start the build in a root environment so later loop-device, mount, and chroot operations do not stop to ask for `sudo` after the script has already detached into the background:
+用 root 环境启动编译，避免脚本进入后台后，loop 设备、挂载和 chroot 操作再触发无终端的 `sudo` 密码提示：
 
 ```bash
 sudo env \
@@ -73,31 +73,31 @@ sudo env \
   bash start-build.sh
 ```
 
-`start-build.sh` runs this Armbian command in the background and writes the complete log:
+`start-build.sh` 会在后台执行下面命令，并把完整日志写入 `output/build.log`：
 
 ```bash
 ./compile.sh agibot EXPERT=yes DOWNLOAD_MIRROR=china
 ```
 
-## 4. Monitor progress
+## 4. 跟踪编译进度
 
 ```bash
 cd ~/agibot-armbian/armbian-build
 tail -f output/build.log
 ```
 
-Useful completion checks:
+常用完成检查：
 
 ```bash
 grep -a FINISHED_EXIT output/build.log
 find output/images -maxdepth 1 -type f -printf '%s %f\n' | sort -nr
 ```
 
-`FINISHED_EXIT=0` means success. If it is nonzero, inspect the tail of `output/build.log` and the matching UUID log under `output/logs/`; do not delete `cache/`, because the kernel and rootfs caches make a retry much faster.
+`FINISHED_EXIT=0` 表示成功。如果非 0，优先查看 `output/build.log` 尾部和 `output/logs/` 下对应的 UUID 日志；不要删除 `cache/`，内核与 rootfs 缓存会让重试快很多。
 
-## 5. Validate and retrieve
+## 5. 校验并取回产物
 
-On the server:
+在服务器上先做 SHA 校验和镜像内容验证：
 
 ```bash
 cd ~/agibot-armbian/armbian-build/output/images
@@ -108,9 +108,9 @@ bash scripts/verify-image.sh \
   armbian-build/output/images/Agibot-Armbian_26.08.0-trunk_Agibot_jammy_vendor_6.1.115_minimal.img
 ```
 
-The 2026-08-20 build passed checksum verification and all 12 image-content checks, including the Agibot DTB, 6.1 DT adaptations, ACM8625P firmware in rootfs and initramfs, resize service, hostname, and branding.
+2026-08-20 构建通过了 SHA 校验，并通过全部 12 项镜像内容检查，包括 Agibot DTB、6.1 DT 适配、rootfs 与 initramfs 中的 ACM8625P 固件、扩容服务、主机名和品牌信息。
 
-From another Linux machine, retrieve the image with visible transfer progress:
+在另一台 Linux 机器上取回产物，并显示实时传输进度：
 
 ```bash
 rsync -av --partial --info=progress2 \
@@ -120,8 +120,8 @@ rsync -av --partial --info=progress2 \
   ./
 ```
 
-Then verify the downloaded copy against its `.sha` file before writing it to media.
+下载完成后，先按 `.sha` 文件校验，再写入存储介质。
 
-## Repository-state note
+## 仓库状态说明
 
-The successful server build used the repository baseline above plus two locally synchronized changes: `start-build.sh` exports `core.filemode=false`, and `overlay/etc/issue` starts with `Agibot-Armbian`. Push those changes before doing a completely fresh clone-and-build if you want the branding check to pass without manually copying files again. The filemode setting is mainly useful for a Windows/DrvFs checkout; it is harmless on the server's ext4 filesystem.
+这次成功构建除使用上述仓库基准外，还同步了两个本地修正：`start-build.sh` 导出 `core.filemode=false`，`overlay/etc/issue` 以 `Agibot-Armbian` 开头。这两个修正已在后续提交 `4d80e09d323a44dc016afe5245fdf87889451847` 入库；从该提交之后全新 clone 可直接编译并通过品牌检查。`core.filemode=false` 主要针对 Windows/DrvFs 检出，在服务器 ext4 上无副作用。
