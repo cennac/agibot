@@ -55,8 +55,10 @@ else
 		-e http_proxy="http://${PROXY_HOST}:${PROXY_PORT}"
 		-e https_proxy="http://${PROXY_HOST}:${PROXY_PORT}"
 		-e no_proxy="$NP" -e NO_PROXY="$NP"
-		-e HTTP_PROXY="http://${PROXY_HOST}:${PROXY_PORT}"
-		-e HTTPS_PROXY="http://${PROXY_HOST}:${PROXY_PORT}"
+	-e HTTP_PROXY="http://${PROXY_HOST}:${PROXY_PORT}"
+	-e HTTPS_PROXY="http://${PROXY_HOST}:${PROXY_PORT}"
+	-e GOPROXY="https://goproxy.cn,direct"
+	-e GOSUMDB=off
 	)
 fi
 COMMON=(
@@ -87,9 +89,9 @@ fi
 echo ">>> 挂载 $ROOT → $MNT,工作目录 $WD"
 # safe.directory:容器 root 访问 ext4 上 host 用户拥有的 submodule 触发 git dubious ownership
 docker run "${COMMON[@]}" "$IMG" bash -c "
-	git config --global --add safe.directory '*' &&
-	cd openwrt && bash setup-openwrt.sh &&
-	cd lede && $MAKE 2>&1 | tee build.log; rc=\${PIPESTATUS[0]};
+git config --global --add safe.directory '*' &&
+cd openwrt && bash setup-openwrt.sh && python3 patch-dockerd.py &&
+cd lede && $MAKE 2>&1 | tee build.log; rc=\${PIPESTATUS[0]};
 	echo FINISHED_EXIT=\$rc >> build.log; exit \$rc
 "
 echo ""

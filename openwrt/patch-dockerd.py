@@ -2,10 +2,13 @@
 # patch-docker-gitcommit: docker + dockerd 两个 Makefile 都有 "Verify PKG_GIT_SHORT_COMMIT"
 # 网络校验(git-short-commit.sh 要 git ls-remote github;本机 git+gnutls 过 Clash 代理握手崩)。
 # 改成字面量(= Makefile 里硬编码值),校验恒过,不影响编译用的 GITCOMMIT。容错:匹配到才改。
+import pathlib
 import re
+
+LEDE = pathlib.Path(__file__).resolve().parent / "lede"
 files = [
-    "/home/cennac/lede/feeds/packages/utils/dockerd/Makefile",
-    "/home/cennac/lede/feeds/packages/utils/docker/Makefile",
+    str(LEDE / "feeds/packages/utils/dockerd/Makefile"),
+    str(LEDE / "feeds/packages/utils/docker/Makefile"),
 ]
 # 匹配 EXPECTED_PKG_GIT_SHORT_COMMIT=$$$( $(CURDIR)[...]/git-short-commit.sh ... ); 两变体
 pat = re.compile(
