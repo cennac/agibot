@@ -90,7 +90,7 @@ echo ">>> 挂载 $ROOT → $MNT,工作目录 $WD"
 # safe.directory:容器 root 访问 ext4 上 host 用户拥有的 submodule 触发 git dubious ownership
 docker run "${COMMON[@]}" "$IMG" bash -c "
 git config --global --add safe.directory '*' &&
-cd openwrt && bash setup-openwrt.sh && python3 patch-dockerd.py &&
+bash setup-openwrt.sh && python3 patch-dockerd.py &&
 cd lede && $MAKE 2>&1 | tee build.log; rc=\${PIPESTATUS[0]};
 	echo FINISHED_EXIT=\$rc >> build.log; exit \$rc
 "
