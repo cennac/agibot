@@ -18,7 +18,7 @@ RUN set -eux; \
 		build-essential gcc g++ binutils make bc bison flex \
 		libncurses-dev libssl-dev zlib1g-dev \
 		gawk python3 python3-distutils python3-setuptools python3-dev python-is-python3 python3-pyelftools \
-		git curl wget rsync unzip xz-utils zstd ca-certificates \
+		git curl wget rsync unzip xz-utils zstd ca-certificates swig \
 		perl patch diffutils file e2fsprogs \
 		sudo; \
 	rm -rf /var/lib/apt/lists/*
