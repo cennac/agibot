@@ -1,0 +1,40 @@
+#!/bin/bash
+# agibot-bt-setup — 首次开机补齐蓝牙用户态(bluez/bluetoothd)并把 hci0 拉起
+#
+# 为什么在板上做:agibot-bt-attach(ldisc)只把 ttyS6 注册成 hci0,把接口拉起
+# 要靠 bluez 的 bluetoothd;镜像构建期 chroot(qemu 模拟)跑 apt 有静默失败
+# 前科(2026-08-18 实测),故与 agibot-npu-setup 同模式:首开机原生安装。
+# 2026-08-19 实机验证此流程:装 bluez → enable bluetooth → hci0 UP RUNNING
+# (BCM HCI 5.1,命令通道 0 errors)。成功后自禁用;失败保留重试。
+set -eu
+export DEBIAN_FRONTEND=noninteractive
+
+hci_is_up() { hciconfig hci0 2>/dev/null | grep -q 'UP RUNNING'; }
+
+if [ -x /usr/lib/bluetooth/bluetoothd ] && hci_is_up; then
+	logger -t agibot-bt-setup "hci0 already UP (bluez present)"
+	systemctl disable agibot-bt-setup.service 2>/dev/null || true
+	exit 0
+fi
+
+# jammy: hciconfig/hcitool 已并入 bluez 主包,无单独 bluez-utils
+if ! apt-get install -y -qq bluez; then
+	apt-get update -qq
+	apt-get install -y -qq bluez
+fi
+
+systemctl enable --now bluetooth.service
+
+# bluetoothd 起来后 hci0 才 UP,轮询等待最多 15s
+for _ in $(seq 1 15); do
+	hci_is_up && break
+	sleep 1
+done
+
+if ! hci_is_up; then
+	logger -t agibot-bt-setup "ERROR: bluez installed but hci0 not UP after 15s"
+	exit 1
+fi
+
+logger -t agibot-bt-setup "bluez ready, hci0 UP RUNNING ($(hciconfig hci0 | sed -n 's/.*BD Address: \([0-9A-F:]*\).*/\1/p'))"
+systemctl disable agibot-bt-setup.service 2>/dev/null || true

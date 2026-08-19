@@ -105,4 +105,11 @@ chmod 0755 /usr/local/sbin/agibot-eth-revive 2>/dev/null || true
 chmod 0644 /etc/systemd/system/agibot-eth-revive.service 2>/dev/null || true
 systemctl enable agibot-eth-revive.service 2>/dev/null || true
 
+# 10) 蓝牙用户态补齐:bt-attach(ldisc)只挂出 hci0,拉起接口需要 bluez 的
+#     bluetoothd;镜像里不带包(chroot/qemu 跑 apt 有静默失败前科),由
+#     agibot-bt-setup 首开机原生安装(2026-08-19 实机验证 hci0 UP RUNNING)
+chmod 0755 /usr/local/sbin/agibot-bt-setup 2>/dev/null || true
+chmod 0644 /etc/systemd/system/agibot-bt-setup.service 2>/dev/null || true
+systemctl enable agibot-bt-setup.service 2>/dev/null || true
+
 exit 0
