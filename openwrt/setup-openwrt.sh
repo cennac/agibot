@@ -21,6 +21,8 @@ LEDE="lede"
 DTS_REL="target/linux/rockchip/files/arch/arm64/boot/dts/rockchip"
 ROOTFS_FILES_REL="files"
 RKNPU_PACKAGE_REL="package/kernel/rknpu"
+AP6275P_FIRMWARE_PACKAGE_REL="package/firmware/ap6275p-firmware"
+AGIBOT_BT_ATTACH_PACKAGE_REL="package/agibot/agibot-bt-attach"
 
 # ---- 平台检测 ----
 detect_platform() {
@@ -140,13 +142,24 @@ rm -f "$LEDE/package/boot/uboot-rockchip/patches/112-pylibfdt-python3-api.patch"
 rm -f "$LEDE/package/boot/uboot-rockchip/patches/211-agibot-rk3588-sw9200-loader.patch"
 rm -f "$LEDE/target/linux/rockchip/patches-6.12/0091-agibot-stmmac-dma-debug.patch"
 rm -f "$LEDE/target/linux/rockchip/patches-6.12/0100-agibot-rk806-pmic-reset-func.patch"
+rm -rf "$LEDE/$AP6275P_FIRMWARE_PACKAGE_REL"
+rm -rf "$LEDE/$AGIBOT_BT_ATTACH_PACKAGE_REL"
 
 # 3. apply 补丁 + 安装 DTS
 echo ">>> [3/5] apply 设备定义补丁 + 安装板级 DTS..."
 shopt -s nullglob
 for p in patches/*.patch; do
+	# These two patches were macOS-host workarounds. LEDE master has since
+	# rearranged tools/Makefile, while all supported builds now run on 66.
+	case "$(basename "$p")" in
+	004-tools-skip-elfutils-host-on-darwin.patch|\
+	006-tools-skip-coreutils-host-on-darwin.patch)
+		echo "    skip Darwin-only patch $(basename "$p")"
+		continue
+		;;
+	esac
 	echo "    apply $(basename "$p")"
-	git -C "$LEDE" apply "$SCRIPT_DIR/$p"
+	git -C "$LEDE" apply --ignore-whitespace "$SCRIPT_DIR/$p"
 done
 for p in uboot-patches/*.patch; do
 	echo "    install U-Boot patch $(basename "$p")"
@@ -165,6 +178,10 @@ install -m 0755 "files/usr/sbin/agibot-usb-port-power" "$LEDE/$ROOTFS_FILES_REL/
 install -m 0755 "files/etc/init.d/agibot-usb" "$LEDE/$ROOTFS_FILES_REL/etc/init.d/agibot-usb"
 mkdir -p "$LEDE/$(dirname "$RKNPU_PACKAGE_REL")"
 cp -a "$RKNPU_PACKAGE_REL" "$LEDE/$RKNPU_PACKAGE_REL"
+mkdir -p "$LEDE/$(dirname "$AP6275P_FIRMWARE_PACKAGE_REL")"
+cp -a "$AP6275P_FIRMWARE_PACKAGE_REL" "$LEDE/$AP6275P_FIRMWARE_PACKAGE_REL"
+mkdir -p "$LEDE/$(dirname "$AGIBOT_BT_ATTACH_PACKAGE_REL")"
+cp -a "$AGIBOT_BT_ATTACH_PACKAGE_REL" "$LEDE/$AGIBOT_BT_ATTACH_PACKAGE_REL"
 
 # 4. feeds
 echo ">>> [4/5] feeds update/install(coolsnowwolf 全家桶)..."
@@ -176,7 +193,7 @@ for p in feed-patches/*.patch; do
 	if git -C "$LEDE" apply --reverse --check "$SCRIPT_DIR/$p" >/dev/null 2>&1; then
 		echo "      已应用,跳过"
 	else
-		git -C "$LEDE" apply "$SCRIPT_DIR/$p"
+		git -C "$LEDE" apply --ignore-whitespace "$SCRIPT_DIR/$p"
 	fi
 done
 ( cd "$LEDE" && ./scripts/feeds install -a )

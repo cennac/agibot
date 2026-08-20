@@ -126,29 +126,40 @@ RKNPU 有三条 `request region -EBUSY` 日志,这是驱动先尝试 `devm_iorem
 - SW9200 的 U-Boot Loader/Maskrom 路径未改;此前已实测可用,最终镜像路径
   与明天 SW9201 一起回归。
 
-**下一阶段已明确的缺口**:
+**2026-08-21 NPU / AP6275P 组合补全(待板测)**:
 
-- NPU 当前是保守固定频:DTS 将 `CLK_NPU_DSU0` 固定在 200 MHz,板上
-  `/sys/class/devfreq` 没有 NPU 设备;本仓暂只带 RKNPU DRM/ioctl 驱动,尚未移植
-  vendor `rknpu_devfreq.c` 与 OPP/电压表。下一步先补动态调频,再做 RKNN runtime
-  实际推理验证。
-- AP6275P Wi-Fi 硬件链路已经打通,但 LEDE 镜像未带 `14e4:449d` 驱动和固件,
-  因此没有 `wlan0`;蓝牙还需要同步移植 UART/HCI attach 与 `BCM4362A2.hcd`。
-  Wi-Fi/蓝牙应作为一个 AP6275P combo 包处理,避免只修 PCIe 不修固件。
+- RKNPU 不再把 `CLK_NPU_DSU0` 固定在 200 MHz。板级 DTS 提供 300–1000 MHz
+  OPP/电压表,驱动侧用 generic OPP + devfreq(`simple_ondemand`)绑定
+  `clk_npu` 与 `vdd_npu_s0`;busy 统计来自三个 NPU subcore 的硬件
+  `total_busy_time`,三核满载按 100% 计算,并随调频同步调压。
+- AP6275P Wi-Fi 使用 PCIe `14e4:449d`(BCM43752)。LEDE 当前 mac80211
+  backports 已原生支持该 ID,无需重复移植 Armbian 内核 patch;镜像新增
+  `brcmfmac43752-pcie.bin/.txt/.clm_blob` 与 `agibot,mb0002-v2` 板级 NVRAM
+  链接,并默认安装 `kmod-brcmfmac`。
+- AP6275P 蓝牙使用 UART6/ttyS6 + `BCM4362A2.hcd`。因板端 BCM nCTS 未接,
+  `hci_bcm` serdev 与 `btattach` 会开启 CRTSCTS 并把 TX 门死;本版改为
+  `agibot-bt-attach` 用户态持有 ttyS6、显式关闭 CRTSCTS、设置 N_HCI 后加载
+  BCM protocol。`BT_REG_ON=GPIO1_A6`、`BT_WAKE=GPIO3_B2` 在 DTS 中拉高。
+- 2026-08-21 板测顺序:NPU 查看
+  `/sys/class/devfreq/fdab0000.npu/{governor,cur_freq,available_frequencies}`;
+  Wi-Fi 查看 `dmesg | grep -Ei 'brcmfmac|43752|449d'` 并执行 `iw dev wlan0 scan`;
+  蓝牙确认 `agibot-bt-attach` 进程、`hci0` 与 `BCM4362A2` firmware 日志。
 - 当前镜像未带 UVC/HID 内核包:摄像头和键盘能 USB 枚举,但无 `/dev/video*`
   与 `/dev/input`;如需在 LEDE 本机使用,加入 `kmod-video-uvc` 与 `kmod-usb-hid`。
 
-## 已构建产物(2026-08-20 USB BusyBox/VL805 修订版,66 服务器原生编译)
+## 已构建产物(2026-08-21 NPU DVFS/AP6275P 修订版,66 服务器原生编译)
 
 | 镜像 | 大小(gz) | 解压 | sha256 |
 |---|---|---|---|
-| `openwrt-rockchip-armv8-agibot_mb0002-v2-squashfs-sysupgrade.img.gz` | 124 MiB | 2.13 GiB | `c9be967159258571bea1452b7603af164f07fe8d8bdc11b66f7c302fcf39d64a` |
-| `openwrt-rockchip-armv8-agibot_mb0002-v2-ext4-sysupgrade.img.gz` | 159 MiB | 2.13 GiB | `cc557909b34a6ded35099a0b2683392e86547abd665bba4ae1664c46fc214003` |
+| `openwrt-rockchip-armv8-agibot_mb0002-v2-squashfs-sysupgrade.img.gz` | 126 MiB | 2.13 GiB | `25150a665f493e01772db81db03d4e5e913fada9de70ad38ba6101e96df699d3` |
+| `openwrt-rockchip-armv8-agibot_mb0002-v2-ext4-sysupgrade.img.gz` | 162 MiB | 2.13 GiB | `d00bcbe5c166297e3d624c2de47252798819e3b559125c9d6c4504ea8b4400f8` |
 
-本地归档:`../../artifacts/lede-usb-busybox-vl805-20260820/`
-(包含 manifest/buildinfo、板卡 DTB、U-Boot DTB、idbloader、U-Boot ITB 和三份 66 构建
-日志;sysupgrade/manifest/buildinfo 均已按 `sha256sums` 在本机复验)。远端构建
-`FINISHED_EXIT=0`;最终镜像已在 2026-08-20 整板回归,关键结果见上文。
+本地归档:`../../artifacts/lede-npu-devfreq-wifi-bt-20260821/`
+(包含 manifest/buildinfo、板卡 DTB、idbloader、U-Boot ITB、关键 ipk 与 66 构建
+日志;sysupgrade/manifest/buildinfo 均已按 `sha256sums` 在本机复验,另生成
+`SHA256SUMS.local`)。远端完整构建 `FINISHED_EXIT=0`;单包强制重编 RKNPU 后,
+模块内确认包含 generic OPP / devfreq 字符串。板卡待测项仍以 NPU 调频、Wi-Fi
+扫描、蓝牙 `hci0` 为准。
 
 ⚠️ 本目录 ext4 的 `.gz` 若时间戳是 08-14 且带 `_STALE-*.txt` 标记,是旧构建被
 Windows 进程锁住删不掉——用同目录解压版 `.img`(08-15)或 WSL `~/lede/bin/...` 的新 gz。

@@ -139,8 +139,49 @@
 		vin-supply = <&vcc12v_dcin>;
 	};
 
-	/* RKNN Runtime compatible NPU device. Keep clk_npu at a conservative
-	 * 200 MHz until the vendor OPP/devfreq helpers are ported to mainline. */
+	/*
+	 * Conservative RK3588 NPU OPPs. vdd_npu_s0 is an RK8602 rail constrained
+	 * to 0.55-0.95 V, so these voltages match the vendor BSP operating range.
+	 */
+	npu_opp_table: npu-opp-table {
+		compatible = "operating-points-v2";
+
+		opp-300000000 {
+			opp-hz = /bits/ 64 <300000000>;
+			opp-microvolt = <700000 700000 950000>;
+		};
+		opp-400000000 {
+			opp-hz = /bits/ 64 <400000000>;
+			opp-microvolt = <700000 700000 950000>;
+		};
+		opp-500000000 {
+			opp-hz = /bits/ 64 <500000000>;
+			opp-microvolt = <700000 700000 950000>;
+		};
+		opp-600000000 {
+			opp-hz = /bits/ 64 <600000000>;
+			opp-microvolt = <700000 700000 950000>;
+		};
+		opp-700000000 {
+			opp-hz = /bits/ 64 <700000000>;
+			opp-microvolt = <700000 700000 950000>;
+		};
+		opp-800000000 {
+			opp-hz = /bits/ 64 <800000000>;
+			opp-microvolt = <750000 750000 950000>;
+		};
+		opp-900000000 {
+			opp-hz = /bits/ 64 <900000000>;
+			opp-microvolt = <800000 800000 950000>;
+		};
+		opp-1000000000 {
+			opp-hz = /bits/ 64 <1000000000>;
+			opp-microvolt = <850000 850000 950000>;
+		};
+	};
+
+	/* RKNN Runtime compatible NPU device. Devfreq starts at 300 MHz and
+	 * scales this table with the driver's per-core hardware busy counters. */
 	rknpu: npu@fdab0000 {
 		compatible = "rockchip,rk3588-rknpu";
 		reg = <0x0 0xfdab0000 0x0 0x10000>,
@@ -157,7 +198,8 @@
 		clock-names = "clk_npu", "aclk0", "aclk1", "aclk2",
 			      "hclk0", "hclk1", "hclk2", "pclk";
 		assigned-clocks = <&cru CLK_NPU_DSU0>;
-		assigned-clock-rates = <200000000>;
+		assigned-clock-rates = <300000000>;
+		operating-points-v2 = <&npu_opp_table>;
 		resets = <&cru SRST_A_RKNN0>, <&cru SRST_A_RKNN1>,
 			 <&cru SRST_A_RKNN2>, <&cru SRST_H_RKNN0>,
 			 <&cru SRST_H_RKNN1>, <&cru SRST_H_RKNN2>;
@@ -805,6 +847,35 @@
 };
 &usb_host2_xhci { status = "okay"; };
 
+/* AP6275P Bluetooth: BCM4362A2 on UART6 at its ROM speed (115200).
+ * BT_REG_ON/BT_WAKE are ordinary GPIOs. Keep this UART a plain tty: the
+ * hci_bcm serdev and btattach paths enable CRTSCTS, while this board's BCM
+ * nCTS pin is unwired and would gate TX forever.
+ */
+&uart6 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart6m1_xfer &uart6m1_rtsn>;
+	status = "okay";
+};
+
+&gpio1 {
+	bt-reg-on-hog {
+		gpio-hog;
+		gpios = <RK_PA6 GPIO_ACTIVE_HIGH>;
+		line-name = "BT_REG_ON";
+		output-high;
+	};
+};
+
+&gpio3 {
+	bt-wake-hog {
+		gpio-hog;
+		gpios = <RK_PB2 GPIO_ACTIVE_HIGH>;
+		line-name = "BT_WAKE";
+		output-high;
+	};
+};
+
 /*
  * ===== PCIe 扩展(2026-08-17 增补)=====
  * 引脚/供电值取自 5.10 BSP 的三路 okay 控制器;写法照 LEDE rk3588-armsom-sige7.dts
@@ -812,7 +883,7 @@
  *   pcie3x4  (fe150000, Gen3 x4)= gpio4 RK_PB6 —— M.2/4G 主扩展(J5001 侧)
  *   pcie2x1l0(fe170000, Gen2 x1)= gpio1 RK_PB4
  *   pcie2x1l2(fe190000, Gen2 x1)= gpio3 RK_PD1
- * 板上 WiFi(AP6275P)是 SDIO 接口,不占 PCIe;USB 口接的 4G 棒走 usb_host2_xhci。
+ * AP6275P Wi-Fi(BCM43752/14e4:449d)挂在 pcie2x1l0;USB 口可接 4G 棒。
  *
  * 与 armbian 路线的差异:armbian(vendor 6.1)侧 PCIe 三路 probe -22 未解
  * (dmesg "invalid resource"/"Failed to initialize host",ranges 与 dfi 修复后仍在,

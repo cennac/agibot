@@ -32,9 +32,12 @@
 #include <linux/pm_runtime.h>
 #include <linux/regmap.h>
 #include <linux/of_address.h>
-
+#include <linux/nvmem-consumer.h>
 #ifndef FPGA_PLATFORM
+#if __has_include(<soc/rockchip/rockchip_iommu.h>)
+#define RKNPU_VENDOR_IOMMU_STATUS 1
 #include <soc/rockchip/rockchip_iommu.h>
+#endif
 #endif
 
 #include "rknpu_ioctl.h"
@@ -1013,16 +1016,16 @@ static int rknpu_power_off(struct rknpu_device *rknpu_dev)
 	struct device *dev = rknpu_dev->dev;
 
 #ifndef FPGA_PLATFORM
-	int ret;
-	bool val;
-
 	rknpu_devfreq_lock(rknpu_dev);
 #endif
 
 	pm_runtime_put_sync(dev);
 
 	if (rknpu_dev->multiple_domains) {
-#ifndef FPGA_PLATFORM
+#ifdef RKNPU_VENDOR_IOMMU_STATUS
+		int ret;
+		bool val;
+
 		/*
 		 * Because IOMMU's runtime suspend callback is asynchronous,
 		 * So it may be executed after the NPU is turned off after PD/CLK/VD,
@@ -1032,16 +1035,17 @@ static int rknpu_power_off(struct rknpu_device *rknpu_dev)
 		 * If pm runtime framework can handle this issue in the future, remove
 		 * this.
 		 */
-		ret = readx_poll_timeout(rockchip_iommu_is_enabled, dev, val,
-					 !val, NPU_MMU_DISABLED_POLL_PERIOD_US,
-					 NPU_MMU_DISABLED_POLL_TIMEOUT_US);
-		if (ret) {
+			ret = readx_poll_timeout(rockchip_iommu_is_enabled, dev, val,
+						 !val, NPU_MMU_DISABLED_POLL_PERIOD_US,
+						 NPU_MMU_DISABLED_POLL_TIMEOUT_US);
+			if (ret) {
 			LOG_DEV_ERROR(dev, "iommu still enabled\n");
 			pm_runtime_get_sync(dev);
 			rknpu_devfreq_unlock(rknpu_dev);
-			return ret;
-		}
-#else
+				return ret;
+			}
+#else /* !RKNPU_VENDOR_IOMMU_STATUS */
+		/* Mainline Rockchip IOMMU does not export the vendor status API. */
 		if (rknpu_dev->iommu_en)
 			msleep(20);
 #endif
@@ -1230,8 +1234,7 @@ static int rknpu_get_invalid_core_mask(struct device *dev)
 
 	if (of_property_match_string(dev->of_node, "nvmem-cell-names",
 				     "cores") >= 0) {
-		ret = rockchip_nvmem_cell_read_u8(dev->of_node, "cores",
-						  &invalid_core_mask);
+		ret = nvmem_cell_read_u8(dev, "cores", &invalid_core_mask);
 		/* The default valid npu cores for RK3583 are core0 and core1 */
 		invalid_core_mask |= RKNPU_CORE2_MASK;
 		if (ret) {
@@ -1465,7 +1468,7 @@ static int rknpu_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_remove_drv;
 
-#ifndef FPGA_PLATFORM
+#if IS_ENABLED(CONFIG_PM_DEVFREQ)
 	rknpu_devfreq_init(rknpu_dev);
 #endif
 
@@ -1517,7 +1520,7 @@ err_remove_wq:
 	destroy_workqueue(rknpu_dev->power_off_wq);
 
 err_devfreq_remove:
-#ifndef FPGA_PLATFORM
+#if IS_ENABLED(CONFIG_PM_DEVFREQ)
 	rknpu_devfreq_remove(rknpu_dev);
 #endif
 
