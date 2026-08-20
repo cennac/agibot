@@ -30,6 +30,12 @@ diagram, board photographs, recovered robot files and read-only tests on
    U970x transceiver marking or an oscilloscope waveform identifies it.
 5. J7002 should not be called a high-confidence dual-USB harness. Its `70xx`
    designator and placement in the ACM8625P/audio area are contrary evidence.
+6. USB bring-up needs three coordinated pieces, not just a hub driver: the
+   RK3588 controller/PHY topology, a reset pulse on GPIO4_D2/D3, and the
+   PCA9555 `3-0020` offsets 0..11 VBUS enables. The LEDE port now carries all
+   three. The first LEDE image used fractional BusyBox sleeps and failed before
+   releasing reset; after an on-board integer-sleep hotfix the hubs, keyboard,
+   camera and all twelve VBUS enables worked, proving the board path.
 
 ## Board-level control lines
 
@@ -55,6 +61,12 @@ The current direction/value combination explains why USB and HDMI work while
 the external audio/lidar/4G domains can remain off. These lines must be tested
 one at a time with current observation; they should not all be asserted just to
 make the boot log look cleaner.
+
+PCA9555 discovery depends on I2C3 using the vendor-correct `i2c3m4-xfer` mux
+on GPIO4_D0/D1, rather than the default m0 mux. GPIO4_D2/D3 are Linux global
+GPIOs 154/155 and reset the Genesys hubs. The LEDE initialization deliberately
+touches only PCA9555 `3-0020` offsets 0..11; offsets 12..15 and all lines on
+`3-0021` remain untouched.
 
 ## Physical connector matrix
 
@@ -207,3 +219,12 @@ began at 00:09 local board time:
    `poweroff`/BL31 virtual poweroff.
 8. J9301 measured 5 V with a multimeter on 2026-08-19. Continue tracing with
    power removed to determine whether a load-switch/MOSFET enable exists.
+9. Completed on 2026-08-20: the LEDE SW9201 no-reset regression was traced to
+   the missing vendor RK806 `pmic-reset-func=<1>` configuration. A mainline
+   6.12 MFD patch now programs `SYS_CFG3[7:6]`; this changes only the PMIC
+   reset function and leaves the proven SW9200 Loader/Maskrom path untouched.
+10. The first LEDE VL805 attempt exposed a mapping pitfall: `fe170000` needs
+   `combphy1_ps`, `fe190000` needs `combphy0_ps`, while `combphy2_psu` belongs
+   to `fcd00000 usb_host2_xhci`. Enabling only `combphy2_psu` therefore leaves
+   both x1 PCIe controllers deferred with `missing PHY`; the corrected DTS
+   enables all three combphys without stealing the working USB3 path.

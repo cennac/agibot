@@ -6,8 +6,8 @@
  * 与 LEDE 自带 seewo rk3588-srcm3588-io 同构 —— 电源树/cpu-supply/i2c0/i2c1/sdhci/uart2
  * 直接照搬其主线写法(seewo 已编译验证);双 RGMII GMAC 的主线节点结构参考 LEDE
  * rk3588s-nanopi-r6.dtsi(同为双千兆 RK3588 路由),具体值(tx_delay/reset-gpio/phy reg)取自 BSP。
- * 丢弃机器人外设(CSI/PWM 风扇/HDMI/扬声器/NPU 调试/PCIe 扩展),只留路由所需:
- *   双 GbE(RGMII)+ eMMC + UART2 控制台 + USB host + 完整电源树。
+ * 丢弃机器人专用外设(CSI/PWM 风扇/雷达等),保留路由与维护所需:
+ *   双 GbE(RGMII)+ eMMC + UART2/HDMI0 控制台 + USB host + 完整电源树。
  *
  * bring-up 顺序:UART2(1500000)看早期日志 → eMMC HS400-ES 启动 → PMIC 稳压 → 双 GbE 载波。
  * 救援:eMMC-only(无 SD 槽),失败走 Maskrom + RKDevTool 回刷(复用 flash/)。
@@ -18,6 +18,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/pinctrl/rockchip.h>
 #include <dt-bindings/pwm/pwm.h>
+#include <dt-bindings/soc/rockchip,vop2.h>
 #include "rk3588.dtsi"
 
 / {
@@ -34,6 +35,65 @@
 
 	chosen {
 		stdout-path = "serial2:1500000n8";
+	};
+
+	/* J5000 is the board's verified HDMI0 Type-A output. */
+	hdmi0_con: hdmi0-connector {
+		compatible = "hdmi-connector";
+		type = "a";
+
+		port {
+			hdmi0_con_in: endpoint {
+				remote-endpoint = <&hdmi0_out_con>;
+			};
+		};
+	};
+
+	/*
+	 * RK3588 HDMI QP nodes landed after the 6.12 base DTS.  The LEDE
+	 * kernel already carries the matching DRM backports, so describe the
+	 * controller here until the target moves to a newer upstream DTS.
+	 */
+	hdmi0: hdmi@fde80000 {
+		compatible = "rockchip,rk3588-dw-hdmi-qp";
+		reg = <0x0 0xfde80000 0x0 0x20000>;
+		clocks = <&cru PCLK_HDMITX0>,
+			 <&cru CLK_HDMITX0_EARC>,
+			 <&cru CLK_HDMITX0_REF>,
+			 <&cru MCLK_I2S5_8CH_TX>,
+			 <&cru CLK_HDMIHDP0>,
+			 <&cru HCLK_VO1>;
+		clock-names = "pclk", "earc", "ref", "aud", "hdp", "hclk_vo1";
+		interrupts = <GIC_SPI 169 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_SPI 170 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_SPI 171 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_SPI 172 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_SPI 360 IRQ_TYPE_LEVEL_HIGH 0>;
+		interrupt-names = "avp", "cec", "earc", "main", "hpd";
+		phys = <&hdptxphy_hdmi0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&hdmim0_tx0_cec &hdmim0_tx0_hpd
+			     &hdmim0_tx0_scl &hdmim0_tx0_sda>;
+		power-domains = <&power RK3588_PD_VO1>;
+		resets = <&cru SRST_HDMITX0_REF>, <&cru SRST_HDMIHDP0>;
+		reset-names = "ref", "hdp";
+		rockchip,grf = <&sys_grf>;
+		rockchip,vo-grf = <&vo1_grf>;
+		#sound-dai-cells = <0>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			hdmi0_in: port@0 {
+				reg = <0>;
+			};
+
+			hdmi0_out: port@1 {
+				reg = <1>;
+			};
+		};
 	};
 
 	/* 主电源轨:外部 DC 12V → 5V 系统 → 各级 LDO/DCDC */
@@ -77,6 +137,57 @@
 		gpios = <&gpio3 RK_PC4 GPIO_ACTIVE_HIGH>;
 		startup-delay-us = <7500>;
 		vin-supply = <&vcc12v_dcin>;
+	};
+
+	/* RKNN Runtime compatible NPU device. Keep clk_npu at a conservative
+	 * 200 MHz until the vendor OPP/devfreq helpers are ported to mainline. */
+	rknpu: npu@fdab0000 {
+		compatible = "rockchip,rk3588-rknpu";
+		reg = <0x0 0xfdab0000 0x0 0x10000>,
+		      <0x0 0xfdac0000 0x0 0x10000>,
+		      <0x0 0xfdad0000 0x0 0x10000>;
+		interrupts = <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH 0>;
+		interrupt-names = "npu0_irq", "npu1_irq", "npu2_irq";
+		clocks = <&cru CLK_NPU_DSU0>, <&cru ACLK_NPU0>,
+			 <&cru ACLK_NPU1>, <&cru ACLK_NPU2>,
+			 <&cru HCLK_NPU0>, <&cru HCLK_NPU1>,
+			 <&cru HCLK_NPU2>, <&cru PCLK_NPU_ROOT>;
+		clock-names = "clk_npu", "aclk0", "aclk1", "aclk2",
+			      "hclk0", "hclk1", "hclk2", "pclk";
+		assigned-clocks = <&cru CLK_NPU_DSU0>;
+		assigned-clock-rates = <200000000>;
+		resets = <&cru SRST_A_RKNN0>, <&cru SRST_A_RKNN1>,
+			 <&cru SRST_A_RKNN2>, <&cru SRST_H_RKNN0>,
+			 <&cru SRST_H_RKNN1>, <&cru SRST_H_RKNN2>;
+		reset-names = "srst_a0", "srst_a1", "srst_a2",
+			      "srst_h0", "srst_h1", "srst_h2";
+		power-domains = <&power RK3588_PD_NPUTOP>,
+				<&power RK3588_PD_NPU1>,
+				<&power RK3588_PD_NPU2>;
+		power-domain-names = "npu0", "npu1", "npu2";
+		iommus = <&rknpu_mmu>;
+		rknpu-supply = <&vdd_npu_s0>;
+		status = "okay";
+	};
+
+	rknpu_mmu: iommu@fdab9000 {
+		compatible = "rockchip,rk3588-iommu", "rockchip,rk3568-iommu";
+		reg = <0x0 0xfdab9000 0x0 0x100>,
+		      <0x0 0xfdaba000 0x0 0x100>,
+		      <0x0 0xfdaca000 0x0 0x100>,
+		      <0x0 0xfdada000 0x0 0x100>;
+		interrupts = <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH 0>;
+		interrupt-names = "npu0_mmu", "npu1_mmu", "npu2_mmu";
+		clocks = <&cru ACLK_NPU0>, <&cru ACLK_NPU1>, <&cru ACLK_NPU2>,
+			 <&cru HCLK_NPU0>, <&cru HCLK_NPU1>, <&cru HCLK_NPU2>;
+		clock-names = "aclk0", "aclk1", "aclk2",
+			      "iface0", "iface1", "iface2";
+		#iommu-cells = <0>;
+		status = "okay";
 	};
 };
 
@@ -161,6 +272,29 @@
 	};
 };
 
+/* PCA9555 3-0020/3-0021: USB VBUS and board auxiliary power controls. */
+&i2c3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c3m4_xfer>;
+	status = "okay";
+
+	pca9555_20: gpio@20 {
+		compatible = "nxp,pca9555";
+		reg = <0x20>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		status = "okay";
+	};
+
+	pca9555_21: gpio@21 {
+		compatible = "nxp,pca9555";
+		reg = <0x21>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		status = "okay";
+	};
+};
+
 &spi2 {
 	/*
 	 * RK806 PMIC 在 SPI2(本板少见 —— 多数 RK3588 板 PMIC 在 I2C)。
@@ -183,6 +317,8 @@
 			    <&rk806_dvs2_null>, <&rk806_dvs3_null>;
 		spi-max-frequency = <1000000>;
 		system-power-controller;
+		/* Vendor DT programs RK806 SYS_CFG3[7:6]=01 for SW9201 reset. */
+		pmic-reset-func = <1>;
 
 		vcc1-supply = <&vcc5v0_sys>;
 		vcc2-supply = <&vcc5v0_sys>;
@@ -202,6 +338,10 @@
 
 		gpio-controller;
 		#gpio-cells = <2>;
+
+		pwrkey {
+			status = "okay";
+		};
 
 		rk806_dvs1_null: dvs1-null-pins {
 			pins = "gpio_pwrctrl1";
@@ -516,6 +656,49 @@
 	status = "disabled";
 };
 
+/* ===== J5000 HDMI0 display + tty1 console ===== */
+&hdptxphy_hdmi0 {
+	#clock-cells = <0>;
+	status = "okay";
+};
+
+&hdmi0_in {
+	hdmi0_in_vp0: endpoint {
+		remote-endpoint = <&vp0_out_hdmi0>;
+	};
+};
+
+&hdmi0_out {
+	hdmi0_out_con: endpoint {
+		remote-endpoint = <&hdmi0_con_in>;
+	};
+};
+
+&vop {
+	clocks = <&cru ACLK_VOP>,
+		 <&cru HCLK_VOP>,
+		 <&cru DCLK_VOP0>,
+		 <&cru DCLK_VOP1>,
+		 <&cru DCLK_VOP2>,
+		 <&cru DCLK_VOP3>,
+		 <&cru PCLK_VOP_ROOT>,
+		 <&hdptxphy_hdmi0>;
+	clock-names = "aclk", "hclk", "dclk_vp0", "dclk_vp1",
+		      "dclk_vp2", "dclk_vp3", "pclk_vop", "pll_hdmiphy0";
+	status = "okay";
+};
+
+&vop_mmu {
+	status = "okay";
+};
+
+&vp0 {
+	vp0_out_hdmi0: endpoint@ROCKCHIP_VOP2_EP_HDMI0 {
+		reg = <ROCKCHIP_VOP2_EP_HDMI0>;
+		remote-endpoint = <&hdmi0_in_vp0>;
+	};
+};
+
 /* ===== 双千兆 RGMII(值取自 5.10 BSP;节点结构参考 LEDE nanopi-r6)===== */
 /*
  * PHY 复位(2026-08-18 v2):phy 节点用主线 phylib 标准的 reset-gpios +
@@ -527,7 +710,7 @@
  * 若主线实机再遇此症,再考虑 clock_in_out="output" 或调 pinctrl 上拉。
  */
 &gmac0 {
-	clock_in_out = "input";
+	clock_in_out = "output";
 	phy-handle = <&rgmii_phy0>;
 	phy-mode = "rgmii-rxid";
 	pinctrl-names = "default";
@@ -542,7 +725,7 @@
 };
 
 &gmac1 {
-	clock_in_out = "input";
+	clock_in_out = "output";
 	phy-handle = <&rgmii_phy1>;
 	phy-mode = "rgmii-rxid";
 	pinctrl-names = "default";
@@ -558,7 +741,8 @@
 
 &mdio0 {
 	rgmii_phy0: ethernet-phy@1 {
-		compatible = "ethernet-phy-ieee802.3-c22";
+		/* Bind RTL8211F directly; early MDIO scanning races PHY power-up. */
+		compatible = "ethernet-phy-id001c.c916";
 		reg = <0x1>;
 		/* 主线 phylib 标准复位(stmmac_open 扫 MDIO 前执行)。
 		 * 2026-08-18 实机反馈"网口没识别":此前写在 gmac 节点的
@@ -578,7 +762,7 @@
 
 &mdio1 {
 	rgmii_phy1: ethernet-phy@0 {
-		compatible = "ethernet-phy-ieee802.3-c22";
+		compatible = "ethernet-phy-id001c.c916";
 		reg = <0x0>;
 		reset-gpios = <&gpio4 RK_PD4 GPIO_ACTIVE_LOW>;
 		reset-assert-us = <20000>;
@@ -586,15 +770,39 @@
 	};
 };
 
-/* USB host(路由扩展:4G 棒/移动存储);VBUS 常通,不接 phy-supply */
+/*
+ * USB host topology (2026-08-20, matches the original board mapping):
+ *   fc800000/fc840000 -> J9200 (USB2 only)
+ *   fc880000/fc8c0000 -> second USB2 host path / J2500 candidate
+ *   fcd00000          -> USB3000 and both J3000 ports
+ *   fc400000          -> both J2900 and both J2901 ports
+ *   fe190000 PCIe     -> VL805 and J3300..J3600 (enabled in the PCIe section)
+ * USB-A VBUS is switched by PCA9555 3-0020, not always-on.  The init script
+ * pulses GPIO4_D2/D3 hub resets first, then enables offsets 0..11.
+ */
+&u2phy1 { status = "okay"; };
+&u2phy1_otg { status = "okay"; };
 &u2phy2 { status = "okay"; };
 &u2phy3 { status = "okay"; };
 &u2phy2_host { status = "okay"; };
 &u2phy3_host { status = "okay"; };
+&usbdp_phy1 { status = "okay"; };
+/*
+ * RK3588 extra DTS maps fe170000 to combphy1_ps and fe190000 to combphy0_ps.
+ * combphy2_psu stays assigned to usb_host2_xhci (fcd00000); enabling only
+ * combphy2 made both x1 PCIe controllers defer with "missing PHY".
+ */
+&combphy0_ps { status = "okay"; };
+&combphy1_ps { status = "okay"; };
+&combphy2_psu { status = "okay"; };
 &usb_host0_ehci { status = "okay"; };
 &usb_host0_ohci { status = "okay"; };
 &usb_host1_ehci { status = "okay"; };
 &usb_host1_ohci { status = "okay"; };
+&usb_host1_xhci {
+	dr_mode = "host";
+	status = "okay";
+};
 &usb_host2_xhci { status = "okay"; };
 
 /*

@@ -1,0 +1,170 @@
+From: AGIBOT board support <devnull@example.com>
+Subject: [PATCH] rockchip: add AGIBOT RK3588 SW9200 loader key
+
+Add a dedicated DT and defconfig for MB0002 V2.  The factory SW9200
+button is connected to SARADC channel 1.  When it is held during power-on,
+enter the existing RockUSB command before normal distro boot starts.
+
+---
+ arch/arm/dts/rk3588-agibot-mb0002-v2.dts | 29 +++++++++++
+ arch/arm/mach-rockchip/board.c             | 28 +++++++++++
+ configs/agibot-rk3588_defconfig            | 72 +++++++++++++++++++++++++++++
+ 3 files changed, 129 insertions(+)
+
+--- /dev/null
++++ b/arch/arm/dts/rk3588-agibot-mb0002-v2.dts
+@@ -0,0 +1,29 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++
++#include "rk3588-generic.dts"
++#include <dt-bindings/input/input.h>
++
++/ {
++	model = "AGIBOT MB0002 V2";
++	compatible = "agibot,mb0002-v2", "rockchip,rk3588";
++
++	adc-keys {
++		compatible = "adc-keys";
++		io-channels = <&saradc 1>;
++		io-channel-names = "buttons";
++		keyup-threshold-microvolt = <1800000>;
++		poll-interval = <100>;
++		status = "okay";
++
++		loader-key {
++			linux,code = <KEY_VOLUMEUP>;
++			label = "SW9200 loader";
++			press-threshold-microvolt = <1750>;
++		};
++	};
++};
++
++&saradc {
++	vdd-microvolts = <1800000>;
++	status = "okay";
++};
+--- a/arch/arm/mach-rockchip/board.c
++++ b/arch/arm/mach-rockchip/board.c
+@@ -9,7 +9,9 @@
+  * Based on puma-rk3399.c:
+  *      (C) Copyright 2017 Theobroma Systems Design und Consulting GmbH
+  */
++#include <button.h>
+ #include <config.h>
++#include <command.h>
+ #include <clk.h>
+ #include <cpu_func.h>
+ #include <env.h>
+@@ -189,9 +191,35 @@ __weak int rk_board_late_init(void)
+ 	return 0;
+ }
+ 
++static void agibot_check_loader_key(void)
++{
++	struct udevice *button;
++	int ret;
++
++	if (!IS_ENABLED(CONFIG_CMD_ROCKUSB) ||
++	    !IS_ENABLED(CONFIG_BUTTON_ADC) ||
++	    !of_machine_is_compatible("agibot,mb0002-v2"))
++		return;
++
++	ret = button_get_by_label("SW9200 loader", &button);
++	if (ret) {
++		log_debug("SW9200 loader key unavailable: %d\n", ret);
++		return;
++	}
++
++	if (button_get_state(button) != BUTTON_ON)
++		return;
++
++	log_notice("SW9200 loader key pressed: entering RockUSB Loader...\n");
++	ret = run_command("rockusb 0 mmc 0", 0);
++	if (ret)
++		log_err("RockUSB Loader failed: %d; continuing normal boot\n", ret);
++}
++
+ int board_late_init(void)
+ {
+ 	setup_boot_mode();
++	agibot_check_loader_key();
+ 
+ #if IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT) && IS_ENABLED(CONFIG_EFI_PARTITION)
+ 	gpt_capsule_update_setup();
+--- /dev/null
++++ b/configs/agibot-rk3588_defconfig
+@@ -0,0 +1,72 @@
++CONFIG_ARM=y
++CONFIG_SKIP_LOWLEVEL_INIT=y
++CONFIG_COUNTER_FREQUENCY=24000000
++CONFIG_ARCH_ROCKCHIP=y
++CONFIG_DEFAULT_DEVICE_TREE="rk3588-agibot-mb0002-v2"
++CONFIG_ROCKCHIP_RK3588=y
++CONFIG_SPL_SERIAL=y
++CONFIG_TARGET_EVB_RK3588=y
++CONFIG_SYS_LOAD_ADDR=0xc00800
++CONFIG_DEBUG_UART_BASE=0xFEB50000
++CONFIG_DEBUG_UART_CLOCK=24000000
++CONFIG_DEBUG_UART=y
++CONFIG_FIT=y
++CONFIG_FIT_VERBOSE=y
++CONFIG_SPL_FIT_SIGNATURE=y
++CONFIG_SPL_LOAD_FIT=y
++# CONFIG_BOOTMETH_VBE is not set
++CONFIG_LEGACY_IMAGE_FORMAT=y
++CONFIG_OF_SYSTEM_SETUP=y
++CONFIG_DEFAULT_FDT_FILE="rockchip/rk3588-agibot-mb0002-v2.dtb"
++# CONFIG_DISPLAY_CPUINFO is not set
++CONFIG_SPL_MAX_SIZE=0x40000
++# CONFIG_SPL_RAW_IMAGE_SUPPORT is not set
++CONFIG_SPL_ATF=y
++CONFIG_CMD_MEMINFO=y
++CONFIG_CMD_MEMINFO_MAP=y
++CONFIG_CMD_GPIO=y
++CONFIG_CMD_GPT=y
++CONFIG_CMD_MISC=y
++CONFIG_CMD_MMC=y
++CONFIG_CMD_ROCKUSB=y
++CONFIG_CMD_USB_MASS_STORAGE=y
++# CONFIG_CMD_SETEXPR is not set
++CONFIG_CMD_RNG=y
++# CONFIG_SPL_DOS_PARTITION is not set
++CONFIG_SPL_OF_CONTROL=y
++CONFIG_OF_LIVE=y
++# CONFIG_OF_UPSTREAM is not set
++CONFIG_OF_SPL_REMOVE_PROPS="clock-names interrupt-parent assigned-clocks assigned-clock-rates assigned-clock-parents"
++CONFIG_ENV_RELOC_GD_ENV_ADDR=y
++CONFIG_NO_NET=y
++CONFIG_SPL_DM_SEQ_ALIAS=y
++CONFIG_SPL_SYSCON=y
++CONFIG_ADC=y
++CONFIG_SARADC_ROCKCHIP=y
++CONFIG_BUTTON=y
++CONFIG_BUTTON_ADC=y
++CONFIG_SPL_CLK=y
++# CONFIG_USB_FUNCTION_FASTBOOT is not set
++CONFIG_ROCKCHIP_GPIO=y
++CONFIG_MISC=y
++CONFIG_SUPPORT_EMMC_RPMB=y
++CONFIG_MMC_DW=y
++CONFIG_MMC_DW_ROCKCHIP=y
++CONFIG_MMC_SDHCI=y
++CONFIG_MMC_SDHCI_SDMA=y
++CONFIG_MMC_SDHCI_ROCKCHIP=y
++CONFIG_PHY_ROCKCHIP_INNO_USB2=y
++CONFIG_SPL_PINCTRL=y
++CONFIG_SPL_RAM=y
++CONFIG_BAUDRATE=1500000
++CONFIG_DEBUG_UART_SHIFT=2
++CONFIG_SYS_NS16550_MEM32=y
++CONFIG_SYSRESET=y
++CONFIG_SYSRESET_PSCI=y
++CONFIG_USB=y
++CONFIG_USB_DWC3=y
++CONFIG_USB_DWC3_GENERIC=y
++CONFIG_USB_GADGET=y
++CONFIG_USB_GADGET_DOWNLOAD=y
++CONFIG_USB_FUNCTION_ROCKUSB=y
++CONFIG_ERRNO_STR=y
+-- 
+2.43.0

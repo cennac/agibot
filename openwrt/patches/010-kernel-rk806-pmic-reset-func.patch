@@ -1,0 +1,25 @@
+diff --git a/target/linux/rockchip/patches-6.12/0100-agibot-rk806-pmic-reset-func.patch b/target/linux/rockchip/patches-6.12/0100-agibot-rk806-pmic-reset-func.patch
+new file mode 100644
+index 0000000000..1111111111
+--- /dev/null
++++ b/target/linux/rockchip/patches-6.12/0100-agibot-rk806-pmic-reset-func.patch
+@@ -0,0 +1,19 @@
++--- a/drivers/mfd/rk8xx-core.c
+++++ b/drivers/mfd/rk8xx-core.c
++@@ -782,0 +783,16 @@
+++	if (rk808->variant == RK806_ID) {
+++		u32 rst_fun;
+++
+++		ret = device_property_read_u32(dev, "pmic-reset-func", &rst_fun);
+++		if (!ret) {
+++			if (rst_fun > 3)
+++				return dev_err_probe(dev, -EINVAL,
+++						     "invalid pmic-reset-func %u\n", rst_fun);
+++			ret = regmap_update_bits(rk808->regmap, RK806_SYS_CFG3,
+++						 0xc0, (rst_fun & 0x3) << 6);
+++			if (ret)
+++				return dev_err_probe(dev, ret,
+++						     "failed to set pmic reset function\n");
+++		}
+++	}
+++

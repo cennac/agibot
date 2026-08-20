@@ -91,12 +91,64 @@ cd lede && make -j$(nproc) V=s
 代理:WSL2 自动走 Windows 网关 Clash(7897);Linux/macOS 检测本地 7897 或继承 `http_proxy`。
 Docker 下 `DIRECT=1 bash docker-lede-build.sh` 不传代理(feeds 已装 / cache 齐时更稳)。
 
-## 已构建产物(2026-08-20,66 服务器原生编译,392 包)
+## 2026-08-20 bring-up 状态
+
+**已在 2026-08-20 旧增量镜像板卡确认**:双 RTL8211F 以太网、SW9200 断电长按进
+Loader/Maskrom、HDMI DRM/framebuffer 与 tty1 root shell 进程、RKNPU DRM
+render node、CPU DVFS。加压时 policy4/policy6 从 1.2 GHz 升到 2.4 GHz;
+RKNPU 有三条 `request region -EBUSY` 日志,这是驱动先尝试 `devm_ioremap_resource`
+再回退 `devm_ioremap` 的已知路径,最终 `/dev/dri/renderD128` 绑定 `RKNPU`。
+
+同轮板测也发现旧增量镜像的两个真实问题:
+
+- USB 初始化脚本使用了 `sleep 0.1/0.2/0.5`,LEDE BusyBox `sleep` 不接受小数,
+  导致 `/etc/init.d/agibot-usb restart` 返回 1、GPIO154/155 停在 reset。
+  板上把脚本热修为整数 `sleep 1` 后,两颗 Genesys hub、USB 键盘和摄像头均枚举,
+  PCA9555 `3-0020` offsets 0..11 全部成功拉高——USB-A 数据与 VBUS 硬件路径确认。
+- `fe170000/fe190000` PCIe 报 `missing PHY`。主线 6.12 映射分别是
+  `combphy1_ps`/`combphy0_ps`;旧板级 DTS 只打开了 `combphy2_psu`,而
+  `combphy2_psu` 实际服务 `fcd00000 usb_host2_xhci`,不能挪给 PCIe。
+
+**新增修复已在最终镜像板卡回归**:
+
+- USB 供电/拓扑:最终镜像 `/rom` 中两个脚本全部为 BusyBox 兼容的整数
+  `sleep 1`;`/etc/init.d/agibot-usb restart` 返回 0,无 `sleep: invalid number`,
+  四组 Genesys hub、USB 键盘和 UVC 摄像头均枚举。首次上电和手动重启时摄像头
+  曾各出现一次 `error -71` 后自动恢复,后续可把 VBUS settle 时间再调稳。
+- PCIe/USB3 PHY:运行 DTB 中 `fee00000/fee10000/fee20000` 全部 `okay`;
+  `fe190000` 以 Gen2 x1 训练成功,枚举 VL805 `1106:3483` 并绑定 `xhci_hcd`;
+  `fe170000` 以 Gen1 x1 枚举 AP6275P Wi-Fi `14e4:449d`。空 `fe150000`
+  Gen3x4 插槽仍报 `Phy link never came up`,当前按无端点解释。
+- SW9201:板级 DTS 加入 RK806 `pmic-reset-func=<1>`,并为主线 6.12 增加
+  `rk8xx-core` 补丁以编程 `SYS_CFG3[7:6]`。目标是恢复与 Armbian/原厂一致的
+  立即硬复位行为;该键仍不能记录成普通 Linux `gpio-key`。运行 DT 已确认
+  属性值为 1,物理轻按复测留待 2026-08-21。
+- SW9200 的 U-Boot Loader/Maskrom 路径未改;此前已实测可用,最终镜像路径
+  与明天 SW9201 一起回归。
+
+**下一阶段已明确的缺口**:
+
+- NPU 当前是保守固定频:DTS 将 `CLK_NPU_DSU0` 固定在 200 MHz,板上
+  `/sys/class/devfreq` 没有 NPU 设备;本仓暂只带 RKNPU DRM/ioctl 驱动,尚未移植
+  vendor `rknpu_devfreq.c` 与 OPP/电压表。下一步先补动态调频,再做 RKNN runtime
+  实际推理验证。
+- AP6275P Wi-Fi 硬件链路已经打通,但 LEDE 镜像未带 `14e4:449d` 驱动和固件,
+  因此没有 `wlan0`;蓝牙还需要同步移植 UART/HCI attach 与 `BCM4362A2.hcd`。
+  Wi-Fi/蓝牙应作为一个 AP6275P combo 包处理,避免只修 PCIe 不修固件。
+- 当前镜像未带 UVC/HID 内核包:摄像头和键盘能 USB 枚举,但无 `/dev/video*`
+  与 `/dev/input`;如需在 LEDE 本机使用,加入 `kmod-video-uvc` 与 `kmod-usb-hid`。
+
+## 已构建产物(2026-08-20 USB BusyBox/VL805 修订版,66 服务器原生编译)
 
 | 镜像 | 大小(gz) | 解压 | sha256 |
 |---|---|---|---|
-| `openwrt-rockchip-armv8-agibot_mb0002-v2-squashfs-sysupgrade.img.gz` | 124 MiB | 2.13 GiB | `644f96a20e08e97efe51e32bf2cbd177a581185df1ccbb04dba284045034e91b` |
-| `openwrt-rockchip-armv8-agibot_mb0002-v2-ext4-sysupgrade.img.gz` | 159 MiB | 2.13 GiB | `92d59f7a8f9e13ec62b500f21cb6738902341a53ea4242eccfa3e91476d6eae2` |
+| `openwrt-rockchip-armv8-agibot_mb0002-v2-squashfs-sysupgrade.img.gz` | 124 MiB | 2.13 GiB | `c9be967159258571bea1452b7603af164f07fe8d8bdc11b66f7c302fcf39d64a` |
+| `openwrt-rockchip-armv8-agibot_mb0002-v2-ext4-sysupgrade.img.gz` | 159 MiB | 2.13 GiB | `cc557909b34a6ded35099a0b2683392e86547abd665bba4ae1664c46fc214003` |
+
+本地归档:`../../artifacts/lede-usb-busybox-vl805-20260820/`
+(包含 manifest/buildinfo、板卡 DTB、U-Boot DTB、idbloader、U-Boot ITB 和三份 66 构建
+日志;sysupgrade/manifest/buildinfo 均已按 `sha256sums` 在本机复验)。远端构建
+`FINISHED_EXIT=0`;最终镜像已在 2026-08-20 整板回归,关键结果见上文。
 
 ⚠️ 本目录 ext4 的 `.gz` 若时间戳是 08-14 且带 `_STALE-*.txt` 标记,是旧构建被
 Windows 进程锁住删不掉——用同目录解压版 `.img`(08-15)或 WSL `~/lede/bin/...` 的新 gz。

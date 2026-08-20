@@ -19,6 +19,8 @@ cd "$SCRIPT_DIR"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 LEDE="lede"
 DTS_REL="target/linux/rockchip/files/arch/arm64/boot/dts/rockchip"
+ROOTFS_FILES_REL="files"
+RKNPU_PACKAGE_REL="package/kernel/rknpu"
 
 # ---- 平台检测 ----
 detect_platform() {
@@ -127,8 +129,17 @@ echo ">>> [2/5] 重置 lede 树到干净状态..."
 git -C "$LEDE" checkout -- .
 # 清掉可能残留的 DTS(下次 cp 重装)
 rm -f "$LEDE/$DTS_REL/rk3588-agibot-mb0002-v2.dts"
+# 清掉本项目安装的 rootfs overlay 文件(下次 cp 重装)
+rm -f "$LEDE/$ROOTFS_FILES_REL/etc/inittab"
+rm -f "$LEDE/$ROOTFS_FILES_REL/usr/sbin/agibot-usb-hub-reset"
+rm -f "$LEDE/$ROOTFS_FILES_REL/usr/sbin/agibot-usb-port-power"
+rm -f "$LEDE/$ROOTFS_FILES_REL/etc/init.d/agibot-usb"
+rm -rf "$LEDE/$RKNPU_PACKAGE_REL"
 # checkout 不会清补丁 007 新增的未跟踪文件;保留 build 输出,只移除这个已知残留
 rm -f "$LEDE/package/boot/uboot-rockchip/patches/112-pylibfdt-python3-api.patch"
+rm -f "$LEDE/package/boot/uboot-rockchip/patches/211-agibot-rk3588-sw9200-loader.patch"
+rm -f "$LEDE/target/linux/rockchip/patches-6.12/0091-agibot-stmmac-dma-debug.patch"
+rm -f "$LEDE/target/linux/rockchip/patches-6.12/0100-agibot-rk806-pmic-reset-func.patch"
 
 # 3. apply 补丁 + 安装 DTS
 echo ">>> [3/5] apply 设备定义补丁 + 安装板级 DTS..."
@@ -137,8 +148,23 @@ for p in patches/*.patch; do
 	echo "    apply $(basename "$p")"
 	git -C "$LEDE" apply "$SCRIPT_DIR/$p"
 done
+for p in uboot-patches/*.patch; do
+	echo "    install U-Boot patch $(basename "$p")"
+	cp "$p" "$LEDE/package/boot/uboot-rockchip/patches/"
+done
+# target modules.mk is not part of package/kernel/linux Makefile's metadata
+# dependencies, so invalidate its cached dump after changing module KCONFIG.
+rm -f "$LEDE/tmp/info/.packageinfo-kernel_linux"
 mkdir -p "$LEDE/$DTS_REL"
 cp "files/arch/arm64/boot/dts/rockchip/rk3588-agibot-mb0002-v2.dts" "$LEDE/$DTS_REL/"
+mkdir -p "$LEDE/$ROOTFS_FILES_REL/etc"
+install -m 0644 "files/etc/inittab" "$LEDE/$ROOTFS_FILES_REL/etc/inittab"
+install -d "$LEDE/$ROOTFS_FILES_REL/usr/sbin" "$LEDE/$ROOTFS_FILES_REL/etc/init.d"
+install -m 0755 "files/usr/sbin/agibot-usb-hub-reset" "$LEDE/$ROOTFS_FILES_REL/usr/sbin/agibot-usb-hub-reset"
+install -m 0755 "files/usr/sbin/agibot-usb-port-power" "$LEDE/$ROOTFS_FILES_REL/usr/sbin/agibot-usb-port-power"
+install -m 0755 "files/etc/init.d/agibot-usb" "$LEDE/$ROOTFS_FILES_REL/etc/init.d/agibot-usb"
+mkdir -p "$LEDE/$(dirname "$RKNPU_PACKAGE_REL")"
+cp -a "$RKNPU_PACKAGE_REL" "$LEDE/$RKNPU_PACKAGE_REL"
 
 # 4. feeds
 echo ">>> [4/5] feeds update/install(coolsnowwolf 全家桶)..."

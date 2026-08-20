@@ -1,0 +1,62 @@
+#!/bin/sh
+set -eu
+
+# USB-A VBUS enables are on PCA9555 3-0020 offsets 0..11. Offsets 12..15
+# belong to audio/PCIe/lidar/4G controls and must not be changed by this hook.
+
+chip=""
+attempt=0
+while [ "$attempt" -lt 50 ]; do
+	for candidate in /sys/class/gpio/gpiochip*; do
+		[ -r "$candidate/label" ] || continue
+		if [ "$(cat "$candidate/label")" = "3-0020" ]; then
+			chip="$candidate"
+			break
+		fi
+	done
+	[ -n "$chip" ] && break
+	attempt=$((attempt + 1))
+	sleep 1
+done
+
+if [ -z "$chip" ]; then
+	echo "PCA9555 3-0020 GPIO chip was not found" >&2
+	exit 1
+fi
+
+base="$(cat "$chip/base")"
+
+# Wait for the Genesys USB2/USB3 companion pairs before applying VBUS.
+attempt=0
+while [ "$attempt" -lt 50 ]; do
+	hub_count=0
+	for vendor_file in /sys/bus/usb/devices/*/idVendor; do
+		[ -r "$vendor_file" ] || continue
+		if [ "$(cat "$vendor_file")" = "05e3" ]; then
+			hub_count=$((hub_count + 1))
+		fi
+	done
+	[ "$hub_count" -ge 4 ] && break
+	attempt=$((attempt + 1))
+	sleep 1
+done
+
+for offset in 0 1 2 3 4 5 6 7 8 9 10 11; do
+	gpio=$((base + offset))
+	path="/sys/class/gpio/gpio$gpio"
+	if [ ! -d "$path" ]; then
+		echo "$gpio" > /sys/class/gpio/export
+	fi
+	echo out > "$path/direction"
+	echo 0 > "$path/value"
+done
+sleep 1
+
+for offset in 0 1 2 3 4 5 6 7 8 9 10 11; do
+	gpio=$((base + offset))
+	echo 1 > "/sys/class/gpio/gpio$gpio/value"
+	# Vendor HUB3_HOST1..4 (offsets 7..10) are enabled sequentially.
+	if [ "$offset" -ge 7 ] && [ "$offset" -le 10 ]; then
+		sleep 1
+	fi
+done

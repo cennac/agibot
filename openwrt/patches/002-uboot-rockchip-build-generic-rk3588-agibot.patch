@@ -1,14 +1,24 @@
 diff --git a/package/boot/uboot-rockchip/Makefile b/package/boot/uboot-rockchip/Makefile
-index fc7cd3d1..616d992f 100644
+index fc7cd3d1..4b75551a 100644
 --- a/package/boot/uboot-rockchip/Makefile
 +++ b/package/boot/uboot-rockchip/Makefile
-@@ -427,7 +427,8 @@ define U-Boot/generic-rk3588
-     radxa_e52c \
-     radxa_e54c \
-     seewo_srcm3588-io \
--    seewo_srcm3588-sw
-+    seewo_srcm3588-sw \
-+    agibot_mb0002-v2
+@@ -430,4 +430,11 @@ define U-Boot/generic-rk3588
+     seewo_srcm3588-sw
  endef
  
++define U-Boot/agibot-rk3588
++  $(U-Boot/rk3588/Default)
++  NAME:=AGIBOT MB0002 V2
++  BUILD_DEVICES:= \
++    agibot_mb0002-v2
++endef
++
  define U-Boot/nanopc-t6-rk3588
+@@ -521,6 +528,7 @@ UBOOT_TARGETS := \
+   generic-rk3576 \
+   rock-4d-rk3576 \
+   sige5-rk3576 \
++  agibot-rk3588 \
+   generic-rk3588 \
+   nanopc-t6-rk3588 \
+   orangepi-5-plus-rk3588 \

@@ -269,7 +269,7 @@ PCIe `fe170000` 上的 **Broadcom 449d**（WiFi 6E）当前枚举 `wlan0`；2026
 | 第一行 | `SW8902` | `SW8901` | `SW8900` |
 | 第二行 | `SW9202` | `SW9200`（LOADER） | `SW9201` |
 
-`SW9200` 已由实物操作确认是 LOADER 按键；2026-08-19 原版系统运行态短按还在 `event2` 产生 `KEY_VOLUMEUP`（code 115）的按下/释放事件，约 310 ms。`SW9201` 已由两套系统实测确认是硬复位/重启按键，按下后系统重新启动。
+`SW9200` 已由实物操作确认是 LOADER 按键；2026-08-19 原版系统运行态短按还在 `event2` 产生 `KEY_VOLUMEUP`（code 115）的按下/释放事件，约 310 ms。`SW9201` 已在 Armbian 与原厂系统实测为硬复位/重启行为，按下后系统重新启动；2026-08-20 定位到 LEDE 缺原厂 RK806 `pmic-reset-func=<1>` 配置，不能据此把它改成普通 gpio-key 结论。
 
 `SW9202` 是 RK805 PMIC 电源键，产生 `KEY_POWER`（code 116）。Armbian 于 2026-08-18 短按后进入 `virtual poweroff`，再次短按完成全新启动。原版系统策略不同：`HandlePowerKey=ignore`，由 triggerhappy 调用 `/usr/bin/power-key.sh`；短按执行 `pm-suspend`，但 AP6275P 的 `dhdpcie_pci_suspend` 返回 -1，挂起失败并恢复；按住超过 3 秒执行完整 systemd `poweroff` 并进入 BL31 `virtual poweroff`，再次短按正常开机。两套系统关机后风扇所在 5V 常供电轨仍保持工作。
 
@@ -279,7 +279,9 @@ PCIe `fe170000` 上的 **Broadcom 449d**（WiFi 6E）当前枚举 `wlan0`；2026
 
 同日短按 `SW8900` 后，COM7 立即重新出现 DDR 初始化、SPL、BL31、U-Boot、`Starting kernel` 与 Armbian 登录提示，过程中没有 systemd 关机序列；boot ID 从 `6779efa8-8ecb-4145-ba4e-86b508d5526c` 更新为 `af39a85c-d38b-4cb9-b489-f9a27521e57a`，eth0 随后恢复连接。2026-08-19 原版系统复测也出现 SSH 离线/上线和新 boot ID `7990d6dd-...`，确认它是发行版无关的硬复位/重启键。所有未知功能均不按编号猜测。
 
-2026-08-19 已完成 `SW9201` 复测：轻按后 COM7 立即出现 DDR、SPL、BL31、U-Boot、`Starting kernel` 和登录提示，U-Boot `reboot reason` 为 `(none)`，没有 systemd 关机序列，boot ID 更新且 eth0 恢复；原版系统两次用于启动保持测试时也得到相同行为。确认它是硬复位/重启键。它与 `SW8900` 外部行为一致，但是否同一电气复位网络仍未证明。
+2026-08-19 已完成 `SW9201` 复测：轻按后 COM7 立即出现 DDR、SPL、BL31、U-Boot、`Starting kernel` 和登录提示，U-Boot `reboot reason` 为 `(none)`，没有 systemd 关机序列，boot ID 更新且 eth0 恢复；原版系统两次用于启动保持测试时也得到相同行为。确认它在已知工作系统中表现为硬复位/重启。它与 `SW8900` 外部行为一致，但是否同一电气复位网络仍未证明；2026-08-20 的 LEDE 回归指向 RK806 `SYS_CFG3[7:6]` 复位功能配置缺失，而非证明它是一个普通 Linux gpio-key。
+
+2026-08-20 按键分类修正：旧 LEDE 中 `SW9201` 不复位，而 `SW8900` 仍可复位；因此 `SW8900` 是发行版无关硬复位的强证据，`SW9201` 则应记录为通过 RK806 `pmic-reset-func=<1>` / `SYS_CFG3[7:6]` 配置出来的按键复位。它不是普通 Linux gpio-key。LEDE 补丁的目标是让 SW9201 轻按后恢复与 Armbian/原厂一致的复位操作逻辑。两者电气网络是否同源仍未证明。
 
 ### J9301 风扇关机联动结论（2026-08-18）
 

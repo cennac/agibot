@@ -129,7 +129,7 @@ RKDevTool v3.37 比 v2.86 稳。raw img 别走「升级固件」页(要 RKFW/RKA
 | 按键 | 行为 | 接线 |
 |---|---|---|
 | **SW9200** | 上电长按进下载模式(**2026-08-16 已恢复**:U-Boot adc-keys 节点须带 `u-boot,dm-spl` 标记,见 Q2) | SARADC **ch1** → `adc-keys`(Linux input1) |
-| **SW9201** | **硬复位**(瞬时断电重启,无软件日志;2026-08-19 复测通过) | 硬件复位线 |
+| **SW9201** | 在 Armbian/原厂系统表现为**硬复位**(瞬时重启,无软件日志);LEDE 2026-08-20 前缺 vendor RK806 `pmic-reset-func` 配置 | 疑似经 RK806 复位配置生效;未证实是普通 gpio-key |
 | **SW9202** | **电源键**(短按关机,关机后再短按开机;2026-08-18 实测通过) | PMIC PWRON → `rk805 pwrkey`(input2) |
 | **SW8900** | **硬复位/重启**(轻触即重启;2026-08-18 复测通过) | 复位/重启线 |
 | **SW8901** | 不重启、不关机;无 Linux input 或干净 ADC 事件(2026-08-18 复测) | 无当前 Linux 可见功能 |
@@ -168,6 +168,12 @@ BL31、U-Boot、`ANDROID: reboot reason: "(none)"`、`Starting kernel` 和 Armbi
 确认该键为硬复位/重启键。它与 SW8900 的外部可见行为一致,但 `reboot reason`
 为 `(none)` 只说明 BootROM/U-Boot 没拿到软件重启原因,不能证明两键属于同一
 电气复位网络;在原理图或实测接线前,仅记录“两者都会硬复位”。
+
+2026-08-20 修正记录:LEDE 中 SW9201 不复位的原因定位为主线 RK806 驱动没有
+处理原厂 DT 的 `pmic-reset-func=<1>`。该属性会写 RK806 `SYS_CFG3[7:6]`,
+不是把 SW9201 定义成普通 Linux `gpio-key`。因此只能表述为“Armbian/原厂中
+该键表现为硬复位,LEDE 曾缺失这段 PMIC 配置”;SW8900 与 SW9201 是否共用
+电气复位网络仍需原理图或实测证明。
 
 SW9202 关机时风扇不能由当前软件直接关闭。J9301 是两针风扇供电座,实测系统进入
 virtual poweroff 后仍转;原厂和当前 DT 均无风扇节点,16 路 PWM 全部 disabled,
