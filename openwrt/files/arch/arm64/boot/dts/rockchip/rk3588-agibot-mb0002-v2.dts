@@ -560,14 +560,19 @@
 	rgmii_phy0: ethernet-phy@1 {
 		compatible = "ethernet-phy-ieee802.3-c22";
 		reg = <0x1>;
-		phy-supply = <&vcc_3v3_s0>;
 		/* 主线 phylib 标准复位(stmmac_open 扫 MDIO 前执行)。
 		 * 2026-08-18 实机反馈"网口没识别":此前写在 gmac 节点的
 		 * snps,reset-gpio 是 vendor 5.10 私有属性,主线 6.12 stmmac
 		 * 不认 → PHY 永不复位、链路起不来。 */
+		/* 无 phy-supply:PLDO4(vcc_3v3_s0)是系统主轨(always-on),挂给
+		 * phy-supply 后主线 phylib 在 close 时 disable 该轨(2026-08-20 实机
+		 * 实测 regulator disabled)→ 双 PHY 断电死锁、rebind 后 MDIO 无电
+		 * 永远 -19。vendor DTB 的 phy 节点本就没有 phy-supply。 */
 		reset-gpios = <&gpio4 RK_PD5 GPIO_ACTIVE_LOW>;
 		reset-assert-us = <20000>;
-		reset-deassert-us = <100000>;
+		/* 500ms:gmac0 扫描在 1.60s(PMIC 就绪 1.41s 后 0.2s)报 PHY@1
+		 * missing,晚 0.7s 扫描的 gmac1 PHY 正常——上电时序边缘问题 */
+		reset-deassert-us = <500000>;
 	};
 };
 
@@ -575,7 +580,6 @@
 	rgmii_phy1: ethernet-phy@0 {
 		compatible = "ethernet-phy-ieee802.3-c22";
 		reg = <0x0>;
-		phy-supply = <&vcc_3v3_s0>;
 		reset-gpios = <&gpio4 RK_PD4 GPIO_ACTIVE_LOW>;
 		reset-assert-us = <20000>;
 		reset-deassert-us = <100000>;

@@ -1,0 +1,15 @@
+--- /dev/null
++++ b/target/linux/rockchip/patches-6.12/0091-agibot-stmmac-dma-debug.patch
+@@ -0,0 +1,12 @@
++--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++@@ -3040,6 +3040,8 @@ static int stmmac_hw_setup(struct net_de
++
++	ret = stmmac_reset(priv, priv->ioaddr);
++	if (ret) {
++		dev_err(priv->device, "Failed to reset the dma\n");
+++		dev_err(priv->device, "AGIBOT: DMA_BUS_MODE=0x%08x ioaddr=%px\n",
+++			readl(priv->ioaddr + 0x1000), priv->ioaddr);
++		return ret;
++	}
++
