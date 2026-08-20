@@ -59,7 +59,7 @@ bash macos-lede-build.sh target/linux/compile  # 只验证 DTS/内核目标
 
 仓库所在卷必须大小写敏感;若 GitHub 直连慢,先 `export http_proxy=http://127.0.0.1:7897` 后重跑。
 
-### Docker 编译(推荐)
+### Docker 编译(可选)
 
 ```bash
 # 1. clone(含 submodule)
@@ -80,6 +80,8 @@ bash docker-lede-build.sh target/linux/compile
 
 ### 原生编译(WSL2 / Linux)
 
+66 服务器 Ubuntu 26.04 的完整原生编译实录、代理参数、断点续编和故障处理见 [`docs/BUILD-SERVER-66-LEDE.md`](../docs/BUILD-SERVER-66-LEDE.md)。
+
 ```bash
 cd openwrt
 bash setup-openwrt.sh                 # 装配:submodule + patch + DTS + feeds + defconfig
@@ -89,12 +91,12 @@ cd lede && make -j$(nproc) V=s
 代理:WSL2 自动走 Windows 网关 Clash(7897);Linux/macOS 检测本地 7897 或继承 `http_proxy`。
 Docker 下 `DIRECT=1 bash docker-lede-build.sh` 不传代理(feeds 已装 / cache 齐时更稳)。
 
-## 已构建产物(2026-08-15 完善版,398 包)
+## 已构建产物(2026-08-20,66 服务器原生编译,392 包)
 
 | 镜像 | 大小(gz) | 解压 | sha256 |
 |---|---|---|---|
-| `openwrt-rockchip-armv8-agibot_mb0002-v2-squashfs-sysupgrade.img.gz` | 136 MB | 2.13 GiB | `77660b980df2e184679ff3caaea4c206860b2fa5bf005c2f948957a96f262c56` |
-| `openwrt-rockchip-armv8-agibot_mb0002-v2-ext4-sysupgrade.img.gz` | 174 MB | 2.13 GiB | `cb306ccea1fe361bde4ed05dafb1a7cd8a46e10576656a5d42c34e295709d974` |
+| `openwrt-rockchip-armv8-agibot_mb0002-v2-squashfs-sysupgrade.img.gz` | 124 MiB | 2.13 GiB | `644f96a20e08e97efe51e32bf2cbd177a581185df1ccbb04dba284045034e91b` |
+| `openwrt-rockchip-armv8-agibot_mb0002-v2-ext4-sysupgrade.img.gz` | 159 MiB | 2.13 GiB | `92d59f7a8f9e13ec62b500f21cb6738902341a53ea4242eccfa3e91476d6eae2` |
 
 ⚠️ 本目录 ext4 的 `.gz` 若时间戳是 08-14 且带 `_STALE-*.txt` 标记,是旧构建被
 Windows 进程锁住删不掉——用同目录解压版 `.img`(08-15)或 WSL `~/lede/bin/...` 的新 gz。

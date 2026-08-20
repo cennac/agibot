@@ -124,7 +124,7 @@ fi
 
 # 2. 重置 lede 树到干净状态(支持反复 apply)
 echo ">>> [2/5] 重置 lede 树到干净状态..."
-git -C "$LEDE" checkout -- . 2>/dev/null || true
+git -C "$LEDE" checkout -- .
 # 清掉可能残留的 DTS(下次 cp 重装)
 rm -f "$LEDE/$DTS_REL/rk3588-agibot-mb0002-v2.dts"
 # checkout 不会清补丁 007 新增的未跟踪文件;保留 build 输出,只移除这个已知残留
