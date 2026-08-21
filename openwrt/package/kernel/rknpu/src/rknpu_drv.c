@@ -1373,16 +1373,17 @@ static int rknpu_probe(struct platform_device *pdev)
 			return -ENXIO;
 		}
 
-		rknpu_dev->base[i] = devm_ioremap_resource(dev, res);
-		if (PTR_ERR(rknpu_dev->base[i]) == -EBUSY) {
-			rknpu_dev->base[i] = devm_ioremap(dev, res->start,
-							  resource_size(res));
-		}
-
-		if (IS_ERR(rknpu_dev->base[i])) {
+		/* Each 64 KiB NPU aperture embeds an IOMMU sub-block.  Requesting
+		 * the whole aperture makes devres print -EBUSY three times even
+		 * though this fallback mapping is valid.  Map directly instead. */
+		rknpu_dev->base[i] = devm_ioremap(dev, res->start,
+						  resource_size(res));
+		if (IS_ERR_OR_NULL(rknpu_dev->base[i])) {
 			LOG_DEV_ERROR(dev,
 				      "failed to remap register for rknpu\n");
-			return PTR_ERR(rknpu_dev->base[i]);
+			return rknpu_dev->base[i] ?
+				       PTR_ERR(rknpu_dev->base[i]) :
+				       -ENOMEM;
 		}
 	}
 

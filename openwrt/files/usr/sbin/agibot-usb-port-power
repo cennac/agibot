@@ -36,10 +36,14 @@ while [ "$attempt" -lt 50 ]; do
 			hub_count=$((hub_count + 1))
 		fi
 	done
-	[ "$hub_count" -ge 4 ] && break
+[ "$hub_count" -ge 4 ] && break
 	attempt=$((attempt + 1))
 	sleep 1
 done
+
+# Let the Genesys companion pairs finish re-enumeration after the board-level
+# hub logic reset before applying VBUS to downstream devices.
+sleep 3
 
 for offset in 0 1 2 3 4 5 6 7 8 9 10 11; do
 	gpio=$((base + offset))
@@ -47,14 +51,11 @@ for offset in 0 1 2 3 4 5 6 7 8 9 10 11; do
 	if [ ! -d "$path" ]; then
 		echo "$gpio" > /sys/class/gpio/export
 	fi
-	echo out > "$path/direction"
-	echo 0 > "$path/value"
-done
-sleep 1
+	# "high" switches the pin to output without the brief low glitch caused
+	# by setting direction=out before writing value=1.
+	echo high > "$path/direction"
+	echo 1 > "$path/value"
 
-for offset in 0 1 2 3 4 5 6 7 8 9 10 11; do
-	gpio=$((base + offset))
-	echo 1 > "/sys/class/gpio/gpio$gpio/value"
 	# Vendor HUB3_HOST1..4 (offsets 7..10) are enabled sequentially.
 	if [ "$offset" -ge 7 ] && [ "$offset" -le 10 ]; then
 		sleep 1

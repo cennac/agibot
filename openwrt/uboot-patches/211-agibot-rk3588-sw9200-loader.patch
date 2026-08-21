@@ -86,8 +86,8 @@ enter the existing RockUSB command before normal distro boot starts.
 +
  int board_late_init(void)
  {
- 	setup_boot_mode();
 +	agibot_check_loader_key();
+	setup_boot_mode();
  
  #if IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT) && IS_ENABLED(CONFIG_EFI_PARTITION)
  	gpt_capsule_update_setup();

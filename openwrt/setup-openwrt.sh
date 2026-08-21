@@ -136,12 +136,15 @@ rm -f "$LEDE/$ROOTFS_FILES_REL/etc/inittab"
 rm -f "$LEDE/$ROOTFS_FILES_REL/usr/sbin/agibot-usb-hub-reset"
 rm -f "$LEDE/$ROOTFS_FILES_REL/usr/sbin/agibot-usb-port-power"
 rm -f "$LEDE/$ROOTFS_FILES_REL/etc/init.d/agibot-usb"
+rm -f "$LEDE/$ROOTFS_FILES_REL/lib/firmware/arm/mali/arch10.8/mali_csffw.bin"
 rm -rf "$LEDE/$RKNPU_PACKAGE_REL"
 # checkout 不会清补丁 007 新增的未跟踪文件;保留 build 输出,只移除这个已知残留
 rm -f "$LEDE/package/boot/uboot-rockchip/patches/112-pylibfdt-python3-api.patch"
 rm -f "$LEDE/package/boot/uboot-rockchip/patches/211-agibot-rk3588-sw9200-loader.patch"
 rm -f "$LEDE/target/linux/rockchip/patches-6.12/0091-agibot-stmmac-dma-debug.patch"
 rm -f "$LEDE/target/linux/rockchip/patches-6.12/0100-agibot-rk806-pmic-reset-func.patch"
+rm -f "$LEDE/target/linux/rockchip/patches-6.12/0110-agibot-rockchip-canfd-rk3588.patch"
+rm -f "$LEDE/target/linux/rockchip/patches-6.12/0141-brcmfmac-optional-firmware-nowarn.patch"
 rm -rf "$LEDE/$AP6275P_FIRMWARE_PACKAGE_REL"
 rm -rf "$LEDE/$AGIBOT_BT_ATTACH_PACKAGE_REL"
 
@@ -176,6 +179,9 @@ install -d "$LEDE/$ROOTFS_FILES_REL/usr/sbin" "$LEDE/$ROOTFS_FILES_REL/etc/init.
 install -m 0755 "files/usr/sbin/agibot-usb-hub-reset" "$LEDE/$ROOTFS_FILES_REL/usr/sbin/agibot-usb-hub-reset"
 install -m 0755 "files/usr/sbin/agibot-usb-port-power" "$LEDE/$ROOTFS_FILES_REL/usr/sbin/agibot-usb-port-power"
 install -m 0755 "files/etc/init.d/agibot-usb" "$LEDE/$ROOTFS_FILES_REL/etc/init.d/agibot-usb"
+install -d "$LEDE/$ROOTFS_FILES_REL/lib/firmware/arm/mali/arch10.8"
+install -m 0644 "files/lib/firmware/arm/mali/arch10.8/mali_csffw.bin" \
+	"$LEDE/$ROOTFS_FILES_REL/lib/firmware/arm/mali/arch10.8/mali_csffw.bin"
 mkdir -p "$LEDE/$(dirname "$RKNPU_PACKAGE_REL")"
 cp -a "$RKNPU_PACKAGE_REL" "$LEDE/$RKNPU_PACKAGE_REL"
 mkdir -p "$LEDE/$(dirname "$AP6275P_FIRMWARE_PACKAGE_REL")"
@@ -189,6 +195,15 @@ setup_proxy
 HELLOWORLD_FEEDS_ONLY=1 bash "$SCRIPT_DIR/helloworld-srclink.sh"
 ( cd "$LEDE" && ./scripts/feeds update -a )
 for p in feed-patches/*.patch; do
+	case "$(basename "$p")" in
+	001-golang-darwin-external-linker.patch|\
+	002-docker-darwin-gnu-date.patch)
+		if [ "$PLATFORM" != macos ]; then
+			echo "    skip Darwin-only feed patch $(basename "$p")"
+			continue
+		fi
+		;;
+	esac
 	echo "    apply feed patch $(basename "$p")"
 	if git -C "$LEDE" apply --reverse --check "$SCRIPT_DIR/$p" >/dev/null 2>&1; then
 		echo "      已应用,跳过"

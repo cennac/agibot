@@ -1,0 +1,91 @@
+diff --git a/target/linux/rockchip/modules.mk b/target/linux/rockchip/modules.mk
+--- a/target/linux/rockchip/modules.mk
++++ b/target/linux/rockchip/modules.mk
+@@ -64,6 +64,87 @@
+ 
+ $(eval $(call KernelPackage,drm-rockchip))
+ 
++define KernelPackage/drm-panthor
++  SUBMENU:=$(VIDEO_MENU)
++  TITLE:=Panthor DRM support
++  DEPENDS:=@TARGET_rockchip @DISPLAY_SUPPORT \
++	+kmod-drm-sched +kmod-drm-shmem-helper
++  KCONFIG:= \
++	CONFIG_DRM_PANTHOR \
++	CONFIG_DRM_EXEC \
++	CONFIG_DRM_GPUVM \
++	CONFIG_DEVFREQ_THERMAL=y
++  FILES:= \
++	$(LINUX_DIR)/drivers/gpu/drm/drm_exec.ko \
++	$(LINUX_DIR)/drivers/gpu/drm/drm_gpuvm.ko \
++	$(LINUX_DIR)/drivers/gpu/drm/panthor/panthor.ko
++  AUTOLOAD:=$(call AutoProbe,drm_exec drm_gpuvm panthor)
++endef
++
++define KernelPackage/drm-panthor/description
++  DRM driver for ARM Mali CSF-based GPUs, including RK3588 Mali G610
++endef
++
++$(eval $(call KernelPackage,drm-panthor))
++
++define KernelPackage/can-rockchip-canfd
++  SUBMENU:=$(CAN_MENU)
++  TITLE:=Rockchip CAN-FD controller support
++  DEPENDS:=@TARGET_rockchip +kmod-can
++  KCONFIG:=CONFIG_CAN_ROCKCHIP_CANFD
++  FILES:=$(LINUX_DIR)/drivers/net/can/rockchip/rockchip_canfd.ko
++  AUTOLOAD:=$(call AutoProbe,rockchip_canfd)
++endef
++
++define KernelPackage/can-rockchip-canfd/description
++  Rockchip CAN-FD controller driver for RK3568/RK3588 SoCs
++endef
++
++$(eval $(call KernelPackage,can-rockchip-canfd))
++
++define KernelPackage/video-rockchip-rga
++  SUBMENU:=$(VIDEO_MENU)
++  TITLE:=Rockchip RGA support
++  DEPENDS:=@TARGET_rockchip \
++	+kmod-video-core +kmod-video-videobuf2 \
++	+kmod-video-mem2mem +kmod-video-dma-sg
++  KCONFIG:=CONFIG_VIDEO_ROCKCHIP_RGA
++  FILES:=$(LINUX_DIR)/drivers/media/platform/rockchip/rga/rockchip-rga.ko
++  AUTOLOAD:=$(call AutoProbe,rockchip-rga)
++endef
++
++define KernelPackage/video-rockchip-rga/description
++  Rockchip Raster Graphic Acceleration Unit (RGA) support
++endef
++
++$(eval $(call KernelPackage,video-rockchip-rga))
++
++define KernelPackage/video-hantro
++  SUBMENU:=$(VIDEO_MENU)
++  TITLE:=Hantro VPU support
++  DEPENDS:=@TARGET_rockchip \
++	+kmod-video-core +kmod-video-videobuf2 \
++	+kmod-video-mem2mem +kmod-video-dma-contig
++  KCONFIG:= \
++	CONFIG_VIDEO_HANTRO \
++	CONFIG_VIDEO_HANTRO_ROCKCHIP \
++	CONFIG_V4L2_H264 \
++	CONFIG_V4L2_JPEG_HELPER \
++	CONFIG_V4L2_VP9
++  FILES:= \
++	$(LINUX_DIR)/drivers/media/v4l2-core/v4l2-h264.ko \
++	$(LINUX_DIR)/drivers/media/v4l2-core/v4l2-jpeg.ko \
++	$(LINUX_DIR)/drivers/media/v4l2-core/v4l2-vp9.ko \
++	$(LINUX_DIR)/drivers/media/platform/verisilicon/hantro-vpu.ko
++  AUTOLOAD:=$(call AutoProbe,v4l2-h264 v4l2-jpeg v4l2-vp9 hantro-vpu)
++endef
++
++define KernelPackage/video-hantro/description
++  Hantro VPU driver with Rockchip RK3588 VPU/AV1 support
++endef
++
++$(eval $(call KernelPackage,video-hantro))
++
+ define KernelPackage/drm-rocket
+   SUBMENU:=$(VIDEO_MENU)
+   TITLE:=Rockchip NPU support

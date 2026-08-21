@@ -224,11 +224,40 @@
 			     <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH 0>,
 			     <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH 0>;
 		interrupt-names = "npu0_mmu", "npu1_mmu", "npu2_mmu";
-		clocks = <&cru ACLK_NPU0>, <&cru ACLK_NPU1>, <&cru ACLK_NPU2>,
-			 <&cru HCLK_NPU0>, <&cru HCLK_NPU1>, <&cru HCLK_NPU2>;
-		clock-names = "aclk0", "aclk1", "aclk2",
-			      "iface0", "iface1", "iface2";
+		/* Mainline rockchip-iommu requests exactly these two names.  The
+		 * NPU master driver keeps all three core clock pairs enabled while
+		 * jobs are running, so core 0 clocks are sufficient for MMU probe. */
+		clocks = <&cru ACLK_NPU0>, <&cru HCLK_NPU0>;
+		clock-names = "aclk", "iface";
 		#iommu-cells = <0>;
+		status = "okay";
+	};
+
+	/* CAN0: CAN0_RX_m0 / CAN0_TX_m0, matching the vendor BSP. */
+	can0: can@fea50000 {
+		compatible = "rockchip,rk3588-canfd";
+		reg = <0x0 0xfea50000 0x0 0x1000>;
+		interrupts = <GIC_SPI 341 IRQ_TYPE_LEVEL_HIGH 0>;
+		clocks = <&cru CLK_CAN0>, <&cru PCLK_CAN0>;
+		clock-names = "baudclk", "apb_pclk";
+		resets = <&cru SRST_CAN0>, <&cru SRST_P_CAN0>;
+		reset-names = "can", "can-apb";
+		pinctrl-names = "default";
+		pinctrl-0 = <&can0m0_pins>;
+		status = "okay";
+	};
+
+	/* CAN1: CAN1_RX_m1 / CAN1_TX_m1, matching the vendor BSP. */
+	can1: can@fea60000 {
+		compatible = "rockchip,rk3588-canfd";
+		reg = <0x0 0xfea60000 0x0 0x1000>;
+		interrupts = <GIC_SPI 342 IRQ_TYPE_LEVEL_HIGH 0>;
+		clocks = <&cru CLK_CAN1>, <&cru PCLK_CAN1>;
+		clock-names = "baudclk", "apb_pclk";
+		resets = <&cru SRST_CAN1>, <&cru SRST_P_CAN1>;
+		reset-names = "can", "can-apb";
+		pinctrl-names = "default";
+		pinctrl-0 = <&can1m1_pins>;
 		status = "okay";
 	};
 };
@@ -311,6 +340,24 @@
 		regulator-state-mem {
 			regulator-off-in-suspend;
 		};
+	};
+};
+
+/* RTC: HYM8563 on I2C6, interrupt on GPIO3_PC6. */
+&i2c6 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c6m0_xfer>;
+	status = "okay";
+
+	hym8563: rtc@51 {
+		compatible = "haoyu,hym8563";
+		reg = <0x51>;
+		#clock-cells = <0>;
+		clock-frequency = <32768>;
+		clock-output-names = "hym8563";
+		interrupt-parent = <&gpio3>;
+		interrupts = <RK_PC6 IRQ_TYPE_LEVEL_LOW>;
+		wakeup-source;
 	};
 };
 
@@ -753,6 +800,10 @@
  */
 &gmac0 {
 	clock_in_out = "output";
+	/* RTL8211F + RK GMAC occasionally times out on the hardware VLAN hash
+	 * filter while br-lan removes its default VID.  Software bridging is
+	 * authoritative; disable only the redundant hardware filter. */
+	snps,no-vlhash;
 	phy-handle = <&rgmii_phy0>;
 	phy-mode = "rgmii-rxid";
 	pinctrl-names = "default";
@@ -768,6 +819,7 @@
 
 &gmac1 {
 	clock_in_out = "output";
+	snps,no-vlhash;
 	phy-handle = <&rgmii_phy1>;
 	phy-mode = "rgmii-rxid";
 	pinctrl-names = "default";
@@ -896,6 +948,12 @@
 };
 
 &pcie3x4 {
+	/* The root port advertises two 1 GiB prefetchable BARs even with an
+	 * empty M.2 slot.  Keep the complete three-window mapping and double
+	 * the 64-bit MMIO aperture to 2 GiB so BAR assignment cannot fail. */
+	ranges = <0x01000000 0x0 0xf0100000 0x0 0xf0100000 0x0 0x00100000>,
+		 <0x02000000 0x0 0xf0200000 0x0 0xf0200000 0x0 0x00e00000>,
+		 <0x03000000 0x9 0x00000000 0x9 0x00000000 0x0 0x80000000>;
 	reset-gpios = <&gpio4 RK_PB6 GPIO_ACTIVE_HIGH>;
 	vpcie3v3-supply = <&vcc3v3_pcie30>;
 	status = "okay";
@@ -921,5 +979,11 @@
  * 真正主线没有的是 rk3588 DMC(DDR devfreq 调频)驱动,LEDE 侧不移植。
  */
 &rng {
+	/* RK3588 TRNG is in the secure/always-on clock domain, but the base
+	 * dtsi names an SCMI clock.  RNG probes before SCMI transport, which
+	 * produces a transient -EPROBE_DEFER error.  The mainline driver
+	 * supports a zero-clock device, so remove that early dependency. */
+	/delete-property/ clocks;
+	/delete-property/ clock-names;
 	status = "okay";
 };

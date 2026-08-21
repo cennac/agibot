@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=ap6275p-firmware
 PKG_VERSION:=20260820
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKG_LICENSE:=Proprietary
 
 include $(INCLUDE_DIR)/package.mk
@@ -28,6 +28,8 @@ define Package/ap6275p-firmware/install
 	$(INSTALL_DATA) ./files/brcm/* $(1)/lib/firmware/brcm/
 	$(LN) brcmfmac43752-pcie.txt \
 		$(1)/lib/firmware/brcm/brcmfmac43752-pcie.agibot,mb0002-v2.txt
+	$(LN) brcmfmac43752-pcie.bin \
+		$(1)/lib/firmware/brcm/brcmfmac43752-pcie.agibot,mb0002-v2.bin
 endef
 
 $(eval $(call BuildPackage,ap6275p-firmware))

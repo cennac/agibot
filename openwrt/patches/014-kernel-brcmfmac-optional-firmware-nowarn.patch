@@ -1,0 +1,23 @@
+diff --git a/target/linux/rockchip/patches-6.12/0141-brcmfmac-optional-firmware-nowarn.patch b/target/linux/rockchip/patches-6.12/0141-brcmfmac-optional-firmware-nowarn.patch
+new file mode 100644
+index 0000000000..1111111111
+--- /dev/null
++++ b/target/linux/rockchip/patches-6.12/0141-brcmfmac-optional-firmware-nowarn.patch
+@@ -0,0 +1,17 @@
++--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/firmware.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/firmware.c
++@@ -665,6 +665,13 @@ static int brcmf_fw_request_firmware(const struct firmware **fw,
++
++ fallback:
++-	return request_firmware(fw, cur->path, fwctx->dev);
+++	/* Optional blobs such as txcap may legitimately be absent on a board.
+++	 * Use the no-warn loader for their canonical fallback so an absent
+++	 * optional file does not trigger firmware-loader uevent noise.
+++	 */
+++	if (cur->flags & BRCMF_FW_REQF_OPTIONAL)
+++		return firmware_request_nowarn(fw, cur->path, fwctx->dev);
+++
+++	return request_firmware(fw, cur->path, fwctx->dev);
++ }
++
++ static void brcmf_fw_request_done(const struct firmware *fw, void *ctx)

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #include <errno.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <termios.h>
@@ -78,6 +79,12 @@ int main(void)
 	}
 
 	fprintf(stderr, "HCI UART BCM attached on %s\n", BT_TTY);
+	/* LEDE leaves the registered HCI device down until userspace opens it. */
+	for (i = 0; i < 30; i++) {
+		if (system("/usr/bin/hciconfig hci0 up") == 0)
+			break;
+		sleep(1);
+	}
 	for (;;)
 		pause();
 }

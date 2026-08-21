@@ -5,6 +5,87 @@
 
 ## OpenWrt/LEDE 固件(openwrt/ 路线)
 
+### 2026-08-21 SW9200 Loader / SW9201 复位 / HID 键盘修订
+
+- squashfs.gz:`ae622728ea330d4a47d659fa6516e7809f911056045d77252c5ed1aa823a4da6`
+  (132,343,795 bytes)
+- ext4.gz:`7fbeae31f31a26d205446c177d7a02d3c36cc1cb4b93df43bd159f890b86141e`
+  (170,050,808 bytes)
+- 本地归档:`E:\AIPorject\101\artifacts\lede-sw9200-loader-sw9201-hid-20260821\`
+- 内容:SW9200 按住上电改为进入 U-Boot RockUSB Loader;SW9201 通过
+  RK806 `pmic-reset-func=<1>` 与主线 `rk8xx-core` 补丁恢复立即复位;
+  USB/HDMI 登录键盘补入 `kmod-hid-generic` 并固化 `CONFIG_HID_GENERIC=m`。
+- 根因与行为:旧 U-Boot 先执行通用 `setup_boot_mode()`,SARADC1 下载键被
+  置 BROM download flag 后复位,后续自定义 Loader 分支不可达,因此按住
+  SW9200 实际落入真 Maskrom,RKDevTool 读取 eMMC flash 信息失败。本版把
+  `agibot_check_loader_key()` 提前,检测到 SW9200 时直接执行
+  `rockusb 0 mmc 0`,RKDevTool 应识别为 LOADER。若确需 Maskrom,仍要走
+  破坏 idbloader/擦写前 16 MiB 的既有救援路径。
+- 构建验证:66 重试全量构建退出码 0;U-Boot 源码确认调用顺序为
+  `agibot_check_loader_key()` → `setup_boot_mode()`;最终 DTB 反编译确认
+  `pmic-reset-func = <0x01>`;manifest 含
+  `kmod-hid-generic - 6.12.100-1`,ipk 内 `hid-generic.ko` 为 5,720 字节
+  ARM64 ELF。镜像哈希已在 66 与本机双端复核。
+- 上板:待刷新验证。重点测试按住 SW9200 上电 RKDevTool 显示 LOADER、
+  SW9201 轻按立即复位、HDMI 登录界面键盘 Caps/Num/Scroll LED 与密码输入。
+
+### 2026-08-21 clean boot / 非阻断日志治理修订
+
+- squashfs.gz:`73576559582bfb0f9e97102043c50d170d512f38751183f8882402a847482124`
+  (132,345,154 bytes)
+- ext4.gz:`0a6400bbb683e7bbc0c77812694cfa50424264bf9abbbe0e17e8dc2a67d6c85c`
+  (170,050,485 bytes)
+- 本地归档:`E:\AIPorject\101\artifacts\lede-clean-boot-20260821\`
+- 内容:在 HDMI/USB/BT 修订基础上治理启动日志——双 GMAC 增补
+  `snps,no-vlhash`,PCIe3x4 64-bit MMIO range 扩为 2 GiB,RNG 节点移除
+  无效 clocks,NPU IOMMU 使用 `aclk`/`iface`,RKNPU 改用直接
+  `devm_ioremap()`,AP6275P 固件补板级 BIN 并关闭 optional firmware
+  fallback 告警;GPU 侧显式启用 `CONFIG_DEVFREQ_THERMAL=y` 以注册
+  Panthor cooling device。
+- 构建验证:66 通过代理恢复 helloworld feed/passwall 依赖并完成全量构建;
+  `ipt2socks`、`shadowsocks-rust-sslocal/sserver`、`v2ray-plugin` 已进
+  manifest;镜像 SHA-256 在 66 与本机双端验证通过。独立 DTB、ext4 boot DTB、
+  squashfs boot DTB 内容一致,并确认双 GMAC/RNG/NPU IOMMU/PCIe range 修复
+  已编入最终 DTB。
+- 预期效果:上一版记录的 GMAC VLAN filter timeout、PCIe BAR assign failed、
+  RNG `-517`、NPU IOMMU clock、NPU `request region -EBUSY`、Panthor cooling、
+  AP6275P 板级 BIN/NVRAM fallback 告警应消失。空 M.2 插槽的 PCIe
+  `Phy link never came up` 仍会保留,这是无端点时的真实物理状态。
+- 上板:尚未刷入回归。重点看全量
+  `dmesg | grep -Ei 'error|failed|fail|warn|ebusy|timeout'`、RNG 读数、
+  devfreq、双网口、Wi-Fi/BT 与 render node。
+
+### 2026-08-21 HDMI 登录 + USB/BT 启动修订
+
+- squashfs.gz:`978f335449e36ff2ce5bcadd973a875f346efd31931fc9c4ce58b83ee187e917`
+- ext4.gz:`947a0135d56aa9b5b0bd5245fe0cc0840be60ce48efcc23bf80e932de3be2616`
+- 本地归档:`E:\AIPorject\101\artifacts\lede-hdmi-login-usb-bt-20260821\`
+- 内容:在设备补齐修订基础上,把 tty1 改为标准 `/bin/login`;USB 供电初始化
+  增加 hub settle 且用 sysfs GPIO `direction=high` 避免切输出时低电平毛刺;
+  `agibot-bt-attach` 升级到 `1.0.0-2`,attach 后自动执行 `hciconfig hci0 up`,
+  并显式依赖 `bluez-utils`。
+- 上板:HDMI 登录进程与界面已验证;USB 摄像头启动期 `-71` 消失,最终枚举为
+  HD Camera。蓝牙自动 up 的旧进程已手动验证可行,新 ipk 已进镜像,待下次刷机
+  做冷启动复核。
+- 已知非阻断日志(历史版本状态):空 M.2 插槽 PCIe link/BAR、TRNG 时钟探测、
+  NPU IOMMU 时钟、NPU/IOMMU 地址重叠 EBUSY fallback、eth0 VLAN filter、
+  Panthor cooling device、Wi-Fi板级 NVRAM fallback。其中除空 M.2 无端点外,
+  其余已由后续 clean boot 修订处理。
+
+### 2026-08-21 设备补齐修订(Mali 固件 + CAN 工具)
+
+- squashfs.gz:`75be1f955ac56ddd7384f5e232039bcfc052266b709bb34c76a34e84bb821c83`
+- ext4.gz:`2825f5009cc7ab71ee7698ac5f84e822398f35c12b8f5a32315c98231dc36da8`
+- 内容:UVC、HYM8563 RTC、Panthor、CAN0/CAN1、RGA、Hantro、NPU DVFS、
+  AP6275P Wi-Fi/BT;新增根文件系统固件 `mali_csffw.bin` 与
+  `canutils-candump/cansend` 子包。
+- 上板:前一级镜像已验证 RTC/UVC/CAN/GPU 固件热修复、NPU/CPU 动态频率、
+  Wi-Fi 扫描与蓝牙 HCI;CAN0/CAN1 500 kbps loopback 收发通过。本修订整盘
+  镜像完成构建与 SHA 校验,待下一轮刷入回归。
+- 已知非阻断(历史版本状态):NPU 寄存器与 IOMMU 重叠导致 3 条 EBUSY
+  fallback 日志;Panthor 禁止运行中卸载重载(会触发 power-domain SError),
+  冷启动路径正常。clean boot 修订已处理 EBUSY 噪声。
+
 ### 2026-08-18 全功能重编(PCIe + TRNG 增补)
 
 - squashfs.gz:`f98fa9d747ebe4d7f2c5da465c6e81ca750597c3e2f573491c189c0719411b21`(136 MB gz;解压整盘 `.img` 2.13 GiB 同目录,刷机用它)

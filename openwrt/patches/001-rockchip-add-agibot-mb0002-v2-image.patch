@@ -2,7 +2,7 @@ diff --git a/target/linux/rockchip/image/armv8.mk b/target/linux/rockchip/image/
 index 146af386..67de41b4 100644
 --- a/target/linux/rockchip/image/armv8.mk
 +++ b/target/linux/rockchip/image/armv8.mk
-@@ -676,6 +676,20 @@ $(call Device/seewo_srcm3588-io)
+@@ -676,6 +676,24 @@ $(call Device/seewo_srcm3588-io)
  endef
  TARGET_DEVICES += seewo_srcm3588-sw
  
@@ -14,7 +14,11 @@ index 146af386..67de41b4 100644
 +  DEVICE_DTS := rk3588-agibot-mb0002-v2
 +  UBOOT_DEVICE_NAME := agibot-rk3588
 +  IMAGE/sysupgrade.img.gz := boot-common | boot-script vop | pine64-img | gzip | append-metadata
-+  DEVICE_PACKAGES := kmod-drm-rockchip kmod-fb kmod-rknpu kmod-brcmfmac \
++  DEVICE_PACKAGES := kmod-drm-rockchip kmod-fb kmod-rknpu kmod-drm-panthor \
++	 kmod-brcmfmac kmod-hid-generic kmod-video-uvc kmod-can kmod-can-raw \
++	 kmod-can-rockchip-canfd canutils canutils-candump \
++	 canutils-cansend kmod-video-rockchip-rga \
++	 kmod-video-hantro \
 +	 ap6275p-firmware kmod-bluetooth kmod-hci-uart agibot-bt-attach \
 +	 iw wpad-basic-mbedtls bluez-utils
 +endef

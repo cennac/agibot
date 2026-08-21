@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=agibot-bt-attach
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKG_LICENSE:=GPL-2.0-or-later
 
 include $(INCLUDE_DIR)/package.mk
@@ -11,7 +11,7 @@ define Package/agibot-bt-attach
   SECTION:=utils
   CATEGORY:=Utilities
   TITLE:=AGIBOT MB0002 V2 Bluetooth attach helper
-  DEPENDS:=@TARGET_rockchip_armv8 +kmod-bluetooth +kmod-hci-uart
+  DEPENDS:=@TARGET_rockchip_armv8 +kmod-bluetooth +kmod-hci-uart +bluez-utils
 endef
 
 define Package/agibot-bt-attach/description

@@ -189,17 +189,17 @@ export const connectors = [
   {
     id: 'buttons', index: 18, name: '板载按键组', designator: 'SW8902 / SW8901 / SW8900 · SW9202 / SW9200 / SW9201', category: '控制', confidence: 'documented',
     position: [-6.08, -1.03],
-    summary: '六个板载轻触按键按实物排列为 2 行 × 3 列；SW9200 是 ADC/LOADER 键，SW9202 是 PMIC 电源键，SW9201 与 SW8900 均会触发硬复位。SW8901/SW8902 在两系统运行态短按及原版启动保持测试中均无可见功能。',
-    evidence: ['用户实物确认按钮丝印与 2 行 × 3 列排列', 'SW9200 实测进入 LOADER，原版 event2 报 KEY_VOLUMEUP(code 115)', 'SW9202 原版 event0 报 KEY_POWER(code 116)：短按尝试挂起，按住 3 秒正常关机，再按开机', 'SW8900/SW9201 在两系统均出现完整启动链且 boot ID 更新', 'SW8901/SW8902 两系统短按均无 input 事件，原版复位启动保持 10 秒仍为 normal 模式'],
+    summary: '六个板载轻触按键按实物排列为 2 行 × 3 列；SW9200 是 ADC/LOADER 键，SW9202 是 PMIC 电源键，SW8900 实测为硬复位，SW9201 的复位行为由 RK806 reset function 配置决定。SW8901/SW8902 在两系统运行态短按及原版启动保持测试中均无可见功能。',
+    evidence: ['用户实物确认按钮丝印与 2 行 × 3 列排列', 'SW9200 实测进入 LOADER/Maskrom，原版 event2 报 KEY_VOLUMEUP(code 115)', 'SW9202 原版 event0 报 KEY_POWER(code 116)：短按尝试挂起，按住 3 秒正常关机，再按开机', 'LEDE 未配置 RK806 reset function 时 SW8900 可复位而 SW9201 无效；Armbian/vendor DT 配置 pmic-reset-func=1 后 SW9201 可复位', 'SW8901/SW8902 两系统短按均无 input 事件，原版复位启动保持 10 秒仍为 normal 模式'],
     pinout: [
       ['第一行左', 'SW8902', '短按/启动保持均无已知可见功能'],
       ['第一行中', 'SW8901', '短按/启动保持均无已知可见功能'],
       ['第一行右', 'SW8900', '硬复位 / 重启'],
       ['第二行左', 'SW9202', 'PMIC KEY_POWER / 短按策略 / 长按关机 / 开机'],
       ['第二行中', 'SW9200', 'ADC KEY_VOLUMEUP / LOADER'],
-      ['第二行右', 'SW9201', '系统复位 / 重启'],
+      ['第二行右', 'SW9201', 'RK806 reset function / 需固件启用'],
     ],
-    note: '六键已完成两系统交叉实测。SW9201/SW8900 外部复位行为一致，但尚无电气证据证明属于同一复位网。SW8901/SW8902 仍可能连接未启用 GPIO、独立 MCU 或其他硬件路径。原版 SW9202 短按挂起会因 Wi-Fi PCIe suspend 返回 -1 而失败。',
+    note: '不要把 SW9201 记录成与 SW8900 同一硬复位网：SW8900 在 LEDE 未编程 PMIC 时也能复位，SW9201 依赖 RK806 SYS_CFG3[7:6]=01。LEDE 通过 pmic-reset-func=1 补齐该配置。SW8901/SW8902 仍可能连接未启用 GPIO、独立 MCU 或其他硬件路径。原版 SW9202 短按挂起会因 Wi-Fi PCIe suspend 返回 -1 而失败。',
   },
   {
     id: 'm2-slot', index: 19, name: 'M.2 扩展插槽', designator: 'J8600', category: '扩展', confidence: 'verified',
