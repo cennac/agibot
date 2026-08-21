@@ -23,6 +23,9 @@ ROOTFS_FILES_REL="files"
 RKNPU_PACKAGE_REL="package/kernel/rknpu"
 AP6275P_FIRMWARE_PACKAGE_REL="package/firmware/ap6275p-firmware"
 AGIBOT_BT_ATTACH_PACKAGE_REL="package/agibot/agibot-bt-attach"
+RKNN_RUNTIME_PACKAGE_REL="package/agibot/rknn-runtime"
+GCOMPAT_PACKAGE_REL="package/libs/gcompat"
+ACM8625P_KERNEL_PATCH_REL="target/linux/rockchip/patches-6.12/0120-asoc-add-acm8625p-amplifier.patch"
 
 # ---- 平台检测 ----
 detect_platform() {
@@ -137,6 +140,7 @@ rm -f "$LEDE/$ROOTFS_FILES_REL/usr/sbin/agibot-usb-hub-reset"
 rm -f "$LEDE/$ROOTFS_FILES_REL/usr/sbin/agibot-usb-port-power"
 rm -f "$LEDE/$ROOTFS_FILES_REL/etc/init.d/agibot-usb"
 rm -f "$LEDE/$ROOTFS_FILES_REL/lib/firmware/arm/mali/arch10.8/mali_csffw.bin"
+rm -f "$LEDE/$ROOTFS_FILES_REL/lib/firmware/acm8625p_dsp_stereo_btl_48khz.bin"
 rm -rf "$LEDE/$RKNPU_PACKAGE_REL"
 # checkout 不会清补丁 007 新增的未跟踪文件;保留 build 输出,只移除这个已知残留
 rm -f "$LEDE/package/boot/uboot-rockchip/patches/112-pylibfdt-python3-api.patch"
@@ -147,6 +151,9 @@ rm -f "$LEDE/target/linux/rockchip/patches-6.12/0110-agibot-rockchip-canfd-rk358
 rm -f "$LEDE/target/linux/rockchip/patches-6.12/0141-brcmfmac-optional-firmware-nowarn.patch"
 rm -rf "$LEDE/$AP6275P_FIRMWARE_PACKAGE_REL"
 rm -rf "$LEDE/$AGIBOT_BT_ATTACH_PACKAGE_REL"
+rm -rf "$LEDE/$RKNN_RUNTIME_PACKAGE_REL"
+rm -rf "$LEDE/$GCOMPAT_PACKAGE_REL"
+rm -f "$LEDE/$ACM8625P_KERNEL_PATCH_REL"
 
 # 3. apply 补丁 + 安装 DTS
 echo ">>> [3/5] apply 设备定义补丁 + 安装板级 DTS..."
@@ -188,6 +195,22 @@ mkdir -p "$LEDE/$(dirname "$AP6275P_FIRMWARE_PACKAGE_REL")"
 cp -a "$AP6275P_FIRMWARE_PACKAGE_REL" "$LEDE/$AP6275P_FIRMWARE_PACKAGE_REL"
 mkdir -p "$LEDE/$(dirname "$AGIBOT_BT_ATTACH_PACKAGE_REL")"
 cp -a "$AGIBOT_BT_ATTACH_PACKAGE_REL" "$LEDE/$AGIBOT_BT_ATTACH_PACKAGE_REL"
+mkdir -p "$LEDE/$(dirname "$RKNN_RUNTIME_PACKAGE_REL")"
+cp -a "$RKNN_RUNTIME_PACKAGE_REL" "$LEDE/$RKNN_RUNTIME_PACKAGE_REL"
+mkdir -p "$LEDE/$(dirname "$GCOMPAT_PACKAGE_REL")"
+cp -a "$GCOMPAT_PACKAGE_REL" "$LEDE/$GCOMPAT_PACKAGE_REL"
+install -d "$LEDE/$RKNN_RUNTIME_PACKAGE_REL/files"
+install -m 0755 "$REPO_ROOT/overlay/usr/lib/librknnrt.so" \
+	"$LEDE/$RKNN_RUNTIME_PACKAGE_REL/files/librknnrt.so"
+install -m 0644 "$REPO_ROOT/overlay/root/npu_test/mobilenet_v1.rknn" \
+	"$LEDE/$RKNN_RUNTIME_PACKAGE_REL/files/mobilenet_v1.rknn"
+install -m 0644 "$REPO_ROOT/overlay/root/npu_test/resnet18.rknn" \
+	"$LEDE/$RKNN_RUNTIME_PACKAGE_REL/files/resnet18.rknn"
+install -m 0644 "$REPO_ROOT/kernel/rk35xx-vendor-6.1/0001-ASoC-add-ACM8625P-amplifier.patch" \
+	"$LEDE/$ACM8625P_KERNEL_PATCH_REL"
+install -d "$LEDE/$ROOTFS_FILES_REL/lib/firmware"
+install -m 0644 "$REPO_ROOT/overlay/lib/firmware/acm8625p_dsp_stereo_btl_48khz.bin" \
+	"$LEDE/$ROOTFS_FILES_REL/lib/firmware/acm8625p_dsp_stereo_btl_48khz.bin"
 
 # 4. feeds
 echo ">>> [4/5] feeds update/install(coolsnowwolf 全家桶)..."

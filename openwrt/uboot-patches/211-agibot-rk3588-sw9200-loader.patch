@@ -13,7 +13,7 @@ enter the existing RockUSB command before normal distro boot starts.
 
 --- /dev/null
 +++ b/arch/arm/dts/rk3588-agibot-mb0002-v2.dts
-@@ -0,0 +1,29 @@
+@@ -0,0 +1,31 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +
 +#include "rk3588-generic.dts"
@@ -25,6 +25,7 @@ enter the existing RockUSB command before normal distro boot starts.
 +
 +	adc-keys {
 +		compatible = "adc-keys";
++		u-boot,dm-spl;
 +		io-channels = <&saradc 1>;
 +		io-channel-names = "buttons";
 +		keyup-threshold-microvolt = <1800000>;
@@ -32,6 +33,7 @@ enter the existing RockUSB command before normal distro boot starts.
 +		status = "okay";
 +
 +		loader-key {
++			u-boot,dm-spl;
 +			linux,code = <KEY_VOLUMEUP>;
 +			label = "SW9200 loader";
 +			press-threshold-microvolt = <1750>;

@@ -2,7 +2,7 @@ diff --git a/target/linux/rockchip/image/armv8.mk b/target/linux/rockchip/image/
 index 146af386..67de41b4 100644
 --- a/target/linux/rockchip/image/armv8.mk
 +++ b/target/linux/rockchip/image/armv8.mk
-@@ -676,6 +676,24 @@ $(call Device/seewo_srcm3588-io)
+@@ -676,6 +676,25 @@ $(call Device/seewo_srcm3588-io)
  endef
  TARGET_DEVICES += seewo_srcm3588-sw
  
@@ -20,7 +20,8 @@ index 146af386..67de41b4 100644
 +	 canutils-cansend kmod-video-rockchip-rga \
 +	 kmod-video-hantro \
 +	 ap6275p-firmware kmod-bluetooth kmod-hci-uart agibot-bt-attach \
-+	 iw wpad-basic-mbedtls bluez-utils
++	 iw wpad-basic-mbedtls bluez-utils rknn-runtime \
++	 kmod-sound-core kmod-sound-soc-core alsa-utils
 +endef
 +TARGET_DEVICES += agibot_mb0002-v2
 +
@@ -37,7 +38,7 @@ index c4a13912..945b0eb1 100755
  
  	case "$board" in
 +	agibot,mb0002-v2)
-+		ucidef_set_interfaces_lan_wan 'eth0' 'eth1'
++		ucidef_set_interfaces_lan_wan 'eth1' 'eth0'
 +		;;
  	advantech,rsb4810|\
  	ariaboard,photonicat|\
