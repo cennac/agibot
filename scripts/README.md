@@ -1,6 +1,6 @@
 # scripts/ — 辅助脚本
 
-让「clone → 编译 → 刷机 → 验证」全流程不依赖仓库外的任何东西。所有脚本跨平台(WSL2 / Linux / macOS),路径全部脚本相对,**无 `/mnt/e` 硬编码**。
+让「clone → 编译 → 刷机 → 验证」全流程不依赖仓库外的任何东西。大部分脚本跨平台(WSL2 / Linux / macOS),路径全部脚本相对,**无 `/mnt/e` 硬编码**;`make-fnos-agibot.sh` 需要 WSL/Linux root 来挂载镜像分区。
 
 ## 速查表
 
@@ -10,6 +10,7 @@
 | `preflight.sh` | 编译**前** / 卡住时 | 确认 WSL2 patch 是否 apply、上次 build.log 失败阶段、缓存命中、shellcheck 直连 |
 | `build-status.sh` | 编译**进行中**(另开终端) | build.log 尾、编译进程、images/ 产物、kernel clone 进度 |
 | `verify-image.sh` | 编译**完成后** | 无需启动板子,debugfs 读 ext4 验证 dtb / firmware / service / hostname 是否进了镜像 + dtb 适配是否生效 |
+| `make-fnos-agibot.sh` | 需要做 fnOS 板级适配时 | 校验官方 Rock 5B fnOS 镜像,替换 AGIBOT 启动链与 DTB,生成可刷整盘镜像 |
 
 ## 典型流程
 
@@ -62,6 +63,16 @@ bash scripts/verify-image.sh path/to/Armbian_*.img # 指定镜像
 - (3) Mali/ACM8625P firmware（ACM 同时校验 rootfs 与 initramfs）、Armbian 官方扩容服务、hostname、armbianEnv 的 fdtfile
 
 依赖 `debugfs`(e2fsprogs)和 `fdtget`(device-tree-compiler),install-deps.sh 已装。
+
+### make-fnos-agibot.sh
+```bash
+# WSL 内,仓库根目录或任意目录均可
+wsl -u root -e bash scripts/make-fnos-agibot.sh
+```
+把官方 fnOS Rock 5B 镜像手术成 AGIBOT MB0002 V2 镜像:保留 fnOS rootfs、
+GPT 和分区 UUID,只替换 idbloader/U-Boot、写入 AGIBOT DTB,并修改
+`fnEnv.txt` 的 `fdtfile`。详细来源、哈希、刷机和首启验收见
+[`docs/FNOS-ADAPTATION.md`](../docs/FNOS-ADAPTATION.md)。
 
 ---
 
