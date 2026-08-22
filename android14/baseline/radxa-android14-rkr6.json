@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "baseline": {
+    "name": "radxa-rockchip-android14-rkr6",
+    "display_name": "Radxa ROCK 5C Android 14 RK3588 BSP",
+    "android_version": 14,
+    "rockchip_release": "RKR6",
+    "kernel_version": "6.1",
+    "manifest_url": "https://github.com/radxa/manifests.git",
+    "manifest_branch": "Android14-rkr6-rock5c",
+    "manifest_manifest": "rockchip-u1-release.xml",
+    "manifest_revision": "ac6785b31865b06223ae262c8ed42b14b11f5aaa",
+    "release_tag": "radxa-rock5c-android14-20250811",
+    "release_revision": "d8d506fa25d14a1639f0f4b06292656e212bb317",
+    "release_url": "https://github.com/radxa/manifests/releases/tag/radxa-rock5c-android14-20250811",
+    "locked_at": "2026-08-22T00:00:00+08:00",
+    "purpose": "source baseline for AGIBOT MB0002 V2 only; Radxa images are not flashable on AGIBOT"
+  },
+  "repo_tool": {
+    "tag": "v2.66.1",
+    "revision": "b85886fa9f5b4e2189cc5b2f40bd0a80459d4c77",
+    "source_url": "https://github.com/GerritCodeReview/git-repo.git",
+    "purpose": "noninteractive manifest initialization",
+    "verified_at": "2026-08-22T00:00:00+08:00"
+  },
+  "pinned_projects": [
+    {
+      "logical_path": "device/rockchip/rk3588",
+      "repository_hint": "radxa/rk-device-rockchip-rk3588",
+      "revision": "4e9794df017bd56f50d8835f95dfdb8b39abf90f"
+    },
+    {
+      "logical_path": "device/rockchip/common",
+      "repository_hint": "radxa/rk-device-rockchip-rksdk",
+      "revision": "7e6116f5fe4f29e97d242115f8fd1ddf4a3363da"
+    },
+    {
+      "logical_path": "vendor/rockchip/common",
+      "repository_hint": "radxa/rk-platform-vendor-rockchip-common",
+      "revision": "13bbb25125ce0aea9e988aaa2b31c3f8e159af30"
+    },
+    {
+      "logical_path": "vendor/rockchip/hardware",
+      "repository_hint": "radxa/rk-platform-vendor-rockchip-hardware",
+      "revision": "90dfdbc85a4a2e787f1541ce1f3fc1bbb8b6b49d"
+    },
+    {
+      "logical_path": "u-boot",
+      "repository_hint": "radxa/rk-u-boot",
+      "revision": "fba0c8f28039e0f253ada4a71613ae1dd401c864"
+    },
+    {
+      "logical_path": "kernel-6.1",
+      "repository_hint": "radxa/rk-kernel",
+      "revision": "aaf1830c6647a51523704d5e21c39a7705d3e79d"
+    }
+  ],
+  "external_references": [
+    {
+      "role": "original-vendor-device-tree-decompiled",
+      "path": "../../agibot.dts",
+      "sha256": "661E133DB4564ACAB850124763C1ED0799C2DAAFE639689A246A7CEB7FDA91F6"
+    },
+    {
+      "role": "mainline-oriented-minimal-device-tree",
+      "path": "../openwrt/files/arch/arm64/boot/dts/rockchip/rk3588-agibot-mb0002-v2.dts",
+      "sha256": "51B5C76128ED3661536F43F3F5B0EE98FDE67B92F0816E962218100D43AE9467"
+    },
+    {
+      "role": "original-vendor-device-tree-binary",
+      "path": "../../RK3588-backup/dev-resources/boot/fdt.dtb",
+      "sha256": "511E6A45561056D3FF7B1B7C2868F351FEDDDF48D1CFFFCB390AA525FAB66C42"
+    },
+    {
+      "role": "original-kernel-config",
+      "path": "../../RK3588-backup/dev-resources/kernel/config",
+      "sha256": "AC2156D2BC73A4EA9AB7AC3F58DE1E821953A406BE837995796C8207FF0AFB31"
+    },
+    {
+      "role": "hardware-discovery-and-usb-validation",
+      "path": "../docs/HARDWARE-DISCOVERY-20260818.md",
+      "sha256": "8C4EDC95FBBB4667E486BC2042234DBFBA9D4474236D282A9D0BF2BA4CC4358E"
+    },
+    {
+      "role": "verified-usb-hub-reset-pulse",
+      "path": "../overlay/usr/local/sbin/agibot-usb-hub-reset",
+      "sha256": "7D11305B598F37DFC6E90C59D7BE24845DB924F0BA611DCBBBBF45F0A80104C4"
+    },
+    {
+      "role": "linux-bringup-observations",
+      "path": "../docs/ARMBIAN-LINUX-BRINGUP.md",
+      "sha256": "36423EB62F5347EB59E7F288A24DC443DCE8F3976CE607D2AD62FF9E876D0162"
+    }
+  ]
+}
