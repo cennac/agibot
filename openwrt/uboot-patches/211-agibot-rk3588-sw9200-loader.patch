@@ -8,6 +8,7 @@ enter the existing RockUSB command before normal distro boot starts.
 ---
  arch/arm/dts/rk3588-agibot-mb0002-v2.dts | 29 +++++++++++
  arch/arm/mach-rockchip/board.c             | 28 +++++++++++
+ arch/arm/mach-rockchip/boot_mode.c         | 10 ++++
  configs/agibot-rk3588_defconfig            | 72 +++++++++++++++++++++++++++++
  3 files changed, 129 insertions(+)
 
@@ -95,12 +96,13 @@ enter the existing RockUSB command before normal distro boot starts.
  	gpt_capsule_update_setup();
 --- /dev/null
 +++ b/configs/agibot-rk3588_defconfig
-@@ -0,0 +1,72 @@
+@@ -0,0 +1,73 @@
 +CONFIG_ARM=y
 +CONFIG_SKIP_LOWLEVEL_INIT=y
 +CONFIG_COUNTER_FREQUENCY=24000000
 +CONFIG_ARCH_ROCKCHIP=y
 +CONFIG_DEFAULT_DEVICE_TREE="rk3588-agibot-mb0002-v2"
++CONFIG_AGIBOT_SW9200_LOADER=y
 +CONFIG_ROCKCHIP_RK3588=y
 +CONFIG_SPL_SERIAL=y
 +CONFIG_TARGET_EVB_RK3588=y
@@ -168,5 +170,41 @@ enter the existing RockUSB command before normal distro boot starts.
 +CONFIG_USB_GADGET_DOWNLOAD=y
 +CONFIG_USB_FUNCTION_ROCKUSB=y
 +CONFIG_ERRNO_STR=y
+--- a/arch/arm/mach-rockchip/Kconfig
++++ b/arch/arm/mach-rockchip/Kconfig
+@@ -861,4 +861,8 @@ config SPL_STACK_R_MALLOC_SIMPLE_LEN
+ 	default 0x200000 if SPL_STACK_R_ADDR = 0x03e00000
+ 
+ endif
++
++config AGIBOT_SW9200_LOADER
++	bool "Route the AGIBOT SW9200 download key to RockUSB Loader"
++	depends on CMD_ROCKUSB
+ endif
+--- a/arch/arm/mach-rockchip/boot_mode.c
++++ b/arch/arm/mach-rockchip/boot_mode.c
+@@ -10,5 +10,6 @@
+ #include <asm/arch-rockchip/boot_mode.h>
+ #include <dm/device.h>
++#include <dm/ofnode.h>
+ #include <dm/uclass.h>
+ #include <linux/printk.h>
+ 
+@@ -77,5 +78,15 @@ void rockchip_dnl_mode_check(void)
+ {
+ 	if (rockchip_dnl_key_pressed()) {
++		/* On MB0002 V2, SW9200 is a service Loader key. Keep the
++		 * working generic ADC detection, but serve RockUSB from U-Boot
++		 * so RKDevTool can inspect the eMMC instead of resetting to Maskrom.
++		 */
++		if (IS_ENABLED(CONFIG_AGIBOT_SW9200_LOADER)) {
++			printf("SW9200 pressed, entering RockUSB Loader...\n");
++			if (run_command("rockusb 0 mmc 0", 0))
++				printf("RockUSB Loader failed; continuing normal boot\n");
++			return;
++		}
+ 		printf("download key pressed, entering download mode...");
+ 		set_back_to_bootrom_dnl_flag();
+ 		do_reset(NULL, 0, 0, NULL);
 -- 
 2.43.0

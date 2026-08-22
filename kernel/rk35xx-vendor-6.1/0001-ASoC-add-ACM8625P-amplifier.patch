@@ -1,3 +1,19 @@
+diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
+--- a/sound/soc/codecs/Kconfig
++++ b/sound/soc/codecs/Kconfig
+@@ -28,6 +28,12 @@ menu "CODEC drivers"
+ 
+ if SND_SOC
+ 
++config SND_SOC_ACM8625P
++	tristate "ACM8625P speaker amplifier"
++	depends on I2C
++	help
++	  Enable the ACME ACM8625P DSP speaker amplifier codec.
++
+ config SND_SOC_88PM860X
+ 	tristate "Marvell 88PM860x CODEC"
+ 	depends on MFD_88PM860X
 diff --git a/sound/soc/codecs/Makefile b/sound/soc/codecs/Makefile
 index 0360cde..895c267 100644
 --- a/sound/soc/codecs/Makefile
@@ -6,7 +22,7 @@ index 0360cde..895c267 100644
  obj-$(CONFIG_SND_SOC_88PM860X)	+= snd-soc-88pm860x.o
  obj-$(CONFIG_SND_SOC_AB8500_CODEC)	+= snd-soc-ab8500-codec.o
  obj-$(CONFIG_SND_SOC_AC97_CODEC)	+= snd-soc-ac97.o
-+obj-y	+= acm8625p.o
++obj-$(CONFIG_SND_SOC_ACM8625P)	+= acm8625p.o
  obj-$(CONFIG_SND_SOC_AD1836)	+= snd-soc-ad1836.o
  obj-$(CONFIG_SND_SOC_AD193X)	+= snd-soc-ad193x.o
  obj-$(CONFIG_SND_SOC_AD193X_SPI)	+= snd-soc-ad193x-spi.o
@@ -567,7 +583,7 @@ index 0000000..a3dbe7a
 +#endif
 +
 +static struct i2c_driver acm8625p_i2c_driver = {
-+	.probe_new	= acm8625p_i2c_probe,
++	.probe		= acm8625p_i2c_probe,
 +	.remove		= acm8625p_i2c_remove,
 +	.id_table	= acm8625p_i2c_id,
 +	.driver		= {

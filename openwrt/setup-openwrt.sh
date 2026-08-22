@@ -136,6 +136,8 @@ git -C "$LEDE" checkout -- .
 rm -f "$LEDE/$DTS_REL/rk3588-agibot-mb0002-v2.dts"
 # 清掉本项目安装的 rootfs overlay 文件(下次 cp 重装)
 rm -f "$LEDE/$ROOTFS_FILES_REL/etc/inittab"
+rm -f "$LEDE/$ROOTFS_FILES_REL/etc/rc.button/power"
+rm -f "$LEDE/$ROOTFS_FILES_REL/etc/hotplug.d/button/00-agibot-log"
 rm -f "$LEDE/$ROOTFS_FILES_REL/usr/sbin/agibot-usb-hub-reset"
 rm -f "$LEDE/$ROOTFS_FILES_REL/usr/sbin/agibot-usb-port-power"
 rm -f "$LEDE/$ROOTFS_FILES_REL/etc/init.d/agibot-usb"
@@ -149,6 +151,8 @@ rm -f "$LEDE/target/linux/rockchip/patches-6.12/0091-agibot-stmmac-dma-debug.pat
 rm -f "$LEDE/target/linux/rockchip/patches-6.12/0100-agibot-rk806-pmic-reset-func.patch"
 rm -f "$LEDE/target/linux/rockchip/patches-6.12/0110-agibot-rockchip-canfd-rk3588.patch"
 rm -f "$LEDE/target/linux/rockchip/patches-6.12/0141-brcmfmac-optional-firmware-nowarn.patch"
+rm -f "$LEDE/package/kernel/mac80211/patches-6.18/brcm/999-brcmfmac-optional-firmware-direct.patch"
+rm -f "$LEDE/package/utils/busybox/patches/999-login-long-timeout.patch"
 rm -rf "$LEDE/$AP6275P_FIRMWARE_PACKAGE_REL"
 rm -rf "$LEDE/$AGIBOT_BT_ATTACH_PACKAGE_REL"
 rm -rf "$LEDE/$RKNN_RUNTIME_PACKAGE_REL"
@@ -182,6 +186,10 @@ mkdir -p "$LEDE/$DTS_REL"
 cp "files/arch/arm64/boot/dts/rockchip/rk3588-agibot-mb0002-v2.dts" "$LEDE/$DTS_REL/"
 mkdir -p "$LEDE/$ROOTFS_FILES_REL/etc"
 install -m 0644 "files/etc/inittab" "$LEDE/$ROOTFS_FILES_REL/etc/inittab"
+install -d "$LEDE/$ROOTFS_FILES_REL/etc/rc.button" "$LEDE/$ROOTFS_FILES_REL/etc/hotplug.d/button"
+install -m 0755 "files/etc/rc.button/power" "$LEDE/$ROOTFS_FILES_REL/etc/rc.button/power"
+install -m 0755 "files/etc/hotplug.d/button/00-agibot-log" \
+	"$LEDE/$ROOTFS_FILES_REL/etc/hotplug.d/button/00-agibot-log"
 install -d "$LEDE/$ROOTFS_FILES_REL/usr/sbin" "$LEDE/$ROOTFS_FILES_REL/etc/init.d"
 install -m 0755 "files/usr/sbin/agibot-usb-hub-reset" "$LEDE/$ROOTFS_FILES_REL/usr/sbin/agibot-usb-hub-reset"
 install -m 0755 "files/usr/sbin/agibot-usb-port-power" "$LEDE/$ROOTFS_FILES_REL/usr/sbin/agibot-usb-port-power"
@@ -216,7 +224,11 @@ install -m 0644 "$REPO_ROOT/overlay/lib/firmware/acm8625p_dsp_stereo_btl_48khz.b
 echo ">>> [4/5] feeds update/install(coolsnowwolf 全家桶)..."
 setup_proxy
 HELLOWORLD_FEEDS_ONLY=1 bash "$SCRIPT_DIR/helloworld-srclink.sh"
-( cd "$LEDE" && ./scripts/feeds update -a )
+if [ "${SKIP_FEEDS_UPDATE:-0}" = 1 ]; then
+	echo ">>> SKIP_FEEDS_UPDATE=1: reuse existing feed checkouts"
+else
+	( cd "$LEDE" && ./scripts/feeds update -a )
+fi
 for p in feed-patches/*.patch; do
 	case "$(basename "$p")" in
 	001-golang-darwin-external-linker.patch|\

@@ -217,3 +217,52 @@
   **禁止使用**。
 - 显示 DTB v4/v5:仅板端临时实验,未形成发布镜像、未 commit/push;v5 导致内核
   启动挂起,完整事故记录见 [DISPLAY-DTB-INCIDENT.md](DISPLAY-DTB-INCIDENT.md)。
+### 2026-08-21 vendor Loader MBR 修订(实机可启动)
+
+- squashfs.gz:`87e89a731a16533cdbc7d11b839b98c5e1dc415931a51ae13f0fd25f5e5014ee`
+  (147,808,762 bytes)
+- ext4.gz:`b2492b6380172be5113c95c84147e8503ff493ff813701b02bdb4529739ad2fc`
+  (186,376,147 bytes)
+- Local archive:`E:\AIPorject\101\artifacts\lede-round10-vendor-loader-mbr-20260821\`
+- Contents: use the vendor idbloader/U-Boot combination already verified by
+  Armbian, and rebuild vendor U-Boot as DOS partition only (GPT/EFI partition
+  support disabled), preventing the stale backup GPT at the end of eMMC from
+  overriding the OpenWrt MBR at LBA0. Keep the LEDE round10 rootfs.
+- Key files: `idbloader.img` SHA-256
+  `ee589396bc647c07128e8b5e14ca18cea94759f8313188d245492940061118ae`;
+  `u-boot.itb` SHA-256
+  `8a9183ae81406097c24d83aa4ecc97e1a94856d5fc611b750bb4eb0afc38c119`.
+- On hardware: the squashfs image is confirmed to boot LEDE. After rebooting with
+  SW8900 or SW9201 while holding SW9200, RKDevTool recognizes Loader and can read
+  eMMC. SW9201 itself still does not reset the running system in this revision;
+  see the round11 record below.
+
+### 2026-08-22 round11 status (no final image yet)
+
+- Hardware audit of round10: eth1 LAN is 1000Mb/s Full, eth0 WAN awaits a cable;
+  Wi-Fi/Bluetooth, ACM8625P, RKNPU, CPU/NPU DVFS, M.2 NVMe, USB HID and HDMI DRM
+  all work. NVMe is PCIe Gen3 x2 and its endpoint BAR is assigned correctly.
+- Remaining log: `brcmf_c_process_txcap_blob: no txcap_blob available (err=-2)`.
+  The active module comes from mac80211 backports; the previous patch changed only
+  the firmware request path and missed the intentional info print in `common.c`.
+  Round11 downgrades a missing optional txcap blob to debug and successfully clean
+  rebuilds mac80211 on host 66; cold-boot verification is still pending.
+- The two PCIe root-port 1 GiB BAR assignment failures are virtual root-port BAR
+  resource noise. The NVMe endpoint BAR is assigned and the link is stable, so do
+  not risk changing the DTS aperture merely to hide these lines.
+- SW9201 retest: a short press has no effect while Linux runs or during early boot.
+  `rk805_pwrkey` is registered, but both `rk805_pwrkey_fall/rise` IRQ counters stay
+  zero and button-hotplug logs remain empty. RK806 `SYS_CFG3` reads back `0x42`,
+  confirming the reset-function bits as vendor semantics `01`. Therefore the write
+  itself is correct, but another vendor RK806 initialization or board path is still
+  missing. `/etc/rc.button/power` cannot solve this until input events arrive.
+- HDMI repeatedly displays `Login timed out after 60 seconds`. BusyBox documents
+  `LOGIN_TIMEOUT=0` as disabled, but 1.36.1 parses it with `xatoi_positive()`, so
+  zero makes login exit immediately; OpenWrt init also does not pass an inittab
+  environment prefix to the applet. Round11 changes BusyBox's default timeout to
+  ten years while preserving password authentication; build and board validation
+  remain pending.
+- Host 66: `make -j$(nproc)` (20 jobs) previously overloaded SSH until the machine
+  rebooted itself. Use `-j8` for normal full builds; reserve `-j16` for small
+  package-only increments while monitoring SSH and memory.
+

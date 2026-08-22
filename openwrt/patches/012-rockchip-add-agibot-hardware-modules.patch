@@ -1,7 +1,7 @@
 diff --git a/target/linux/rockchip/modules.mk b/target/linux/rockchip/modules.mk
 --- a/target/linux/rockchip/modules.mk
 +++ b/target/linux/rockchip/modules.mk
-@@ -64,6 +64,87 @@
+@@ -64,6 +64,129 @@
  
  $(eval $(call KernelPackage,drm-rockchip))
  
@@ -27,6 +27,48 @@ diff --git a/target/linux/rockchip/modules.mk b/target/linux/rockchip/modules.mk
 +endef
 +
 +$(eval $(call KernelPackage,drm-panthor))
++
++define KernelPackage/input-rk805-pwrkey
++  SUBMENU:=$(INPUT_MODULES_MENU)
++  TITLE:=Rockchip RK805/RK806 power-key support
++  DEPENDS:=@TARGET_rockchip +kmod-input-core
++  KCONFIG:= \
++	CONFIG_INPUT_MISC=y \
++	CONFIG_INPUT_RK805_PWRKEY=m
++  FILES:=$(LINUX_DIR)/drivers/input/misc/rk805-pwrkey.ko
++  AUTOLOAD:=$(call AutoProbe,rk805-pwrkey)
++endef
++
++define KernelPackage/input-rk805-pwrkey/description
++  Input driver for the RK806 PWRON key used by AGIBOT SW9201.
++endef
++
++$(eval $(call KernelPackage,input-rk805-pwrkey))
++
++define KernelPackage/sound-soc-agibot
++  SUBMENU:=$(SOUND_MENU)
++  TITLE:=AGIBOT RK3588 ACM8625P sound card support
++  DEPENDS:=@TARGET_rockchip +kmod-sound-soc-core +kmod-i2c-core
++  KCONFIG:= \
++	CONFIG_SND_SOC_ACM8625P=m \
++	CONFIG_SND_SOC_ROCKCHIP=m \
++	CONFIG_SND_SOC_ROCKCHIP_I2S_TDM=m \
++	CONFIG_SND_SIMPLE_CARD=m \
++	CONFIG_SND_SIMPLE_CARD_UTILS=m
++  FILES:= \
++	$(LINUX_DIR)/sound/soc/codecs/acm8625p.ko \
++	$(LINUX_DIR)/sound/soc/rockchip/snd-soc-rockchip-i2s-tdm.ko \
++	$(LINUX_DIR)/sound/soc/generic/snd-soc-simple-card-utils.ko \
++	$(LINUX_DIR)/sound/soc/generic/snd-soc-simple-card.ko
++  AUTOLOAD:=$(call AutoProbe,acm8625p snd-soc-rockchip-i2s-tdm \
++	snd-soc-simple-card-utils snd-soc-simple-card)
++endef
++
++define KernelPackage/sound-soc-agibot/description
++  Rockchip I2S/TDM, simple-card and ACM8625P codec drivers for MB0002 V2.
++endef
++
++$(eval $(call KernelPackage,sound-soc-agibot))
 +
 +define KernelPackage/can-rockchip-canfd
 +  SUBMENU:=$(CAN_MENU)

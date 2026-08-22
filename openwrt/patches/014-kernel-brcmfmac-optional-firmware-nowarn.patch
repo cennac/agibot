@@ -3,7 +3,7 @@ new file mode 100644
 index 0000000000..1111111111
 --- /dev/null
 +++ b/target/linux/rockchip/patches-6.12/0141-brcmfmac-optional-firmware-nowarn.patch
-@@ -0,0 +1,17 @@
+@@ -0,0 +1,48 @@
 +--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/firmware.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/firmware.c
 +@@ -665,6 +665,13 @@ static int brcmf_fw_request_firmware(const struct firmware **fw,
@@ -11,13 +11,70 @@ index 0000000000..1111111111
 + fallback:
 +-	return request_firmware(fw, cur->path, fwctx->dev);
 ++	/* Optional blobs such as txcap may legitimately be absent on a board.
-++	 * Use the no-warn loader for their canonical fallback so an absent
-++	 * optional file does not trigger firmware-loader uevent noise.
+++	 * Use the direct loader for their canonical fallback so an absent
+++	 * optional file neither warns nor triggers a firmware-loader uevent.
 ++	 */
 ++	if (cur->flags & BRCMF_FW_REQF_OPTIONAL)
-++		return firmware_request_nowarn(fw, cur->path, fwctx->dev);
+++		return request_firmware_direct(fw, cur->path, fwctx->dev);
 ++
 ++	return request_firmware(fw, cur->path, fwctx->dev);
 + }
 +
 + static void brcmf_fw_request_done(const struct firmware *fw, void *ctx)
++@@ -760,6 +767,7 @@ int brcmf_fw_get_firmwares(struct device *dev, struct brcmf_fw_request *req,
++ 	struct brcmf_fw_item *first = &req->items[0];
++ 	struct brcmf_fw *fwctx;
++ 	char *alt_path = NULL;
+++	const struct firmware *fw = NULL;
++ 	int ret;
++ 
++ 	brcmf_dbg(TRACE, "enter: dev=%s\n", dev_name(dev));
++@@ -786,9 +794,19 @@ int brcmf_fw_get_firmwares(struct device *dev, struct brcmf_fw_request *req,
++ 					      brcmf_fw_request_done_alt_path);
++ 		kfree(alt_path);
++ 	} else {
++-		ret = request_firmware_nowait(THIS_MODULE, true, first->path,
++-					      fwctx->dev, GFP_KERNEL, fwctx,
++-					      brcmf_fw_request_done);
+++		/* There is no asynchronous nowarn firmware API. Optional-only
+++		 * requests (notably txcap) must use the synchronous helper so the
+++		 * expected ENOENT is not printed by the firmware loader.
+++		 */
+++		if (first->flags & BRCMF_FW_REQF_OPTIONAL) {
+++			ret = brcmf_fw_request_firmware(&fw, fwctx);
+++			brcmf_fw_request_done(fw, fwctx);
+++			return 0;
+++		} else {
+++			ret = request_firmware_nowait(THIS_MODULE, true, first->path,
+++						      fwctx->dev, GFP_KERNEL, fwctx,
+++						      brcmf_fw_request_done);
+++		}
++ 	}
++ 	if (ret < 0)
++ 		brcmf_fw_request_done(NULL, fwctx);
+diff --git a/package/kernel/mac80211/patches-6.18/brcm/999-brcmfmac-optional-firmware-direct.patch b/package/kernel/mac80211/patches-6.18/brcm/999-brcmfmac-optional-firmware-direct.patch
+new file mode 100644
+index 0000000000..2222222222
+--- /dev/null
++++ b/package/kernel/mac80211/patches-6.18/brcm/999-brcmfmac-optional-firmware-direct.patch
+@@ -0,0 +1,19 @@
++--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/firmware.c
+++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/firmware.c
++@@ -689,2 +689,5 @@ fallback:
++-	return request_firmware(fw, cur->path, fwctx->dev);
+++	if (cur->flags & BRCMF_FW_REQF_OPTIONAL)
+++		return request_firmware_direct(fw, cur->path, fwctx->dev);
+++
+++	return request_firmware(fw, cur->path, fwctx->dev);
++ }
++--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
++@@ -211,6 +211,7 @@ static int brcmf_c_process_txcap_blob(struct brcmf_if *ifp)
++ 
++ 	err = brcmf_bus_get_blob(bus, &fw, BRCMF_BLOB_TXCAP);
++ 	if (err || !fw) {
++-		brcmf_info("no txcap_blob available (err=%d)\n", err);
+++		/* Missing optional board calibration is not an error. */
+++		brcmf_dbg(INFO, "no txcap_blob available (err=%d)\n", err);
++ 		return 0;
++ 	}

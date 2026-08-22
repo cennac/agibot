@@ -1,0 +1,17 @@
+diff --git a/package/utils/busybox/patches/999-login-long-timeout.patch b/package/utils/busybox/patches/999-login-long-timeout.patch
+new file mode 100644
+index 0000000000..3333333333
+--- /dev/null
++++ b/package/utils/busybox/patches/999-login-long-timeout.patch
+@@ -0,0 +1,11 @@
++--- a/loginutils/login.c
+++++ b/loginutils/login.c
++@@ -350,7 +350,7 @@ int login_main(int argc UNUSED_PARAM, char **argv)
++ 
++ \tINIT_G();
++ 
++-\tG.timeout = xatoi_positive(getenv("LOGIN_TIMEOUT") ? : "60");
+++\tG.timeout = xatoi_positive(getenv("LOGIN_TIMEOUT") ? : "315360000");
++ 
++ \t/* More of suid paranoia if called by non-root: */
++ \t/* Clear dangerous stuff, set PATH */

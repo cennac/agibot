@@ -383,3 +383,24 @@ RKDevTool「下载镜像」页加两项(**两项都要,只加 image 会报「固
 | 产物 | Armbian .img(整盘) | LEDE sysupgrade.img.gz(整盘) |
 | 刷机 | RKDevTool Loader+image@0 | **同左**(复用 flash/) |
 | 编译 | docker-build.sh | docker-lede-build.sh |
+## 2026-08-22 round11 当前状态
+
+round10 vendor Loader MBR 版已实机确认 LEDE 可启动,SW9200 按住可进入
+RKDevTool 可读取 eMMC 的 Loader。主要设备审计通过:双网口、Wi-Fi/蓝牙、
+ACM8625P、RKNPU、CPU/NPU DVFS、M.2 NVMe、USB HID、HDMI DRM。
+
+round11 未形成最终镜像,当前工作区包含三类待验证修复:
+
+- mac80211 backports 的 txcap 缺失提示降为 debug;已在 66 强制 clean 后
+  单编通过,待冷启动确认 `dmesg` 不再输出该信息。
+- SW9201 仍不能在 LEDE 运行态或启动早期复位。`rk805_pwrkey` input 与 IRQ
+  已注册,但按键 IRQ 计数为 0;RK806 `SYS_CFG3=0x42` 说明当前复位功能位已
+  写对。下一步需继续对比 vendor RK806 初始化序列,不能只依赖
+  `/etc/rc.button/power`。
+- BusyBox login 默认超时改为 10 年,避免 HDMI 每 60 秒循环显示
+  `Login timed out after 60 seconds`;仍保留 root/password 登录。该补丁
+  待完成最终 image 构建并上板验证。
+
+66 的 20 线程不适合全并发,`-j$(nproc)` 曾导致机器自动重启。默认全量构建
+使用 `-j8`;单包或小增量可用 `-j16`,但需监控 SSH 与内存。
+
