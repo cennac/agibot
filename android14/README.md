@@ -11,7 +11,7 @@ repository at commit `b4ffdcfebcf96b491864d4923533ade7856e7a7c`.
 
 ## Current phase
 
-**Phase 0 - pinned baseline and product skeleton**
+**Phase 1 - source integration started; no build**
 
 The selected baseline is Radxa's public Android 14 RK3588 BSP tree, based on
 Rockchip Android 14 RKR6 and Linux 6.1. This baseline is source reference only.
@@ -39,7 +39,8 @@ tools/          Non-building validation and traceability helpers
 
 ## Non-goals in this phase
 
-- No full `repo sync`.
+- No completed full `repo sync` yet; the partial WSL download is paused for
+  host-disk relocation.
 - No Android build, kernel build, DTB compilation, or image packaging.
 - No flashing, Maskrom operation, or board mutation.
 - No claim that the product configuration is bootable yet.

@@ -115,5 +115,21 @@ tools/verify-source-baseline.sh ~/src/agibot-android14
 - Manifest commit: `ac6785b31865b06223ae262c8ed42b14b11f5aaa`
 - Manifest entry: `rockchip-u1-release.xml`
 - Repo tool: `v2.66.1`, commit `b85886fa9f5b4e2189cc5b2f40bd0a80459d4c77`
-- `repo sync` has **not** been executed.
-- Full project revision verification is pending until the source is synced.
+
+### Partial sync state, 2026-08-22
+
+- A partial `repo sync -c -j8` was started and then intentionally interrupted
+  before completion. No build command was invoked.
+- The source directory consumed about 50 GiB. The Ubuntu VHDX had grown to
+  about 52 GiB on the Windows system drive.
+- The ext4 filesystem reported hundreds of GiB available, but that value is the
+  dynamic VHDX's nominal capacity, not free space on the Windows host disk.
+- At interruption the host C drive had about 141 GiB free and E had about
+  199 GiB free. Continuing on C risked filling the system drive.
+- Two checkout operations (`external/armnn` and
+  `external/camera_engine_rkaiq`) reported transient initialization errors;
+  the download continued afterward. The cache is resumable.
+- Do not treat the checkout as complete or perform DTS mapping from it yet.
+- Before resuming, move the WSL VHDX or use another WSL installation whose
+  backing file is on E, then repeat the bounded sync command and run
+  `tools/verify-source-baseline.sh /root/src/agibot-android14`.
