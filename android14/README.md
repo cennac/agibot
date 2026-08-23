@@ -48,5 +48,9 @@ tools/          Non-building validation and traceability helpers
 See `docs/00-baseline.md` and `docs/02-port-plan.md` before changing the
 baseline.
 
+The full source checkout is being downloaded to the remote host workspace
+described in `docs/07-remote-build-host.md`. Do not duplicate that checkout in
+WSL or commit its contents to this repository.
+
 Armbian and LEDE files remain outside this directory. Keep unrelated board
 changes in separate commits from Android baseline, DTS, and product changes.
