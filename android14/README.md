@@ -52,5 +52,9 @@ The full source checkout is being downloaded to the remote host workspace
 described in `docs/07-remote-build-host.md`. Do not duplicate that checkout in
 WSL or commit its contents to this repository.
 
+The download process, network-route decisions, and cleanup rules are recorded in
+`docs/08-source-download.md`. Update that log whenever the remote sync strategy
+or verification status changes.
+
 Armbian and LEDE files remain outside this directory. Keep unrelated board
 changes in separate commits from Android baseline, DTS, and product changes.
