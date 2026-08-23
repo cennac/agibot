@@ -44,8 +44,8 @@ PATH=/data/agibot-android14-build/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin
 ```
 
 Sync and repair logs are kept beside the checkout as `repo-sync.log`,
-`repo-repair.log`, and `repo-trace.log`. The active sync PID is written to
-`repo-sync.pid`.
+`repo-repair.log`, `repo-trace.log`, and `repo-sync-sdk-repair.log`. The active
+sync PID is written to `repo-sync.pid`.
 
 ## Checkout repair, 2026-08-23
 
@@ -81,3 +81,16 @@ package versions are incompatible. Keep any container storage and build output
 under `/data`.
 
 No Android build command has been run yet.
+
+## Source download completion, 2026-08-24
+
+The full TUNA-backed sync completed after the single `prebuilts/sdk` checkout
+repair described in `docs/08-source-download.md`. The final checkout contains
+1236 repo projects and occupies about `674G`; `/data` retained roughly `2.0T`
+free space. The locked-baseline verifier reported `failures=0`.
+
+The `.repo/manifests` checkout intentionally carries the one-line
+`prebuilts/sdk` repair as an uncommitted diff. Its `HEAD` remains the locked
+manifest revision, so the baseline verifier can still detect an accidental
+manifest update. Reapply `tools/fix-radxa-sdk-manifest.sh` after any deliberate
+manifest re-initialization.

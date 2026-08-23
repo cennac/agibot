@@ -39,8 +39,8 @@ tools/          Non-building validation and traceability helpers
 
 ## Non-goals in this phase
 
-- No completed full `repo sync` yet; the partial WSL download is paused for
-  host-disk relocation.
+- The full source checkout is complete on the remote build host; do not duplicate
+  it in WSL or commit its contents.
 - No Android build, kernel build, DTB compilation, or image packaging.
 - No flashing, Maskrom operation, or board mutation.
 - No claim that the product configuration is bootable yet.
@@ -48,9 +48,9 @@ tools/          Non-building validation and traceability helpers
 See `docs/00-baseline.md` and `docs/02-port-plan.md` before changing the
 baseline.
 
-The full source checkout is being downloaded to the remote host workspace
-described in `docs/07-remote-build-host.md`. Do not duplicate that checkout in
-WSL or commit its contents to this repository.
+The full source checkout is hosted in the remote workspace described in
+`docs/07-remote-build-host.md`. Do not duplicate that checkout in WSL or commit
+its contents to this repository.
 
 The download process, network-route decisions, and cleanup rules are recorded in
 `docs/08-source-download.md`. Update that log whenever the remote sync strategy

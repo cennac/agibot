@@ -58,9 +58,9 @@ performance.
   process identifier in `/data/agibot-android14-build/repo-sync.pid`.
 - Do not start another full sync while that PID is active.
 
-## Interim observations
+## Final sync observations
 
-At the 21:25 CST checkpoint:
+At the 21:25 CST checkpoint on 2026-08-23:
 
 - Current sync PID: `3024042`.
 - Continuous runtime: about five hours.
@@ -81,24 +81,74 @@ At the 21:25 CST checkpoint:
   consume substantial space. They must not be deleted while a fetch is active.
   Cleanup should happen only after the final sync and baseline verification.
 
-## Completion gate
+The full mirror sync eventually transferred the remaining large repositories
+and exited after approximately 11.4 hours. Its only failure was the
+`prebuilts/sdk` checkout.
 
-The download is complete only when `/data/agibot-android14-build/repo-sync-mirror.log`
-contains:
+## 2026-08-24: prebuilts/sdk manifest repair
+
+The full sync reported:
+
+```text
+error.GitError: Cannot checkout platform/prebuilts/sdk
+fatal: cannot update ref 'HEAD': trying to write non-commit object
+cd99dbe8b79005f8fcda159e996211e3f019dd57
+```
+
+`cd99dbe8b79005f8fcda159e996211e3f019dd57` is an annotated tag object for
+`android-14.0.0_r27`, not a commit. The Radxa manifest uses it directly as the
+project revision. Git can set `HEAD` only to the commit peeled from that tag:
+`92e2a80095695a40fa854fff44268e0bc333c154`.
+
+The reproducible repair is:
+
+```bash
+bash tools/fix-radxa-sdk-manifest.sh /data/agibot-android14-build/aosp
+
+cd /data/agibot-android14-build/aosp
+PATH=/data/agibot-android14-build/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+  /data/agibot-android14-build/tools/repo sync -c -j1 --fail-fast prebuilts/sdk
+```
+
+The single-project repair completed in 45.113 seconds and printed:
 
 ```text
 repo sync has finished successfully.
 ```
 
-Immediately afterward, run the locked-baseline check from the copied metadata:
+The result is recorded on the build host in
+`/data/agibot-android14-build/repo-sync-sdk-repair.log`.
+
+## Final verification
+
+The repaired source tree was checked with:
 
 ```bash
 cd /data/agibot-android14-build/android14
 bash tools/verify-source-baseline.sh /data/agibot-android14-build/aosp
 ```
 
-If the sync exits early because a mirror connection dropped, resume the exact
-same bounded command rather than reverting to the proxy route. Use single-project
-`repo sync -j1 --fail-fast` only for a repository that repeatedly fails.
+It reported `failures=0` and matched:
+
+- Manifest: `ac6785b31865b06223ae262c8ed42b14b11f5aaa`
+- `device/rockchip/rk3588`: `4e9794df017bd56f50d8835f95dfdb8b39abf90f`
+- `device/rockchip/common`: `7e6116f5fe4f29797d242115f8fd1ddf4a3363da`
+- `vendor/rockchip/common`: `13bbb25125ce0aea9e988aaa2b31c3f8e159af30`
+- `vendor/rockchip/hardware`: `90dfdbc85a4a2e787f1541ce1f3fc1bbb8b6b49d`
+- `u-boot`: `fba0c8f28039e0f253ada4a71613ae1dd401c864`
+- `kernel-6.1`: `aaf1830c6647a51523704d5e21c39a7705d3e79d`
+
+Final checkout facts:
+
+- 1236 repo projects.
+- About `674G` occupied by the source and reused object stores.
+- About `2.0T` still free on `/data`.
+- The `.repo/manifests` checkout intentionally has the one-line
+  `prebuilts/sdk` repair as an uncommitted local diff; its `HEAD` remains the
+  locked manifest revision.
+
+Cleanup of obsolete `tmp_pack_*` files is now safe only after confirming no Git
+or repo process is active, but it has not been performed because those files are
+still useful evidence for the failed network routes and space is not constrained.
 
 No build, image packaging, or flashing is authorized by this log.

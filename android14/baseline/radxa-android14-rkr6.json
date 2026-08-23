@@ -14,7 +14,16 @@
     "release_revision": "d8d506fa25d14a1639f0f4b06292656e212bb317",
     "release_url": "https://github.com/radxa/manifests/releases/tag/radxa-rock5c-android14-20250811",
     "locked_at": "2026-08-22T00:00:00+08:00",
-    "purpose": "source baseline for AGIBOT MB0002 V2 only; Radxa images are not flashable on AGIBOT"
+    "purpose": "source baseline for AGIBOT MB0002 V2 only; Radxa images are not flashable on AGIBOT",
+    "manifest_repairs": [
+      {
+        "manifest_file": "Android14_Radxa_u1_rk6.xml",
+        "project": "platform/prebuilts/sdk",
+        "reason": "Radxa pinned an annotated tag object as a project revision; Git HEAD requires the peeled commit",
+        "upstream_revision": "cd99dbe8b79005f8fcda159e996211e3f019dd57",
+        "checkout_revision": "92e2a80095695a40fa854fff44268e0bc333c154"
+      }
+    ]
   },
   "repo_tool": {
     "tag": "v2.66.1",
