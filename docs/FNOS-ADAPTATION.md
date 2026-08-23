@@ -131,12 +131,38 @@ systemctl --no-pager status trim triminit
 journalctl -b 0 --no-pager -p warning
 ```
 
+## NPU / GPU
+
+官方 fnOS 6.18 内核已经包含 `rknpu.ko`、Rockchip GPU 模块，并启用
+`CONFIG_DRM_PANTHOR=m`。本仓库另外保存了针对 fnOS 6.18 重新编译的板级 DTS/DTB：
+
+```text
+fnos/rk3588-agibot-mb0002-v2-6.18.dts
+fnos/rk3588-agibot-mb0002-v2.6.18.dtb
+```
+
+远端 `/data/fnos-3588` 已用该 DTB 生成 `fnos-agibot-mb0002-v4.img`，镜像 SHA-256：
+
+```text
+ec4b126185ccb9d112e22eba58bbc1c421dc5b024228a477bb93545e278b595f
+```
+
+首启后检查 NPU/GPU：
+
+```sh
+dmesg | grep -Ei 'rknpu|npu|panthor|mali'
+lsmod | grep -E 'rknpu|rkgpu|panthor'
+ls -l /dev/dri/renderD*
+```
+
+NPU 设备通常通过 DRM render 节点暴露，不一定存在 `/dev/rknpu`。
+
 ## 风险边界
 
-- 当前 AGIBOT DTB 来自 OpenWrt 6.12 树。运行时 DTB 不要求与内核版本完全一致，但个别
-  新节点仍可能不匹配；首通标准只看 eMMC、串口、双网口和 fnOS 服务。
-- HDMI、NPU、音频、摄像头、蓝牙等非存储功能不作为首刷阻断项。需要时再用 fnOS 6.18
-  内核源码重编 AGIBOT DTS。
+- 6.18 DTB 已重新编译并完成离线镜像注入验证，但仍需上板确认 NPU 的时钟、电源域和
+  OPP 表与 fnOS 驱动完全匹配。
+- HDMI、音频、摄像头、蓝牙等非存储功能不作为首刷阻断项；NPU/GPU 以设备节点和 dmesg
+  为准做首启回归。
 - AGIBOT U-Boot 已在 OpenWrt 镜像验证，fnOS 的 `boot.scr` 路径仍需上板确认；其 RK3588
   eMMC、ext4 和通用发行版启动能力是已知的。
 - 首启失败时先保存完整 UART 日志，再只改一个变量，避免把引导、DTB 和 fnOS 服务混在

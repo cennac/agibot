@@ -16,11 +16,13 @@ BOARD_DTB="$BOOT_ASSETS/rk3588-agibot-mb0002-v2.dtb"
 DTB_PATH="rockchip/rk3588-agibot-mb0002-v2.dtb"
 
 # Expected hashes for the 1.2.0302 Mainland-PE Rock 5B baseline and the
-# 2026-08-21 clean-boot AGIBOT bootloader assets.
-SOURCE_MD5="36ef67cdebb5700d8088cf94d8706d64"
-IDBLOADER_SHA256="8e7a5385da15d48b38714814246925054bea3c4b16a294364cd0dfe67ad8eca4"
-UBOOT_SHA256="308dd983423c6f769138aaf888e412124f723eb312fb5f9e0d336723ce2d08f2"
-DTB_SHA256="1589009e63066e4506568574fe64b44618c922eb7d02bf2d4b3da2eac15015e8"
+# 2026-08-21 clean-boot AGIBOT bootloader assets. Each can be overridden via
+# an environment variable of the same name (e.g. a DTB rebuilt against the
+# fnOS 6.18 kernel tree).
+SOURCE_MD5="${SOURCE_MD5:-36ef67cdebb5700d8088cf94d8706d64}"
+IDBLOADER_SHA256="${IDBLOADER_SHA256:-8e7a5385da15d48b38714814246925054bea3c4b16a294364cd0dfe67ad8eca4}"
+UBOOT_SHA256="${UBOOT_SHA256:-308dd983423c6f769138aaf888e412124f723eb312fb5f9e0d336723ce2d08f2}"
+DTB_SHA256="${DTB_SHA256:-1589009e63066e4506568574fe64b44618c922eb7d02bf2d4b3da2eac15015e8}"
 
 LOOP_DEV=""
 BOOT_MNT=""
