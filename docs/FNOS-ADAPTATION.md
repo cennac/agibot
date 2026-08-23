@@ -144,8 +144,10 @@ fnos/rk3588-agibot-mb0002-v2.6.18.dtb
 远端 `/data/fnos-3588` 已用该 DTB 生成 `fnos-agibot-mb0002-v4.img`，镜像 SHA-256：
 
 ```text
-ec4b126185ccb9d112e22eba58bbc1c421dc5b024228a477bb93545e278b595f
+d74608b5b23d69f9b892e362770434083ca3dcba339e546a4c2737bfb6d7fc33
 ```
+
+说明:v4 首次生成的 `.sha256` 是镜像完全落盘前的旧值,以上为远端和本地重新计算后的最终值。
 
 首启后检查 NPU/GPU：
 
@@ -156,6 +158,82 @@ ls -l /dev/dri/renderD*
 ```
 
 NPU 设备通常通过 DRM render 节点暴露，不一定存在 `/dev/rknpu`。
+
+## GPU / VPU 修复
+
+2026-08-23 板友反馈 GPU 未运行、硬解不可用。离线对照后确认不是 fnOS 缺驱动：
+
+- fnOS rootfs 没有 `panthor.ko`，实际提供 `rkgpu_bifrost_csf.ko`；该模块匹配
+  `rockchip,rk3588-mali-csf` / `arm,mali-valhall`。
+- 原主线风格 GPU 节点写的是 `rockchip,rk3588-mali` / `arm,mali-valhall-csf`，
+  因此 GPU 模块不会自动 probe。
+- fnOS 的 `/usr/trim/lib/mediasrv/ffmpeg` 已启用 `--enable-rkmpp --enable-rkrga`，
+  用户态库包含 `librockchip_mpp.so`。
+- 硬解还需要 `rk_vcodec.ko` 创建 MPP service；原主线 DTB 缺少 vendor 版
+  `mpp-srv`、RKVDEC 双核、AV1/JPEG 解码和 RGA 节点。
+
+修复产物：
+
+```text
+fnos/rk3588-agibot-mb0002-v2.6.18-gpu-vpu.dtb
+fnos/agibot-gpu-vpu.dtso
+fnos/agibot-gpu-vpu.dtbo
+```
+
+已在离线 DTB 中确认：
+
+```text
+/gpu@fb000000 compatible = "rockchip,rk3588-mali-csf", "arm,mali-valhall"
+/mpp-srv compatible = "rockchip,mpp-service"
+/rkvdec-core@fdc38000 compatible = "rockchip,rkv-decoder-v2"
+/rkvdec-core@fdc48000 compatible = "rockchip,rkv-decoder-v2"
+/rga@fdb60000 compatible = "rockchip,rga3_core0"
+/rga@fdb70000 compatible = "rockchip,rga3_core1"
+/rga@fdb80000 compatible = "rockchip,rga2_core0"
+/video-codec@fdc70000 compatible = "rockchip,av1-decoder"
+```
+
+Overlay 同时补齐 `vdpu@fdb50400`、JPEGD、AV1D MMU、RKVDEC CCU/双核、
+两颗 RGA3 和对应 IOMMU/SRAM。RGA2 主线节点也被改成 fnOS vendor 驱动使用的
+`rockchip,rga2_core0`，否则 `librga` 的格式转换/零拷贝路径仍不可用。
+
+板上免重刷安装：
+
+```sh
+sudo cp rk3588-agibot-mb0002-v2.6.18-gpu-vpu.dtb \
+  /boot/dtb/rockchip/rk3588-agibot-mb0002-v2.6.18-gpu-vpu.dtb
+sudo sed -i \
+  's#^fdtfile=.*#fdtfile=rockchip/rk3588-agibot-mb0002-v2.6.18-gpu-vpu.dtb#' \
+  /boot/fnEnv.txt
+sudo reboot
+```
+
+重启后验证：
+
+```sh
+uname -r
+cat /proc/device-tree/model
+cat /proc/device-tree/gpu@fb000000/compatible
+ls /proc/device-tree/mpp-srv
+sudo modprobe rkgpu_bifrost_csf
+sudo modprobe rk_vcodec
+ls -l /dev/dri/renderD* /dev/mpp_service
+lsmod | grep -E 'rkgpu|rk_vcodec'
+dmesg | grep -Ei 'mali|rkgpu|mpp|rkvdec|vpu'
+ls -l /dev/rga /dev/mpp_service
+LD_LIBRARY_PATH=/usr/trim/lib/mediasrv/lib \
+  /usr/trim/lib/mediasrv/ffmpeg -decoders 2>/dev/null | grep rkmpp
+```
+
+注意：系统升级到 `6.18.18.c963-trim` 后，必须确认新版内核目录里仍有同名模块：
+
+```sh
+find /lib/modules/$(uname -r) -type f \
+  | grep -E 'rkgpu_bifrost_csf|rk_vcodec|rga3|rknpu'
+```
+
+如果模块缺失或 `modinfo -F vermagic` 不是当前 `uname -r`，优先修复 fnOS
+内核/模块包同步问题；DTB 只负责让模块 probe，不能替代缺失的 `.ko`。
 
 ## 风险边界
 

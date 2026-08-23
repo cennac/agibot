@@ -12,8 +12,8 @@ SOURCE_IMG="${1:-$DEFAULT_SOURCE}"
 OUTPUT_IMG="${2:-$DEFAULT_OUTPUT}"
 IDBLOADER="$BOOT_ASSETS/agibot-rk3588-idbloader.img"
 UBOOT_ITB="$BOOT_ASSETS/agibot-rk3588-u-boot.itb"
-BOARD_DTB="$BOOT_ASSETS/rk3588-agibot-mb0002-v2.dtb"
-DTB_PATH="rockchip/rk3588-agibot-mb0002-v2.dtb"
+BOARD_DTB="${FNOS_BOARD_DTB:-$BOOT_ASSETS/rk3588-agibot-mb0002-v2.dtb}"
+DTB_PATH="${FNOS_DTB_PATH:-rockchip/rk3588-agibot-mb0002-v2.dtb}"
 
 # Expected hashes for the 1.2.0302 Mainland-PE Rock 5B baseline and the
 # 2026-08-21 clean-boot AGIBOT bootloader assets. Each can be overridden via
