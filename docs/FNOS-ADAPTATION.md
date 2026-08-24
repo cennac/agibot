@@ -235,6 +235,90 @@ find /lib/modules/$(uname -r) -type f \
 如果模块缺失或 `modinfo -F vermagic` 不是当前 `uname -r`，优先修复 fnOS
 内核/模块包同步问题；DTB 只负责让模块 probe，不能替代缺失的 `.ko`。
 
+## 蓝色散热兼容板网口差异
+
+2026-08-24 收到蓝色散热兼容板整盘备份：
+
+```text
+E:\AIPorject\101\RK3588-backup\RK3588_蓝色散热_纯净系统_20260816.img.gz
+```
+
+直接从 gzip 流中读取 GPT，无需解出整盘：`boot` 分区起点为 LBA 32768
+(16 MiB)，长度 64 MiB。该分区是 Rockchip boot FIT，外层 metadata 写明
+`fdt data-position=0x800`、`data-size=0x269a0`。按这两个值抽取 FDT：
+
+```text
+FDT SHA-256: cc229d9cbeebac4ea936fe39aab66e41c5111f3cc345cda69639f22064b02013
+```
+
+该值与 FIT 内 `fdt` image 的 SHA-256 完全一致。它与本仓库既有
+`dev-resources/boot/fdt.dtb` 反编译后只差开机 logo 显示模式
+(`center` vs `fullscreen`)，两个 GMAC/PHY 配置完全一致，可作为同类硬件
+对照证据。
+
+### GMAC 对照
+
+| 属性 | 蓝色板原厂 GMAC0 `fe1b0000` | fnOS v5 GMAC0 | 结论 |
+|---|---|---|---|
+| `phy-mode` | `rgmii-rxid` | `rgmii-rxid` | 一致 |
+| `clock_in_out` | `input` | `output` | 关键差异 |
+| `tx_delay` | `0x43` | `0x43` | 一致 |
+| `rx_delay` | 缺失 | `0x00` | 等效 |
+| PHY 地址 | `1` | `1` | 一致 |
+| PHY reset | GPIO4_D5 active-low | GPIO4_D5 active-low | GPIO 一致 |
+
+GMAC1 `fe1c0000` 的 `phy-mode`、`tx_delay=0x42`、PHY 地址 `0`、GPIO4_D4
+复位也一致。原厂 GMAC0 为 `"input"`；原厂 GMAC1 写的是拼写错误的
+`"intput"`，不是 `"input"`。
+
+fnOS 6.18 `dwmac-rk.c` 只有字符串完全等于 `"input"` 才把
+`clock_input=true`；`"output"`、`"intput"` 和其它值都会走
+`clock_input=false`。RK3588 驱动据此选择：
+
+- `input`: `RK3588_GMAC_CLK_SELECT_IO`，RGMII 时钟由外部 PHY 输入 MAC；
+- 非 `input`: `RK3588_GMAC_CLK_SELECT_CRU`，MAC/CRU 向 PHY 输出时钟。
+
+因此 v5 的 GMAC0 `output` 会把蓝色板原厂按 PHY 供时钟设计的 GMAC0 配成
+相反方向，这是目前最强的网口无链路疑点。`rx_delay` 不是根因：`rgmii-rxid`
+路径固定调用 `set_to_rgmii(tx_delay, 0)`；DTB 二进制属性 `0x00000000`
+用文本工具查看时会像空值，需要用 `fdtget -t x` 或 `hexdump` 确认。
+
+### v6 单变量测试镜像
+
+为避免一次改多个变量，新增 overlay 只把 GMAC0 改回 `"input"`，GMAC1
+保持 v5 的 `"output"`，并保留 GPU/VPU 修复：
+
+```text
+fnos/agibot-gmac0-rx-clock-input.dtso
+fnos/agibot-gmac0-rx-clock-input.dtbo
+fnos/rk3588-agibot-mb0002-v2.6.18-gpu-vpu-blue-gmac0-input.dtb
+DTB SHA-256: 30c04f24f9b40850ca1d8c02c62e9766ed7a76b34e8f1706a20c3175fce9e29b
+```
+
+远端 `/data/fnos-3588/out/fnos-agibot-mb0002-v6-blue-gmac0-input.img`
+与本地产物 `E:\AIPorject\101\_tmp\fnos\` 使用同一镜像：
+
+```text
+SHA-256: 699ef7bd6b978f2bc27982e27ba854c59087ff4b932aca29e3b02f3541aa0147
+```
+
+离线复核已确认：boot 分区 `fnEnv.txt` 指向上述 DTB；DTB 中 GMAC0 为
+`input`、GMAC1 为 `output`；idbloader 和 U-Boot FIT 与已验证资产逐字节
+一致。当前银色散热板 v5 的 `end0` 已实测 1000 Mb/s 正常，所以 v6 是蓝色板
+测试分支，不能反过来证明银色板也应改成 `input`。
+
+蓝色板刷入 v6 后优先采集：
+
+```sh
+ip -br link
+ip -br addr
+dmesg | grep -Ei 'stmmac|dwmac|gmac|mdio|rtl8211|phy|clock input|TX delay|RX delay'
+```
+
+若 GMAC0 恢复 carrier/DHCP，根因即可确认。若仍无链路，下一轮只比较复位
+时序；若板边网口也失效，再单独做 GMAC1 `"input"` 测试 DTB，不能直接复制
+原厂拼写错误的 `"intput"`。
+
 ## 风险边界
 
 - 6.18 DTB 已重新编译并完成离线镜像注入验证，但仍需上板确认 NPU 的时钟、电源域和
