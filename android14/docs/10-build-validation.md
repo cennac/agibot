@@ -370,6 +370,62 @@ The resulting 248 MiB file matches that SHA-256 and is recognized as an Android
 APK. It is the only Git LFS object in that vendor project. Retry 11 was then
 started with `m -j4` to continue from the completed graph.
 
+## Retry 11 completion and artifacts
+
+Retry 11 completed successfully at 2026-08-24 16:49:41 +0800 after 2 hours,
+37 minutes, and 42 seconds. The final log line was:
+
+```text
+#### build completed successfully (02:37:42 (hh:mm)) ####
+```
+
+Two Bazel messages named APEX staging directories as outputs, and `lpmake`
+printed sparse-header diagnostics while composing `super.img`; neither stopped
+the build. The final target `super.img` was written successfully.
+
+Build fingerprint:
+
+```text
+AGIBOT/agibot_mb0002/agibot_mb0002:14/UQ1A.240205.004.B1/cennac08241412:userdebug/release-keys
+```
+
+Artifact inventory and SHA-256 values:
+
+| Artifact | Bytes | SHA-256 |
+|---|---:|---|
+| `boot.img` | 39,747,584 | `8fa97599b4f6e18a903a726f2bcea3c4ee032ee3ac80d3b1db220d4aeb6d2811` |
+| `boot-debug.img` | 39,938,048 | `79c97bdda675aef74f131ee32bc3090e31633bef5be11af83cbde336db837ad7` |
+| `dtb.img` | 263,388 | `a61d56d11ae216d121cd8703e1189923fb801f17931d8a60f56a0df30bd99851` |
+| `rebuild-dtbo.img` | 4,194,304 | `da9d0f815c6199bd0b4fef765862fee0e6a98c42c314b5daf4c53ab057aa57a6` |
+| `recovery.img` | 57,991,168 | `a69cdbc7098e1c1ebe2d4e84bb19759605a204f86b32d970e99f6865057442ac` |
+| `super.img` | 1,942,330,340 | `12e873c308baad0c9c249b55574b27385e7a912f24d2d6081d8b252eabbf46e1` |
+| `system.img` | 1,263,710,208 | `8f0230713dbf7b5732896f786dd9d019584409fdd8f369d07a306b1cec7cfa41` |
+| `system_ext.img` | 183,652,352 | `f51120308fcd61404ddbab226c2941e14a366a1b7cb2b4462ee5cc903d1b736f` |
+| `product.img` | 281,063,424 | `56bda54bf842c3fa28f6beb312c09b988287d0c1e00e78de78dde0c952ed843a` |
+| `vendor.img` | 216,973,312 | `a57d68be65a33e479b2bc756832111ac4caf1b5d39776703acbe523b0756c586` |
+| `vendor_dlkm.img` | 5,894,144 | `6bfa02caebb5b987a3d47616f1cb3524885b7b2adeebdcee5bdf4ae5822c7ac5` |
+| `odm.img` | 815,104 | `9f0fb769505d98444110b16a060efb1d6e469837a920284f43aa42767549264b` |
+| `odm_dlkm.img` | 262,144 | `73f9609e4cebb0ff5dc01d542587604b186aba64c69ac75030b0b3799ee30359` |
+| `system_dlkm.img` | 262,144 | `71374bcf827db52d16d9177f663ebee16870b42c5c6c2e18a27bc1c4c6da445e` |
+| `cache.img` | 57,492 | `1e3c9632880cecc12b7e1ef1fc8eb473fc558d4ff38c4f53a7c1653870438085` |
+
+The source revisions used by the successful build were:
+
+| Project | Commit |
+|---|---|
+| `device/rockchip/rk3588` | `886d61f93f3876840890172a8c4bac6e4856caad` |
+| `device/rockchip/common` | `7e6116f5fe4f29e97d242115f8fd1ddf4a3363da` |
+| `kernel-6.1` | `d8544d7cb7ed2d2d6a0584dc9cb33fd29716cea8` |
+| `packages/providers/MediaProvider` | `f0e2b49e94df52a3989644041196cbca5b9ec5ce` |
+| `packages/services/Car` | `58083a560aa994a5feaa0f3559e3dcd13b47c3cc` |
+| `vendor/rockchip/common` | `13bbb25125ce0aea9e988aaa2b31c3f8e159af30` |
+| `vendor/rockchip/hardware` | `90dfdbc85a4a2e787f1541ce1f3fc1bbb8b6b49d` |
+| `u-boot` | `fba0c8f28039e0f253ada4a71613ae1dd401c864` |
+
+This validates the AOSP `m` target for the Phase 1 product. It does not yet
+build/package the Rockchip bootloader chain and must not be interpreted as a
+flash-ready distribution. No image has been written to the board.
+
 ## Temporary build swap and cleanup
 
 Retry 2's Soong graph generator again approached the memory limit. With about
