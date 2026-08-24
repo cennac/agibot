@@ -17,3 +17,7 @@ BOARD_CAMERA_SUPPORT_EXT := false
 BOARD_HS_ETHERNET := true
 
 include device/rockchip/rk3588/BoardConfig.mk
+
+# The common RK3588 config disables RKNN by default. Enable the complete
+# Rockchip Android runtime/HAL after including it so the setting is not reset.
+BOARD_RKNN_SUPPORT := true
