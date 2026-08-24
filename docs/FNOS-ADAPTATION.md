@@ -319,6 +319,36 @@ dmesg | grep -Ei 'stmmac|dwmac|gmac|mdio|rtl8211|phy|clock input|TX delay|RX del
 时序；若板边网口也失效，再单独做 GMAC1 `"input"` 测试 DTB，不能直接复制
 原厂拼写错误的 `"intput"`。
 
+### v6 蓝色板实机结果
+
+2026-08-24 蓝色板刷入 v6 后，接口与控制器映射得到确认：
+
+```text
+end0 -> /sys/devices/platform/fe1b0000.ethernet -> GMAC0
+end1 -> /sys/devices/platform/fe1c0000.ethernet -> GMAC1
+```
+
+远离 HDMI 的物理网口是 `end1` / GMAC1。该口保持 `clock_in_out="output"`，
+RTL8211F 正常绑定并多次协商到 `1Gbps/Full`。靠近 HDMI 的 `end0` / GMAC0
+虽然也识别到 `RTL8211F Gigabit Ethernet`，但在 v6 的 `input` 模式下失败：
+
+```text
+fe1b0000.ethernet: clock input or output? (input)
+fe1b0000.ethernet: clock input from PHY
+fe1b0000.ethernet end0: PHY [stmmac-0:01] driver [RTL8211F Gigabit Ethernet]
+fe1b0000.ethernet end0: Failed to reset the dma
+fe1b0000.ethernet end0: stmmac_hw_setup: DMA engine initialization failed
+fe1b0000.ethernet end0: __stmmac_open: Hw setup failed
+```
+
+这否定了“蓝色板在 fnOS 6.18 下只需把 GMAC0 改成 input”的假设。原厂 5.10
+DTB 的 `input` 描述不能直接套用到 fnOS 6.18 的初始化顺序；MAC 打开时没有可用
+输入时钟，DMA reset 无法完成。v6 应保留为诊断版本，不作为蓝色板正式镜像。
+
+GMAC1 在 v6 中没有修改，所以远离 HDMI 网口本次恢复不能归因于 GMAC0 overlay。
+下一步回到 GMAC0 `output`（v5 已是双 `output`）复测双口，并针对 GMAC0 单独
+检查 PHY reset 时序和重复启动稳定性；当前没有证据支持把 GMAC1 改成 `input`。
+
 ## 风险边界
 
 - 6.18 DTB 已重新编译并完成离线镜像注入验证，但仍需上板确认 NPU 的时钟、电源域和
