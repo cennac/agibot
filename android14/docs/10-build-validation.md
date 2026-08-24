@@ -422,9 +422,11 @@ The source revisions used by the successful build were:
 | `vendor/rockchip/hardware` | `90dfdbc85a4a2e787f1541ce1f3fc1bbb8b6b49d` |
 | `u-boot` | `fba0c8f28039e0f253ada4a71613ae1dd401c864` |
 
-This validates the AOSP `m` target for the Phase 1 product. It does not yet
-build/package the Rockchip bootloader chain and must not be interpreted as a
-flash-ready distribution. No image has been written to the board.
+This validates the AOSP `m` target for the Phase 1 product. The follow-on
+bootloader and Rockchip package build are recorded in
+`android14/docs/11-phase1-packaging.md`. The result must not be interpreted as
+a board-validated or flash-ready distribution. No image has been written to the
+board.
 
 ## Temporary build swap and cleanup
 

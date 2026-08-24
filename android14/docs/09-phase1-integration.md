@@ -85,6 +85,10 @@ Product registration is deliberately made in the existing remote
   management remains a later, reviewed change.
 - UART2/FIQ uses the RKR6 Android console include with `console=ttyFIQ0` and the
   original 0xfeb50000 earlycon address.
+- U-Boot remains on the generic `rk3588_defconfig`/`rk3588-evb` configuration
+  for the first package build. A dedicated AGIBOT bootloader DTS is deferred
+  until the kernel brings up the board and bootloader hardware assumptions can
+  be validated.
 - Wi-Fi/Bluetooth, cameras, DSI, sensors, CAN, PCIe/VL805, and other ambiguous
   peripherals stay disabled until hardware identity and wiring are confirmed.
 - Bluetooth board support, including its vendor config requirement, is explicitly
