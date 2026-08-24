@@ -93,6 +93,7 @@ Log:
 
 ```text
 /data/agibot-android14-build/logs/2026-08-24-phase1-update-image-retry1.log
+/data/agibot-android14-build/logs/2026-08-24-phase1-update-image-final.log
 ```
 
 The existing static RKR6 tools were used from:
@@ -117,6 +118,7 @@ Logs:
 ```text
 /data/agibot-android14-build/logs/2026-08-24-phase1-gpt-image-retry1.log
 /data/agibot-android14-build/logs/2026-08-24-phase1-gpt-image-retry2.log
+/data/agibot-android14-build/logs/2026-08-24-phase1-gpt-image-final.log
 ```
 
 Retry 1 stopped because the host PATH had no `simg2img`; it only renamed the
@@ -133,12 +135,32 @@ through userdata. It also warned that several Rockchip-defined partition start
 sectors are not 1 MiB aligned. This comes from the generated parameter layout
 and was not modified in Phase 1.
 
+## Final regeneration
+
+The first `build.sh -U` background wrapper continued after U-Boot completed and
+later ran its final `mkimage.sh` pass. Because `mkimage.sh` recreates
+`rockdev/Image-agibot_mb0002`, that delayed pass removed the first transient
+`update.img` and `gpt.img` after they had been generated. No source or base
+partition image was lost. After confirming the wrapper had exited, both release
+containers were regenerated from the final image directory.
+
+The final logs are:
+
+```text
+/data/agibot-android14-build/logs/2026-08-24-phase1-update-image-final.log
+/data/agibot-android14-build/logs/2026-08-24-phase1-gpt-image-final.log
+```
+
+The component hashes remain authoritative for reproducibility. The final
+`update.img` and `gpt.img` hashes below identify this generated artifact set;
+container metadata and generated GPT identity can differ between package runs.
+
 ## Package inventory
 
 | Artifact | Bytes | SHA-256 |
 |---|---:|---|
-| `update.img` | 2,054,738,506 | `3448c934c26bc9591a49ab70fdab92d241f0fe6dbdaf93347f91ce7a9a17e3fb` |
-| `gpt.img` | 4,337,452,544 | `4d27e1782f1dc9740d00b20d4e6a3ea54ea48413668d7395dba898f9a7843846` |
+| `update.img` | 2,054,738,506 | `f1dfe87ce40bb6f59767daad416002f958999e8f84ce652a313c7ce60204a285` |
+| `gpt.img` | 4,337,452,544 | `3ae8a3410a7ce9bee561002592a88ea59ff3ca3aa6593cce4ddbcd75ca5dbad3` |
 | `MiniLoaderAll.bin` | 487,872 | `d733d6e1d208db3a0bb940e1007a6698dd7f8c50711f6c3e90400a48cb8c154e` |
 | `idbloader.img` | 317,440 | `c50ed48f2cb3278ea17776f90620310962f6ab9794b032ba9098a84ba792702d` |
 | `uboot.img` | 4,194,304 | `19abbb834042b4a307068ba710348f7073728c3e8dd9f7bb059324bb2ba446f2` |
