@@ -251,6 +251,26 @@ v8 镜像以 v7 双网口 reset 版本为基线，只替换 `rk_vcodec.ko`，并
 `rk_vcodec.ko.before-ccu-defer`。模块安装后需要运行 `depmod -a` 并重启，再用实际
 H.264/HEVC 文件验证 `h264_rkmpp` 和 `hevc_rkmpp`，不能只检查设备节点。
 
+2026-08-24 后续实机测试确认，单独返回 `-EPROBE_DEFER` 会在重试时触发
+`Unbalanced pm_runtime_enable`。最终方案同时要求最终 DTB 的顶层节点严格按
+`RKVDEC CCU -> core0 -> core1` 排列，使 CCU 在 core 首次 probe 前就绪。
+`scripts/order-fnos-rkvdec-nodes.py` 在 overlay 合并后执行该排序。
+
+v9 还补齐 fnOS 官方 6.18 参数的 RKVENC2 CCU、双编码 core 和双 IOMMU。实机连续
+重启后确认双 RKVDEC、双 RKVENC 均成功 attach CCU，且以下四项真实码流测试退出码
+均为 0：
+
+```text
+h264_rkmpp decode
+hevc_rkmpp decode
+h264_rkmpp encode
+hevc_rkmpp encode
+```
+
+编码 core 因未配置 OPP 表会记录 `failed to init opp info`，驱动随即使用 DTB 指定的
+固定频率并完成 probe，不影响上述编码测试。发布 DTB 继续保留 GMAC0/GMAC1 PHY
+各 500 ms 的 reset deassert 延时。
+
 注意：系统升级到 `6.18.18.c963-trim` 后，必须确认新版内核目录里仍有同名模块：
 
 ```sh
@@ -379,8 +399,10 @@ GMAC1 在 v6 中没有修改，所以远离 HDMI 网口本次恢复不能归因�
 
 v4 和 v5 成品镜像的实际 boot DTB 已逐项比较：两个版本的 GMAC0/GMAC1 都是
 `output`，TX/RX delay 和 PHY 地址相同，内核也同为 `6.18.18.c951-trim`；v5
-增加的 GPU/VPU overlay 没有修改 GMAC 节点。鉴于 v5 一次启动双口失效、v6
-未修改的 GMAC1 又恢复千兆，按 PHY 上电时序不稳定继续做单变量测试。
+增加的 GPU/VPU overlay 没有修改 GMAC 节点。2026-08-24 用户重新确认 v5
+网口正常，先前异常疑似网口脏污或接触不良，不能归因于 v5 的 GMAC 配置。
+因此 500 ms PHY reset 仅作为兼容性和冷启动稳定性增强，不再视为修复 v5
+网口故障的必要条件。
 
 v7 以 v5 GPU/VPU DTB 为基础：
 
