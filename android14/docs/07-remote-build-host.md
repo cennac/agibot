@@ -80,7 +80,9 @@ the BSP's documented package set and prefer a compatible container if host
 package versions are incompatible. Keep any container storage and build output
 under `/data`.
 
-No Android build command has been run yet.
+Compilation was authorized on 2026-08-24. The environment caveat above remains,
+but the product, kernel, and full-build attempts are now recorded in
+`docs/10-build-validation.md`.
 
 ## Source download completion, 2026-08-24
 

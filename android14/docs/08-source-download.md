@@ -151,4 +151,6 @@ Cleanup of obsolete `tmp_pack_*` files is now safe only after confirming no Git
 or repo process is active, but it has not been performed because those files are
 still useful evidence for the failed network routes and space is not constrained.
 
-No build, image packaging, or flashing is authorized by this log.
+This document covers source synchronization only. Compilation was later
+authorized and is recorded separately in `docs/10-build-validation.md`; image
+flashing remains outside the current phase.

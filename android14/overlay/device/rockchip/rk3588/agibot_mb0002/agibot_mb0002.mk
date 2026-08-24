@@ -1,17 +1,51 @@
-# AGIBOT MB0002 V2 Android 14 product definition.
-#
-# This file is deliberately minimal until the locked Radxa/Rockchip source tree
-# is synced and the exact vendor product inheritance chain can be verified.
+# AGIBOT MB0002 V2 Android 14/RKR6 product definition.
 
-$(call inherit-product, device/rockchip/rk3588/agibot_mb0002/device.mk)
+PRODUCT_SHIPPING_API_LEVEL := 34
+PRODUCT_DTBO_TEMPLATE := $(LOCAL_PATH)/dt-overlay.in
+PRODUCT_SDMMC_DEVICE := fe2c0000.mmc
+PRODUCT_BOOT_DEVICE := fe2e0000.mmc
+PRODUCT_UBOOT_CONFIG := rk3588_defconfig
+
+# Phase 1 has neither validated cameras nor the RKR6 EVS sample's prebuilt
+# dependency set. Set these before Rockchip common defaults are inherited.
+ENABLE_EVS_SERVICE := false
+ENABLE_EVS_SAMPLE := false
+
+include device/rockchip/common/build/rockchip/DynamicPartitions.mk
+include device/rockchip/rk3588/agibot_mb0002/BoardConfig.mk
+include device/rockchip/common/BoardConfig.mk
+$(call inherit-product, device/rockchip/rk3588/device.mk)
+$(call inherit-product, device/rockchip/common/device.mk)
+$(call inherit-product, frameworks/native/build/tablet-10in-xhdpi-2048-dalvik-heap.mk)
+
+DEVICE_PACKAGE_OVERLAYS += $(LOCAL_PATH)/overlay
 
 PRODUCT_NAME := agibot_mb0002
 PRODUCT_DEVICE := agibot_mb0002
 PRODUCT_BRAND := AGIBOT
 PRODUCT_MANUFACTURER := Agibot
 PRODUCT_MODEL := MB0002 V2
-
 PRODUCT_CHARACTERISTICS := tablet
+PRODUCT_AAPT_PREF_CONFIG := xhdpi
 
-# Userdebug is exposed through COMMON_LUNCH_CHOICES. A shippable variant is
-# deferred until recovery and rollback behavior are defined.
+# Keep optional/ambiguous board peripherals out of Phase 1. These statements run
+# after Rockchip's common board configuration has been inherited.
+BOARD_CAMERA_SUPPORT := false
+BOARD_CAMERA_SUPPORT_EXT := false
+BOARD_GRAVITY_SENSOR_SUPPORT := false
+BOARD_GYROSCOPE_SENSOR_SUPPORT := false
+BOARD_PROXIMITY_SENSOR_SUPPORT := false
+BOARD_LIGHT_SENSOR_SUPPORT := false
+BOARD_HAVE_BLUETOOTH_AIC_USB := false
+BOARD_HAVE_BLUETOOTH_AIC := false
+
+PRODUCT_PROPERTY_OVERRIDES += \
+    ro.sf.lcd_density=240 \
+    ro.sf.hwrotation=0 \
+    ro.surface_flinger.primary_display_orientation=ORIENTATION_0 \
+    ro.vendor.hdmirotationlock=true \
+    vendor.hwc.device.primary=HDMI-A \
+    persist.sys.hdmi_dp_audio_output=1
+
+PRODUCT_COPY_FILES += \
+    frameworks/native/data/etc/android.hardware.usb.host.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.usb.host.xml
