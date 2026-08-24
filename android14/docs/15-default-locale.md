@@ -69,3 +69,29 @@ settings put system system_locales zh-CN
 This is a user preference change and does not by itself prove the new first-boot
 default; the regenerated `system.img` must still expose
 `ro.product.locale=zh-CN`.
+
+### Build completion
+
+The incremental `systemimage` build completed successfully in 4:25:13. Its
+generated system metadata reports:
+
+```text
+ro.product.locale=zh-CN
+```
+
+Final image:
+
+| Image | Bytes | SHA-256 |
+|---|---:|---|
+| `system.img` | 1,264,054,272 | `6c91df680b956fd4c9538e84822e6945db1c6c6135c81985ec1f2125d830c8c1` |
+
+Local preservation copy:
+
+```text
+E:\AIPorject\101\android14-flash\default-locale-images\system-default-locale-zh-CN-20260825.img
+```
+
+Only `system.img` was rebuilt and preserved for this change. `boot`, `vendor`,
+`odm`, `recovery`, bootloader partitions, and userdata are unchanged. A future
+deployment can therefore flash only the system logical partition, preserving the
+known-good recovery path and the current userdata locale preference.
