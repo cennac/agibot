@@ -66,7 +66,20 @@
 		compatible = "agibot,mb0002-usb-hub-reset";
 		reset-gpios = <&gpio4 RK_PD2 GPIO_ACTIVE_LOW>,
 			      <&gpio4 RK_PD3 GPIO_ACTIVE_LOW>;
+		enable-gpios = <&pca9555_20 0 GPIO_ACTIVE_HIGH>,
+			       <&pca9555_20 1 GPIO_ACTIVE_HIGH>,
+			       <&pca9555_20 2 GPIO_ACTIVE_HIGH>,
+			       <&pca9555_20 3 GPIO_ACTIVE_HIGH>,
+			       <&pca9555_20 4 GPIO_ACTIVE_HIGH>,
+			       <&pca9555_20 5 GPIO_ACTIVE_HIGH>,
+			       <&pca9555_20 6 GPIO_ACTIVE_HIGH>,
+			       <&pca9555_20 7 GPIO_ACTIVE_HIGH>,
+			       <&pca9555_20 8 GPIO_ACTIVE_HIGH>,
+			       <&pca9555_20 9 GPIO_ACTIVE_HIGH>,
+			       <&pca9555_20 10 GPIO_ACTIVE_HIGH>,
+			       <&pca9555_20 11 GPIO_ACTIVE_HIGH>;
 		reset-assert-us = <20000>;
+		power-on-delay-us = <100000>;
 		reset-post-delay-us = <100000>;
 		status = "okay";
 	};
@@ -167,14 +180,28 @@
 	pca9555_20: pca9555@20 {
 		compatible = "nxp,pca9555";
 		reg = <0x20>;
+		gpio-controller;
+		#gpio-cells = <2>;
 		status = "okay";
 	};
 
 	pca9555_21: pca9555@21 {
 		compatible = "nxp,pca9555";
 		reg = <0x21>;
+		gpio-controller;
+		#gpio-cells = <2>;
 		status = "okay";
 	};
+};
+
+&rknpu {
+	rknpu-supply = <&vdd_npu_s0>;
+	mem-supply = <&vdd_npu_mem_s0>;
+	status = "okay";
+};
+
+&rknpu_mmu {
+	status = "okay";
 };
 
 &saradc {
@@ -340,6 +367,7 @@
 	snps,reset-delays-us = <0 20000 100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&gmac0_miim
+		     &gmac0_clkinout
 		     &gmac0_tx_bus2
 		     &gmac0_rx_bus2
 		     &gmac0_rgmii_clk
@@ -364,6 +392,7 @@
 	snps,reset-delays-us = <0 20000 100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&gmac1_miim
+		     &gmac1_clkinout
 		     &gmac1_tx_bus2
 		     &gmac1_rx_bus2
 		     &gmac1_rgmii_clk

@@ -16,7 +16,9 @@
 
 struct agibot_hub_reset {
 	struct gpio_descs *reset_gpios;
+	struct gpio_descs *enable_gpios;
 	u32 assert_us;
+	u32 power_on_delay_us;
 	u32 post_delay_us;
 };
 
@@ -31,23 +33,35 @@ static int agibot_hub_reset_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	device_property_read_u32(dev, "reset-assert-us", &hub->assert_us);
+	device_property_read_u32(dev, "power-on-delay-us",
+				 &hub->power_on_delay_us);
 	device_property_read_u32(dev, "reset-post-delay-us", &hub->post_delay_us);
 
-	hub->reset_gpios = devm_gpiod_get_array(dev, "reset", GPIOD_OUT_LOW);
+	/* ACTIVE_LOW reset lines: logical high asserts, logical low releases. */
+	hub->reset_gpios = devm_gpiod_get_array(dev, "reset", GPIOD_OUT_HIGH);
 	if (IS_ERR(hub->reset_gpios))
 		return dev_err_probe(dev, PTR_ERR(hub->reset_gpios),
 				     "failed to acquire hub reset GPIOs\n");
 
+	hub->enable_gpios = devm_gpiod_get_array(dev, "enable", GPIOD_OUT_LOW);
+	if (IS_ERR(hub->enable_gpios))
+		return dev_err_probe(dev, PTR_ERR(hub->enable_gpios),
+				     "failed to acquire hub power GPIOs\n");
+
+	for (i = 0; i < hub->enable_gpios->ndescs; ++i)
+		gpiod_set_value_cansleep(hub->enable_gpios->desc[i], 1);
+
+	fsleep(hub->power_on_delay_us);
 	fsleep(hub->assert_us);
 
 	for (i = 0; i < hub->reset_gpios->ndescs; ++i)
-		gpiod_set_value_cansleep(hub->reset_gpios->desc[i], 1);
+		gpiod_set_value_cansleep(hub->reset_gpios->desc[i], 0);
 
 	fsleep(hub->post_delay_us);
 	platform_set_drvdata(pdev, hub);
 
-	dev_info(dev, "released %d USB hub reset GPIOs after %u us\n",
-		 hub->reset_gpios->ndescs, hub->assert_us);
+	dev_info(dev, "enabled %d USB power rails and released %d hub resets\n",
+		 hub->enable_gpios->ndescs, hub->reset_gpios->ndescs);
 
 	return 0;
 }
