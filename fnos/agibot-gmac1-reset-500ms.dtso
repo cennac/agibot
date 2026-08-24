@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/* Give the second RTL8211F the same conservative reset recovery as GMAC0. */
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	fragment@0 {
+		target-path = "/ethernet@fe1c0000/mdio/ethernet-phy@0";
+
+		__overlay__ {
+			reset-deassert-us = <500000>;
+		};
+	};
+};

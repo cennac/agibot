@@ -349,6 +349,38 @@ GMAC1 在 v6 中没有修改，所以远离 HDMI 网口本次恢复不能归因�
 下一步回到 GMAC0 `output`（v5 已是双 `output`）复测双口，并针对 GMAC0 单独
 检查 PHY reset 时序和重复启动稳定性；当前没有证据支持把 GMAC1 改成 `input`。
 
+### v7 双 output / PHY 500 ms 测试镜像
+
+v4 和 v5 成品镜像的实际 boot DTB 已逐项比较：两个版本的 GMAC0/GMAC1 都是
+`output`，TX/RX delay 和 PHY 地址相同，内核也同为 `6.18.18.c951-trim`；v5
+增加的 GPU/VPU overlay 没有修改 GMAC 节点。鉴于 v5 一次启动双口失效、v6
+未修改的 GMAC1 又恢复千兆，按 PHY 上电时序不稳定继续做单变量测试。
+
+v7 以 v5 GPU/VPU DTB 为基础：
+
+```text
+GMAC0 clock_in_out = "output"
+GMAC1 clock_in_out = "output"
+GMAC0 PHY reset-deassert-us = 500000
+GMAC1 PHY reset-deassert-us = 500000  # v5 为 100000
+```
+
+新增产物：
+
+```text
+fnos/agibot-gmac1-reset-500ms.dtso
+fnos/agibot-gmac1-reset-500ms.dtbo
+fnos/rk3588-agibot-mb0002-v2.6.18-gpu-vpu-gmac-reset-500ms.dtb
+DTB SHA-256: ee0d010fcc683414e60179f45ae0c3e4495e8c66d2dde3bda32f6763c0e5e6b3
+
+E:\AIPorject\101\_tmp\fnos\fnos-agibot-mb0002-v7-gmac-reset-500ms.img
+SHA-256: 8f96e2338397bf8ee8adde000d13d523333b55d0bdc0c6adadd2927e928d5bde
+```
+
+远端和镜像 boot 分区均已复核双 `output`、双 500 ms，GPU/Mali 和 MPP 节点
+仍保留。测试时应分别插远离 HDMI 的 `end1` 和靠近 HDMI 的 `end0`，至少执行
+三次重启；每轮记录 `ip -br link` 及 GMAC/PHY dmesg，判断是否为重复启动时序问题。
+
 ## 风险边界
 
 - 6.18 DTB 已重新编译并完成离线镜像注入验证，但仍需上板确认 NPU 的时钟、电源域和
