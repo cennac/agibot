@@ -1,0 +1,52 @@
+diff --git a/device/rockchip/rk3588/agibot_mb0002/agibot_mb0002.mk b/device/rockchip/rk3588/agibot_mb0002/agibot_mb0002.mk
+--- a/device/rockchip/rk3588/agibot_mb0002/agibot_mb0002.mk
++++ b/device/rockchip/rk3588/agibot_mb0002/agibot_mb0002.mk
+@@ -6,7 +6,7 @@ PRODUCT_SHIPPING_API_LEVEL := 34
+ PRODUCT_DTBO_TEMPLATE := $(LOCAL_PATH)/dt-overlay.in
+ PRODUCT_SDMMC_DEVICE := fe2c0000.mmc
+ PRODUCT_BOOT_DEVICE := fe2e0000.mmc
+-PRODUCT_UBOOT_CONFIG := rk3588_defconfig
++PRODUCT_UBOOT_CONFIG := rk3588_defconfig rk3588-agibot-mb0002.config
+ 
+ # Phase 1 has neither validated cameras nor the RKR6 EVS sample's prebuilt
+ # dependency set. Set these before Rockchip common defaults are inherited.
+diff --git a/u-boot/arch/arm/dts/rk3588-agibot-mb0002-v2.dts b/u-boot/arch/arm/dts/rk3588-agibot-mb0002-v2.dts
+new file mode 100644
+--- /dev/null
++++ b/u-boot/arch/arm/dts/rk3588-agibot-mb0002-v2.dts
+@@ -0,0 +1,23 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++/*
++ * Minimal AGIBOT MB0002 V2 early-boot device tree for U-Boot.
++ *
++ * The RKR6 loader and ATF initialize the board power tree.  Keep this U-Boot
++ * tree limited to console, eMMC, and recovery storage policy.  Kernel DTS is
++ * loaded separately from resource.img through USING_KERNEL_DTB_V2.
++ */
++
++/dts-v1/;
++
++#include "rk3588.dtsi"
++#include "rk3588-u-boot.dtsi"
++
++/ {
++	model = "AGIBOT MB0002 V2";
++	compatible = "agibot,mb0002-v2", "rockchip,rk3588";
++
++	chosen {
++		/* eMMC is the production boot device; keep SD as recovery fallback. */
++		u-boot,spl-boot-order = &sdhci, &sdmmc;
++	};
++};
+diff --git a/u-boot/configs/rk3588-agibot-mb0002.config b/u-boot/configs/rk3588-agibot-mb0002.config
+new file mode 100644
+--- /dev/null
++++ b/u-boot/configs/rk3588-agibot-mb0002.config
+@@ -0,0 +1,7 @@
++# AGIBOT MB0002 V2 U-Boot overrides.
++#
++# The common rk3588 defconfig remains the base so Rockchip loader, trust,
++# FIT, AVB, storage, and USB policy stay synchronized with RKR6.  Only the
++# early bootloader device tree is board-specific here.
++CONFIG_BASE_DEFCONFIG="rk3588_defconfig"
++CONFIG_DEFAULT_DEVICE_TREE="rk3588-agibot-mb0002-v2"

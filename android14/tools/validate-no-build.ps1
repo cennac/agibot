@@ -44,11 +44,14 @@ if (Test-Path $baselinePath) {
 foreach ($relative in @(
     'README.md',
     'VERSIONING.md',
+    'docs\12-phase2-uboot.md',
     'dts\agibot-display-bringup.dtsi',
-    'overlay\device\rockchip\rk3588\agibot_mb0002\AndroidProducts.mk',
     'overlay\device\rockchip\rk3588\agibot_mb0002\agibot_mb0002.mk',
     'overlay\device\rockchip\rk3588\agibot_mb0002\BoardConfig.mk',
-    'overlay\device\rockchip\rk3588\agibot_mb0002\device.mk'
+    'overlay\u-boot\configs\rk3588-agibot-mb0002.config',
+    'overlay\u-boot\arch\arm\dts\rk3588-agibot-mb0002-v2.dts',
+    'patches\0001-u-boot-agibot-early-boot.patch',
+    'patches\0002-u-boot-agibot-of-list.patch'
 )) {
     Assert-True (Test-Path (Join-Path $Root $relative)) "Required file missing: $relative"
 }
@@ -72,4 +75,4 @@ if ($failures.Count -gt 0) {
     exit 1
 }
 
-Write-Host 'AGIBOT Android 14 phase 0 validation passed (no build invoked).'
+Write-Host 'AGIBOT Android 14 Phase 2 static validation passed (no build invoked).'

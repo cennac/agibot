@@ -4,7 +4,7 @@ PRODUCT_SHIPPING_API_LEVEL := 34
 PRODUCT_DTBO_TEMPLATE := $(LOCAL_PATH)/dt-overlay.in
 PRODUCT_SDMMC_DEVICE := fe2c0000.mmc
 PRODUCT_BOOT_DEVICE := fe2e0000.mmc
-PRODUCT_UBOOT_CONFIG := rk3588_defconfig
+PRODUCT_UBOOT_CONFIG := rk3588_defconfig rk3588-agibot-mb0002.config
 
 # Phase 1 has neither validated cameras nor the RKR6 EVS sample's prebuilt
 # dependency set. Set these before Rockchip common defaults are inherited.

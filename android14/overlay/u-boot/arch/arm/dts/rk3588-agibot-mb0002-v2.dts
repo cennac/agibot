@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Minimal AGIBOT MB0002 V2 early-boot device tree for U-Boot.
+ *
+ * The RKR6 loader and ATF initialize the board power tree.  Keep this U-Boot
+ * tree limited to console, eMMC, and recovery storage policy.  Kernel DTS is
+ * loaded separately from resource.img through USING_KERNEL_DTB_V2.
+ */
+
+/dts-v1/;
+
+#include "rk3588.dtsi"
+#include "rk3588-u-boot.dtsi"
+
+/ {
+	model = "AGIBOT MB0002 V2";
+	compatible = "agibot,mb0002-v2", "rockchip,rk3588";
+
+	chosen {
+		/* eMMC is the production boot device; keep SD as recovery fallback. */
+		u-boot,spl-boot-order = &sdhci, &sdmmc;
+	};
+};

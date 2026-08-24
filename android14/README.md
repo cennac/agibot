@@ -11,12 +11,13 @@ repository at commit `b4ffdcfebcf96b491864d4923533ade7856e7a7c`.
 
 ## Current phase
 
-**Phase 1 - source integration started; no build**
+**Phase 2 - board-specific U-Boot and package complete; board not flashed**
 
 The selected baseline is Radxa's public Android 14 RK3588 BSP tree, based on
-Rockchip Android 14 RKR6 and Linux 6.1. This baseline is source reference only.
-No Radxa image is bootable on AGIBOT MB0002 V2 and must not be flashed to this
-board.
+Rockchip Android 14 RKR6 and Linux 6.1. Phase 1 completed the AGIBOT product,
+kernel DTS, Android build, and conservative package. Phase 2 replaced the
+generic RK3588 U-Boot identity with a minimal AGIBOT early-boot tree and put
+eMMC before SD. No image has been written to the board.
 
 ## Product target
 
@@ -33,6 +34,7 @@ baseline/       Pinned upstream source information
 docs/           Decisions, inventory, plan, and risk register
 dts/            Candidate device-tree fragments and conversion notes
 overlay/        Files intended to be copied into the Android source tree
+patches/        Reviewable source patches applied to the remote AOSP projects
 reference/      Board-reference provenance; large source files stay external
 tools/          Non-building validation and traceability helpers
 ```
@@ -41,8 +43,8 @@ tools/          Non-building validation and traceability helpers
 
 - The full source checkout is complete on the remote build host; do not duplicate
   it in WSL or commit its contents.
-- No Android build, kernel build, DTB compilation, or image packaging.
-- No flashing, Maskrom operation, or board mutation.
+- No flashing, Maskrom operation, bootloader unlock, or board mutation.
+- No full Android source checkout or large generated image is committed here.
 - No claim that the product configuration is bootable yet.
 
 See `docs/00-baseline.md` and `docs/02-port-plan.md` before changing the
