@@ -95,3 +95,23 @@ Only `system.img` was rebuilt and preserved for this change. `boot`, `vendor`,
 `odm`, `recovery`, bootloader partitions, and userdata are unchanged. A future
 deployment can therefore flash only the system logical partition, preserving the
 known-good recovery path and the current userdata locale preference.
+
+### Deployment validation
+
+The image was deployed through `adb reboot fastboot` and fastbootd by flashing
+only the `system` logical partition. The five sparse chunks completed in 43.207
+seconds. The board then completed a normal reboot.
+
+Post-flash state:
+
+```text
+sys.boot_completed          = 1
+ro.product.locale           = zh-CN
+system_locales              = zh-CN
+init.svc.vendor.rknn-1-0    = running
+```
+
+The RKNN userspace remained healthy. `rknn_server` and
+`rockchip.hardware.neuralnetworks@1.0-service` were both running, and the same
+ResNet18 native inference test completed 20 iterations successfully at roughly
+160-190 FPS with the expected stable Top-5 classes.
