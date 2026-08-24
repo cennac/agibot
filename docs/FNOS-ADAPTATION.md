@@ -225,6 +225,32 @@ LD_LIBRARY_PATH=/usr/trim/lib/mediasrv/lib \
   /usr/trim/lib/mediasrv/ffmpeg -decoders 2>/dev/null | grep rkmpp
 ```
 
+### RKVDEC2 CCU probe 顺序修复
+
+2026-08-24 实机确认 c951 的 GPU、RGA 和 MPP 设备节点均存在，但硬件解码失败。
+启动日志中两个 RKVDEC2 core 先于 CCU probe，`rkvdec2_attach_ccu()` 在 CCU 尚未
+就绪时错误返回 `-ENOMEM`，导致内核不再重试：
+
+```text
+mpp_rkvdec2 fdc48100.rkvdec-core: attach ccu failed
+mpp_rkvdec2 fdc48100.rkvdec-core: probe failed with error -12
+mpp_rkvdec2 fdc30000.rkvdec-ccu: probing finish
+```
+
+正确修复是让驱动返回 `-EPROBE_DEFER`。源码补丁位于
+`fnos/patches/rk-vcodec-defer-rkvdec2-until-ccu-ready.patch`。由于 fnOS c951
+模块来自 Rockchip 私有 6.18 驱动树，当前无法由公开 6.1 BSP 源码重建；发布镜像用
+`scripts/patch-fnos-rk-vcodec.sh` 对官方模块做单指令修补。脚本严格校验原始及修补后
+SHA-256，仅支持 `6.18.18.c951-trim`，不可用于 c963 或其他模块。
+
+不要通过调整 DTB 中 CCU/core 节点顺序规避该问题。实机测试表明提前 CCU 会导致
+系统网络服务未启动。发生过该实验的板子需先恢复 DTB 的
+`.before-vpu-order-fix` 备份。
+
+v8 镜像以 v7 双网口 reset 版本为基线，只替换 `rk_vcodec.ko`，并在 rootfs 中保留
+`rk_vcodec.ko.before-ccu-defer`。模块安装后需要运行 `depmod -a` 并重启，再用实际
+H.264/HEVC 文件验证 `h264_rkmpp` 和 `hevc_rkmpp`，不能只检查设备节点。
+
 注意：系统升级到 `6.18.18.c963-trim` 后，必须确认新版内核目录里仍有同名模块：
 
 ```sh
