@@ -1,0 +1,27 @@
+From a512f711f28f3b2c514527c9d26ac279cf7b432f Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Tue, 25 Aug 2026 01:52:23 +0800
+Subject: [PATCH] agibot: default to Simplified Chinese
+
+---
+ agibot_mb0002/agibot_mb0002.mk | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/agibot_mb0002/agibot_mb0002.mk b/agibot_mb0002/agibot_mb0002.mk
+index b12ff8f..de00b78 100644
+--- a/agibot_mb0002/agibot_mb0002.mk
++++ b/agibot_mb0002/agibot_mb0002.mk
+@@ -20,6 +20,11 @@ $(call inherit-product, frameworks/native/build/tablet-10in-xhdpi-2048-dalvik-he
+ 
+ DEVICE_PACKAGE_OVERLAYS += $(LOCAL_PATH)/overlay
+ 
++# The inherited AOSP locale list starts with en_US. Move Simplified Chinese to
++# the front so generated build metadata and first-boot setup default to zh-CN,
++# while retaining every other locale supported by the base product.
++PRODUCT_LOCALES := zh_CN $(filter-out zh_CN,$(PRODUCT_LOCALES))
++
+ PRODUCT_NAME := agibot_mb0002
+ PRODUCT_DEVICE := agibot_mb0002
+ PRODUCT_BRAND := AGIBOT
+-- 
+2.25.1

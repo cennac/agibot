@@ -20,6 +20,11 @@ $(call inherit-product, frameworks/native/build/tablet-10in-xhdpi-2048-dalvik-he
 
 DEVICE_PACKAGE_OVERLAYS += $(LOCAL_PATH)/overlay
 
+# The inherited AOSP locale list starts with en_US. Move Simplified Chinese to
+# the front so generated build metadata and first-boot setup default to zh-CN,
+# while retaining every other locale supported by the base product.
+PRODUCT_LOCALES := zh_CN $(filter-out zh_CN,$(PRODUCT_LOCALES))
+
 PRODUCT_NAME := agibot_mb0002
 PRODUCT_DEVICE := agibot_mb0002
 PRODUCT_BRAND := AGIBOT
