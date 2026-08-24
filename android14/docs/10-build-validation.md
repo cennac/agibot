@@ -327,6 +327,49 @@ over 5,000 of 160,513 Ninja tasks were complete at the last observation, with
 no RenderScript loader error. The private symlinks and downloaded libraries are
 build-host state only and are not source changes.
 
+## Full Android build, retry 10
+
+Log and process ID files:
+
+```text
+/data/agibot-android14-build/logs/2026-08-24-phase1-android-full-retry10.log
+/data/agibot-android14-build/logs/2026-08-24-phase1-android-full-retry10.pid
+```
+
+Retry 10 resumed after retry 9 reached 31%. It passed the earlier RenderScript
+stage and advanced to 37% of the remaining graph. The next failure was another
+legacy host executable, `out/host/linux-x86/bin/bcc_strip_attr`, which also
+requires `libncurses.so.5` and `libtinfo.so.5`. Private ABI-5 library symlinks
+were added to the host output `lib64` directory searched by that executable's
+RUNPATH. No system package or Android source file was modified.
+
+## Full Android build, retry 11
+
+Log and process ID files:
+
+```text
+/data/agibot-android14-build/logs/2026-08-24-phase1-android-full-retry11.log
+/data/agibot-android14-build/logs/2026-08-24-phase1-android-full-retry11.pid
+```
+
+After `bcc_strip_attr` was fixed, retry 10 stopped while validating the
+prebuilt Rockchip Chromium package because `Chromium.apk` was only a 134-byte
+Git LFS pointer. The pointer identifies SHA-256:
+
+```text
+921e0d0e2c7509781430f6fee0bb40dc16e820d095e3d6ebda1ca85fb98faa38
+```
+
+The exact LFS object was fetched with:
+
+```text
+git lfs pull --include=apps/Chromium/Chromium.apk
+```
+
+The resulting 248 MiB file matches that SHA-256 and is recognized as an Android
+APK. It is the only Git LFS object in that vendor project. Retry 11 was then
+started with `m -j4` to continue from the completed graph.
+
 ## Temporary build swap and cleanup
 
 Retry 2's Soong graph generator again approached the memory limit. With about
