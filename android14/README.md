@@ -11,13 +11,17 @@ repository at commit `b4ffdcfebcf96b491864d4923533ade7856e7a7c`.
 
 ## Current phase
 
-**Phase 2 - board-specific U-Boot and package complete; board not flashed**
+**Hardware fix round 1 complete; full Maskrom image deployed**
 
 The selected baseline is Radxa's public Android 14 RK3588 BSP tree, based on
 Rockchip Android 14 RKR6 and Linux 6.1. Phase 1 completed the AGIBOT product,
 kernel DTS, Android build, and conservative package. Phase 2 replaced the
 generic RK3588 U-Boot identity with a minimal AGIBOT early-boot tree and put
-eMMC before SD. No image has been written to the board.
+eMMC before SD. Hardware fix round 1 added GMAC/USB/RKNN repairs and Simplified
+Chinese as the factory default, deployed a complete image through Maskrom, and
+revalidated the serial U-Boot-to-Maskrom rescue path. See
+`docs/14-hardware-fix-round1.md`, `docs/15-default-locale.md`, and
+`docs/16-maskrom-full-flash.md`.
 
 ## Product target
 
