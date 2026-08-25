@@ -151,3 +151,91 @@ It made no bounded progress for over an hour, so the process group was stopped
 to avoid continued swap pressure. This does not invalidate the kernel outputs,
 but the final Android `bootimage` packaging and the Settings/system image build
 remain pending. Do not flash these incremental outputs as a complete image.
+
+## SSD swap retest
+
+The first retry was stopped again after roughly five hours with no log progress
+past `Creating Bazel symlink forest`. Storage inspection showed that `/data`
+and its 32 GiB swap file were on the 2.7 TiB rotational disk (`/dev/sdb1`),
+while the SSD was the root filesystem (`/dev/sda2`).
+
+A dedicated 48 GiB swap file was created on the SSD:
+
+```text
+/var/lib/soong-swap-48g.img
+UUID: 7a883d4e-d2d9-4feb-bc6f-27b15fbfc80f
+priority: 10
+```
+
+It was added to `/etc/fstab` so it survives a reboot. The old `/data` swap file
+was not listed in `/etc/fstab`. An attempt to disable it immediately exposed
+about 6.8 GiB of randomly distributed pages and would have taken hours on the
+rotational disk, so the migration was interrupted. For this boot it remains at
+lower priority than both SSD swap areas; after a reboot only the SSD swap files
+will activate, and the old file can then be deleted to reclaim 32 GiB.
+
+The first nohup retry omitted the Android lunch environment and selected the
+default `aosp_arm` target; it failed immediately at `kernel-`. This was a launch
+environment error, not a swap result, and is recorded in:
+
+```text
+/data/agibot-android14-build/logs/2026-08-25-media-kernel-ssd-retry.log
+```
+
+The corrected retry sources `build/envsetup.sh`, selects
+`agibot_mb0002-userdebug`, and reruns the original `./build.sh -K -J8` command
+in the original AOSP path:
+
+```text
+/data/agibot-android14-build/logs/2026-08-25-media-kernel-ssd-retry2.log
+/data/agibot-android14-build/logs/2026-08-25-media-kernel-ssd-retry2.pid
+```
+
+This second retry selected the correct product, but its clean nohup PATH had no
+`python` command. Kernel compilation reached the final Rockchip DTB packaging
+step and then failed before Soong. This was another launch-environment issue,
+not an SSD-swap failure.
+
+The successful third retry added a private PATH alias:
+`/tmp/agibot-build-bin/python -> /usr/bin/python3`, selected
+`agibot_mb0002-userdebug`, and reran the original command in the original AOSP
+path:
+
+```text
+/data/agibot-android14-build/logs/2026-08-25-media-kernel-ssd-retry3.log
+/data/agibot-android14-build/logs/2026-08-25-media-kernel-ssd-retry3.pid
+```
+
+Soong completed the formerly blocked Bazel symlink-forest/build-graph phase in
+about 8 minutes 20 seconds. During the run it was observed at about 22.7 GiB
+RSS while the new SSD swap area absorbed about 13.7 GiB. The Android bootimage
+Ninja phase completed in 18 minutes 20 seconds, and the complete wrapper
+finished with `Make image ok!` after about 28 minutes 30 seconds.
+
+The regenerated release image was packed with the existing Rockchip tool path:
+`./mkupdate.sh rk3588 Image emmc`. Its log is:
+
+```text
+/data/agibot-android14-build/logs/2026-08-25-media-ssd-update-image.log
+```
+
+The complete eMMC update image is:
+
+```text
+/data/agibot-android14-build/aosp/RKTools/linux/Linux_Pack_Firmware/rockdev/update.img
+```
+
+Final artifact hashes:
+
+```text
+0df6a7baad87afc6d10a9e06d58ca87513ec7ce79be0f07d6b0730acd24dcb97  boot.img
+b507a56215d2dd997ae736060db8284957a0f47b8220f3f5b0c489dfc73154d2  boot-debug.img
+a65ba556fc76484ea89281adbf42afa6aabd7ff0dd8d62b46bc41aed0f53fdde  dtb.img
+0fb6935bf5664262ae6a149f75a9957f4b7224288742a0b0454183d302ec221d  resource.img
+cb5d13050fa8b78bd86fc41aedf62ba6eb6775d690b380109d8d088eedfc9ee0  super.img
+5ba82d5da663ff55710f0999e8dc0916794ef5fa9a49305736666092a136311e  update.img
+```
+
+This update image has not been flashed. It combines the newly built media-engine
+kernel boot/resource images with the existing 07:19 `super.img` that already
+contains the author metadata and Settings entry.
