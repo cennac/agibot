@@ -11,7 +11,7 @@ repository at commit `b4ffdcfebcf96b491864d4923533ade7856e7a7c`.
 
 ## Current phase
 
-**Hardware fix round 1 complete; full Maskrom image deployed**
+**Hardware fix round 1 deployed; driver validation round 1 complete**
 
 The selected baseline is Radxa's public Android 14 RK3588 BSP tree, based on
 Rockchip Android 14 RKR6 and Linux 6.1. Phase 1 completed the AGIBOT product,
@@ -21,7 +21,9 @@ eMMC before SD. Hardware fix round 1 added GMAC/USB/RKNN repairs and Simplified
 Chinese as the factory default, deployed a complete image through Maskrom, and
 revalidated the serial U-Boot-to-Maskrom rescue path. See
 `docs/14-hardware-fix-round1.md`, `docs/15-default-locale.md`, and
-`docs/16-maskrom-full-flash.md`.
+`docs/16-maskrom-full-flash.md`. Runtime driver validation is recorded in
+`docs/17-driver-validation.md`; it identifies the media DTS, Android UVC camera
+HAL, and unused Wi-Fi/Bluetooth integration as the next repair targets.
 
 ## Product target
 
