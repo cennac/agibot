@@ -52,5 +52,11 @@ PRODUCT_PROPERTY_OVERRIDES += \
     vendor.hwc.device.primary=HDMI-A \
     persist.sys.hdmi_dp_audio_output=1
 
+# Expose immutable adaptation ownership for About device and support tooling.
+PRODUCT_SYSTEM_PROPERTIES += \
+    ro.build.author.name=Cennac \
+    ro.build.author.email=cennac@163.com \
+    ro.build.author.website=cennac.com
+
 PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.usb.host.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.usb.host.xml

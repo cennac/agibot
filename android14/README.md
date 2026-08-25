@@ -24,6 +24,9 @@ revalidated the serial U-Boot-to-Maskrom rescue path. See
 `docs/16-maskrom-full-flash.md`. Runtime driver validation is recorded in
 `docs/17-driver-validation.md`; it identifies the media DTS, Android UVC camera
 HAL, and unused Wi-Fi/Bluetooth integration as the next repair targets.
+The first follow-up repair, including the complete RK3588 media-node enablement
+and the SW9200 Loader procedure, is tracked in
+`docs/18-media-and-loader-fix.md`.
 
 ## Product target
 
