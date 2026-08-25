@@ -236,6 +236,9 @@ cb5d13050fa8b78bd86fc41aedf62ba6eb6775d690b380109d8d088eedfc9ee0  super.img
 5ba82d5da663ff55710f0999e8dc0916794ef5fa9a49305736666092a136311e  update.img
 ```
 
-This update image has not been flashed. It combines the newly built media-engine
-kernel boot/resource images with the existing 07:19 `super.img` that already
-contains the author metadata and Settings entry.
+This update image was subsequently flashed and boot-tested on 2026-08-25. It
+combines the newly built media-engine kernel boot/resource images with the
+existing 07:19 `super.img`. That reused `super.img` predates the author metadata
+and Settings commits, so the flashed system does **not** contain those author
+changes. Rebuild `system`, `system_ext` (Settings), and `super.img` before the
+next full image is packaged.

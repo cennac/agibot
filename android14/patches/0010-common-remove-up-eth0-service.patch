@@ -1,0 +1,26 @@
+From d07c4d57 Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Tue, 25 Aug 2026 15:11:00 +0800
+Subject: [PATCH] init: let Android manage Ethernet interface state
+
+---
+ rootdir/init.rk30board.rc | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/rootdir/init.rk30board.rc b/rootdir/init.rk30board.rc
+index 62cffb16..a6cca106 100755
+--- a/rootdir/init.rk30board.rc
++++ b/rootdir/init.rk30board.rc
+@@ -307,9 +307,7 @@ service pppoe_stop /system/bin/pppoe-stop
+     oneshot
+ ##$_rbox_$_modify_$_end
+ 
+-service up_eth0 /system/bin/busybox ifconfig eth0 up
+-    class main
+-    oneshot
++# Ethernet interface state is managed by Android EthernetService.
+ 
+ service shutdownanim /system/bin/bootanimation shutdown
+     class core
+-- 
+2.53.0

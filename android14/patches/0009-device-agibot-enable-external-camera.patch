@@ -1,0 +1,54 @@
+From 05ee2dc Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Tue, 25 Aug 2026 15:10:00 +0800
+Subject: [PATCH] agibot: enable external USB camera provider
+
+---
+ agibot_mb0002/BoardConfig.mk   | 2 +-
+ agibot_mb0002/agibot_mb0002.mk | 11 ++++++++---
+ 2 files changed, 9 insertions(+), 4 deletions(-)
+
+diff --git a/agibot_mb0002/BoardConfig.mk b/agibot_mb0002/BoardConfig.mk
+index 2765a78..e82a983 100644
+--- a/agibot_mb0002/BoardConfig.mk
++++ b/agibot_mb0002/BoardConfig.mk
+@@ -13,7 +13,7 @@ TARGET_ROCKCHIP_PCBATEST := false
+ PRODUCT_KERNEL_DTS := rk3588-agibot-mb0002-v2
+ PRODUCT_KERNEL_CONFIG += rockchip_defconfig android-14.config agibot.config
+-BOARD_CAMERA_SUPPORT_EXT := false
++BOARD_CAMERA_SUPPORT_EXT := true
+ BOARD_HS_ETHERNET := true
+ 
+ include device/rockchip/rk3588/BoardConfig.mk
+diff --git a/agibot_mb0002/agibot_mb0002.mk b/agibot_mb0002/agibot_mb0002.mk
+index 8ab8eee..e22cc0e 100644
+--- a/agibot_mb0002/agibot_mb0002.mk
++++ b/agibot_mb0002/agibot_mb0002.mk
+@@ -11,6 +11,11 @@ PRODUCT_UBOOT_CONFIG := rk3588_defconfig rk3588-agibot-mb0002.config
+ ENABLE_EVS_SERVICE := false
+ ENABLE_EVS_SAMPLE := false
+ 
++# The board exposes a standard UVC camera through the onboard USB hubs. Set
++# this before inheriting Rockchip device.mk so its AIDL external provider,
++# VINTF declaration, permissions and external-camera config are packaged.
++BOARD_CAMERA_SUPPORT_EXT := true
++
+ include device/rockchip/common/build/rockchip/DynamicPartitions.mk
+ include device/rockchip/rk3588/agibot_mb0002/BoardConfig.mk
+ include device/rockchip/common/BoardConfig.mk
+@@ -33,10 +38,10 @@ PRODUCT_MODEL := MB0002 V2
+ PRODUCT_CHARACTERISTICS := tablet
+ PRODUCT_AAPT_PREF_CONFIG := xhdpi
+ 
+-# Keep optional/ambiguous board peripherals out of Phase 1. These statements run
+-# after Rockchip's common board configuration has been inherited.
++# Keep optional/ambiguous board peripherals out of Phase 1. The external USB
++# camera is intentionally enabled above; the unvalidated internal ISP remains
++# disabled.
+ BOARD_CAMERA_SUPPORT := false
+-BOARD_CAMERA_SUPPORT_EXT := false
+ BOARD_GRAVITY_SENSOR_SUPPORT := false
+ BOARD_GYROSCOPE_SENSOR_SUPPORT := false
+ BOARD_PROXIMITY_SENSOR_SUPPORT := false
+-- 
+2.53.0

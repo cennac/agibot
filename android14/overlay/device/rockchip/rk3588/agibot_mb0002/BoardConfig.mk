@@ -13,7 +13,7 @@ TARGET_ROCKCHIP_PCBATEST := false
 
 PRODUCT_KERNEL_DTS := rk3588-agibot-mb0002-v2
 PRODUCT_KERNEL_CONFIG += rockchip_defconfig android-14.config agibot.config
-BOARD_CAMERA_SUPPORT_EXT := false
+BOARD_CAMERA_SUPPORT_EXT := true
 BOARD_HS_ETHERNET := true
 
 include device/rockchip/rk3588/BoardConfig.mk

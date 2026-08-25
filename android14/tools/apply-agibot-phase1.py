@@ -117,6 +117,17 @@ def main() -> None:
     ):
         disable_soong_module(evs_bp, module)
 
+    # Android's Ethernet stack manages interface state. The Rockchip common RC
+    # additionally starts BusyBox directly from init, which has no SELinux
+    # domain transition and is rejected even in permissive mode.
+    replace_once(
+        Path("device/rockchip/common/rootdir/init.rk30board.rc"),
+        "service up_eth0 /system/bin/busybox ifconfig eth0 up\n"
+        "    class main\n"
+        "    oneshot\n\n",
+        "# Ethernet interface state is managed by Android EthernetService.\n\n",
+    )
+
 
 if __name__ == "__main__":
     main()

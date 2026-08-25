@@ -11,6 +11,11 @@ PRODUCT_UBOOT_CONFIG := rk3588_defconfig rk3588-agibot-mb0002.config
 ENABLE_EVS_SERVICE := false
 ENABLE_EVS_SAMPLE := false
 
+# The board exposes a standard UVC camera through the onboard USB hubs. Set
+# this before inheriting Rockchip device.mk so its AIDL external provider,
+# VINTF declaration, permissions and external-camera config are packaged.
+BOARD_CAMERA_SUPPORT_EXT := true
+
 include device/rockchip/common/build/rockchip/DynamicPartitions.mk
 include device/rockchip/rk3588/agibot_mb0002/BoardConfig.mk
 include device/rockchip/common/BoardConfig.mk
@@ -33,10 +38,10 @@ PRODUCT_MODEL := MB0002 V2
 PRODUCT_CHARACTERISTICS := tablet
 PRODUCT_AAPT_PREF_CONFIG := xhdpi
 
-# Keep optional/ambiguous board peripherals out of Phase 1. These statements run
-# after Rockchip's common board configuration has been inherited.
+# Keep optional/ambiguous board peripherals out of Phase 1. The external USB
+# camera is intentionally enabled above; the unvalidated internal ISP remains
+# disabled.
 BOARD_CAMERA_SUPPORT := false
-BOARD_CAMERA_SUPPORT_EXT := false
 BOARD_GRAVITY_SENSOR_SUPPORT := false
 BOARD_GYROSCOPE_SENSOR_SUPPORT := false
 BOARD_PROXIMITY_SENSOR_SUPPORT := false
