@@ -11,7 +11,7 @@ repository at commit `b4ffdcfebcf96b491864d4923533ade7856e7a7c`.
 
 ## Current phase
 
-**r20 flashed and stable except for rejected Classic Bluetooth**
+**r21 official package built; flash validation pending**
 
 The selected baseline is Radxa's public Android 14 RK3588 BSP tree, based on
 Rockchip Android 14 RKR6 and Linux 6.1. Phase 1 completed the AGIBOT product,
@@ -48,6 +48,13 @@ address, BLE reception, Wi-Fi, and the rest of the platform, but it does not
 restore BR/EDR. Both the r18 wide scan configuration and the r16 defaults
 produce zero Classic results, and Windows cannot discover Android in the
 reverse direction. Do not make another HCD-only revision.
+
+r21 is a controlled whole-baseline rollback to the only known Classic-receive
+source state.  It restores the r16 91,900-byte HCD, removes the six r18 scan
+overrides, and restores the r16 BT_WAKE deassert policy.  The remote projects
+were changed with normal Git reverts and compared empty against their r16
+trees.  The official update image and build record are documented in
+`docs/47-r21-r16-bluetooth-baseline.md`.
 
 ## Product target
 

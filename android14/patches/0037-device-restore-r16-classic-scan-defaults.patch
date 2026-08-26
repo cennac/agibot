@@ -1,0 +1,31 @@
+From bb292467032f712934c91c16eb49ea6f83b46a3f Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 23:26:12 +0800
+Subject: [PATCH] agibot: restore r16 Classic scan defaults
+
+---
+ agibot_mb0002/agibot_mb0002.mk | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
+
+diff --git a/agibot_mb0002/agibot_mb0002.mk b/agibot_mb0002/agibot_mb0002.mk
+index 6d8c520..b37ca02 100644
+--- a/agibot_mb0002/agibot_mb0002.mk
++++ b/agibot_mb0002/agibot_mb0002.mk
+@@ -63,13 +63,7 @@ PRODUCT_PROPERTY_OVERRIDES += \
+ PRODUCT_SYSTEM_PROPERTIES += \
+     ro.build.author.name=Cennac \
+     ro.build.author.email=cennac@163.com \
+-    ro.build.author.website=cennac.com \
+-    bluetooth.core.classic.inq_scan_type=0 \
+-    bluetooth.core.classic.inq_scan_interval=1024 \
+-    bluetooth.core.classic.inq_scan_window=256 \
+-    bluetooth.core.classic.page_scan_type=0 \
+-    bluetooth.core.classic.page_scan_interval=1024 \
+-    bluetooth.core.classic.page_scan_window=256
++    ro.build.author.website=cennac.com
+ 
+ PRODUCT_COPY_FILES += \
+     frameworks/native/data/etc/android.hardware.usb.host.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.usb.host.xml \
+-- 
+2.53.0
+
