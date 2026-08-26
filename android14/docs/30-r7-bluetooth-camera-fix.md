@@ -124,8 +124,17 @@ Size: 2134977098 bytes
 SHA-256: 47E1B15642587049DF93D0A7C5B023CB6E2514ADDFB74F3EE34789D1B5329B5B
 ```
 
-The remote and local image hashes match. Flashing and runtime validation remain
-pending; source and image construction alone cannot prove controller behavior.
+The remote and local image hashes matched. At this point flashing and runtime
+validation were still pending; source and image construction alone cannot prove
+controller behavior.
+
+## Validation update
+
+The image was flashed manually through RKDevTool after an interrupted first
+attempt. Full runtime results are recorded in
+`31-r7-flash-full-validation.md`. In summary, UART/HCI startup, camera metadata,
+still capture, network, display, media, GPU, USB, RTC, and eMMC passed. Real
+Bluetooth discovery still fails on the separate `LE_ADV_FILTER` opcode timeout.
 
 ## Required r7 validation
 

@@ -11,7 +11,7 @@ repository at commit `b4ffdcfebcf96b491864d4923533ade7856e7a7c`.
 
 ## Current phase
 
-**Hardware fix round 1 deployed; driver validation round 1 complete**
+**r7 deployed; runtime validation complete, Bluetooth discovery is the remaining blocker**
 
 The selected baseline is Radxa's public Android 14 RK3588 BSP tree, based on
 Rockchip Android 14 RKR6 and Linux 6.1. Phase 1 completed the AGIBOT product,
@@ -24,9 +24,13 @@ revalidated the serial U-Boot-to-Maskrom rescue path. See
 `docs/16-maskrom-full-flash.md`. Runtime driver validation is recorded in
 `docs/17-driver-validation.md`; it identifies the media DTS, Android UVC camera
 HAL, and unused Wi-Fi/Bluetooth integration as the next repair targets.
-The first follow-up repair, including the complete RK3588 media-node enablement
-and the SW9200 Loader procedure, is tracked in
-`docs/18-media-and-loader-fix.md`.
+The full stack has since reached r7. r7 disables UART hardware flow control for
+AP6275P Bluetooth, changes external-camera orientation metadata to 270 degrees,
+and was flashed successfully with the official Rockchip update image. Runtime
+validation is recorded in `docs/31-r7-flash-full-validation.md`: boot, display,
+audio routing, Ethernet, Wi-Fi, USB, GPU, camera still capture, and storage pass.
+Bluetooth can now stay enabled, but real discovery/pairing reproducibly aborts
+on unsupported `LE_ADV_FILTER` offload; that is the next focused repair.
 
 ## Product target
 
