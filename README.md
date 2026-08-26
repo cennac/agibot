@@ -20,6 +20,16 @@
 构建后该文档安装到系统的 `/usr/share/doc/agibot/README.md`，并可从
 `/root/README.md` 直接访问。
 
+## 欢迎支持一杯咖啡
+
+如果这个项目对你有帮助，欢迎通过微信或支付宝支持一杯咖啡。感谢你的支持。
+
+<p align="center">
+  <img src="assets/support/wechat-payment.jpg" alt="微信收款码" width="320">
+  &nbsp;&nbsp;
+  <img src="assets/support/alipay-payment.jpg" alt="支付宝收款码" width="320">
+</p>
+
 `git clone --recursive` → `bash scripts/install-deps.sh` → `bash setup.sh` → `bash start-build.sh` → 刷机。板级配置与 WSL2 框架 hack 已全部入库,**干净 clone 即可编译,无需手动改框架源码**;脚本自动适配 Linux / WSL2 / macOS。
 
 > 完整步骤(WSL2 四大坑、5 处框架 hack、镜像验证、刷机、跨平台):见 **[BUILD-GUIDE.md](docs/BUILD-GUIDE.md)**。
