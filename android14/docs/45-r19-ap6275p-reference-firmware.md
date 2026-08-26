@@ -108,3 +108,53 @@ SHA-256: fd3b071b0bd653fb885aabfce81322491392e29e023615858229260d33eeada9
 4. A Windows pairing request must progress past remote-name/page handling,
    produce a PIN prompt, and reach `BOND_BONDED`.
 5. BLE scanning, Wi-Fi, and BT_WAKE stability must not regress.
+
+## Post-flash result
+
+The official r19 image was flashed and booted successfully. The running vendor
+payload exactly matches the intended reference firmware:
+
+```text
+/vendor/etc/firmware/BCM4362A2.hcd
+Size:    59,061 bytes
+SHA-256: 26ae849bb70e8d8e8e7571ef78c3c516a08dfda114d605d57daacdd72aad6aee
+```
+
+Firmware configuration completed successfully in 1.3 to 1.5 seconds. The
+vendor HAL preserved controller OTP address `B0:02:47:43:EA:3B`, Bluetooth
+remained ON, Android entered `SCAN_MODE_CONNECTABLE_DISCOVERABLE`, and
+BT_WAKE remained high.
+
+The Classic failure did not improve. During a 15-second Settings scan with
+the Windows peer explicitly reporting `Discoverable=True` and
+`Connectable=True`, HCI contained six Inquiry commands and zero results of
+all three types:
+
+```text
+Inquiry Result (0x02):            0
+Inquiry Result with RSSI (0x22):  0
+Extended Inquiry Result (0x2f):   0
+```
+
+The same log contained the Windows controller address 35 times in BLE
+reports, proving that LE reception remained active. The Android Settings peer
+list stayed empty.
+
+A single controlled direct pairing request for `BC:6E:E2:FB:2C:2C` returned
+`createBond=true`, entered `BOND_BONDING`, and failed approximately 5.13
+seconds later with HCI reason `0x04` (`HCI_ERR_PAGE_TIMEOUT`). No PIN prompt
+appeared and the state returned to `BOND_NONE`. The temporary test application
+was uninstalled after evidence capture.
+
+Evidence:
+
+```text
+E:\AIPorject\101\android14-flash\validation\r19-ap6275p-reference-firmware\btsnoop_hci-r19-initial-scan.log
+E:\AIPorject\101\android14-flash\validation\r19-ap6275p-reference-firmware\btsnoop_hci-r19-direct-windows-pair.log
+E:\AIPorject\101\android14-flash\validation\r19-ap6275p-reference-firmware\logcat-r19-direct-windows-pair.log
+```
+
+r19 therefore rejects the firmware-mismatch hypothesis as the primary cause.
+Keep the board-matching AP6275P firmware for provenance, but move the next
+repair to Classic radio initialization, UART RTS/CTS handling, and Wi-Fi/
+Bluetooth coexistence. Do not build another HCD-only revision.
