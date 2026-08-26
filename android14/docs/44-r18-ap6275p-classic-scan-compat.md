@@ -75,6 +75,29 @@ Patch `0033-device-ap6275p-classic-scan-compat.patch` adds the six properties
 to the MB0002 product.  It changes only this board and retains the r16 firmware,
 r15 OTP address handling, and r17 BT_WAKE behavior.
 
+## Official image
+
+The r18 Android build and Rockchip `update.img` packaging completed
+successfully on the build server.  The verified local release artifact is:
+
+```text
+E:\AIPorject\101\android14-flash\releases\2026-08-26-r18-classic-scan-compat-official\agibot-mb0002-android14-r18-classic-scan-compat-official-update.img
+```
+
+Artifact metadata:
+
+```text
+Size:    2,136,435,274 bytes
+SHA-256: 068a33c66d5dfcef4f1db7235af3916a3cf415cdd5847372cb9489e3f2d018f7
+```
+
+The local SHA-256 was checked after SFTP transfer and exactly matches the
+build-server artifact.  Build log:
+
+```text
+/data/agibot-android14-build/logs/2026-08-26-r18-classic-scan-compat-build.log
+```
+
 ## Acceptance
 
 1. Confirm the six properties exist in the flashed r18 build.
