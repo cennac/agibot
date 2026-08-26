@@ -110,3 +110,52 @@ build-server artifact.  Build log:
 The current Windows scanner showed no nearby devices at all even after its
 Bluetooth radio was toggled off and on.  It is therefore retained as a future
 test peer but is not accepted as the sole r18 over-the-air verdict.
+
+## Flash validation
+
+The official r18 image was flashed and booted on 2026-08-26.  The six product
+properties were present with the intended values, and Android reported:
+
+```text
+Bluetooth: enabled / ON
+Name:      MB0002 V2
+Address:   B0:02:47:43:EA:3B
+ScanMode:  SCAN_MODE_CONNECTABLE_DISCOVERABLE
+```
+
+The post-flash HCI snoop proved that the properties reached the controller:
+
+```text
+Inquiry Scan Activity: 0x0400 / 0x0100, Command Complete status 0x00
+Page Scan Activity:    0x0400 / 0x0100, Command Complete status 0x00
+Write Scan Enable:     0x03, Command Complete status 0x00
+Inquiry Scan Type=1:   not sent
+Page Scan Type=1:      not sent
+```
+
+GPIO state remained correct while the pairing page was open:
+
+```text
+bt_default_reset      out hi
+bt_default_wake       out hi
+bt_default_wake_host  in  lo IRQ
+bt_default_rts        out lo
+```
+
+Evidence was saved at:
+
+```text
+E:\AIPorject\101\android14-flash\validation\r18-classic-scan-compat\btsnoop_hci-r18.log
+```
+
+The HDMI connector reported `connected`, the HDMI ALSA playback device and
+Android HDMI audio route were present, and `/dev/video0` plus `/dev/video1`
+were registered.  Wi-Fi and Bluetooth were both disabled by default after the
+clean flash; Bluetooth was enabled explicitly for this validation.
+
+Over-the-air acceptance remains unresolved.  Android found no nearby peer
+during a 15-second pairing-page scan.  Windows Add Device also listed no
+device at all during a separate 30-second scan, including no unrelated nearby
+devices.  Therefore this Windows result cannot distinguish an MB0002 receive
+fault from the already observed Windows scanner fault.  Acceptance items 3
+and 4 still require a known-good independently verified peer.
