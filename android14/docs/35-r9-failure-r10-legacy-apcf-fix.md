@@ -46,3 +46,17 @@ After r10 is flashed:
 2. `dumpsys bluetooth_manager` must report zero offloaded scan filters.
 3. Two Settings discovery runs must contain no `0xfd57` timeout.
 4. The Bluetooth process PID must remain unchanged and scan results must appear.
+
+## r10 build result
+
+- Remote Bluetooth commit: `206af459ec`
+- Build log: `/data/agibot-android14-build/logs/2026-08-26-r10-bluetooth-legacy-apcf-build.log`
+- Result: `build completed successfully`; `Make update image ok!`
+- Local image: `E:\AIPorject\101\android14-flash\releases\2026-08-26-r10-bluetooth-legacy-apcf-official\agibot-mb0002-android14-r10-bluetooth-legacy-apcf-official-update.img`
+- Size: `2,134,968,906` bytes
+- Image SHA-256: `D86B8824E01DE4D150A20280D40D1EC29B1F9A5D5BCA21FC54EF1B8D0DE023C3`
+- APEX SHA-256: `6E0D50CA2BD48C1965E7627784342D586C0E600ED46D3B0C4FB26121DFC9C1E4`
+- JNI SHA-256: `95BD68B64801240959A6C380783459CDA5DC1776527E6F0640FBD41CF2756184`
+
+The rebuilt JNI contains the unique capability-clamp diagnostic string.
+Flash and runtime validation remain pending.
