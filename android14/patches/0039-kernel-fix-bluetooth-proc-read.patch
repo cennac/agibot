@@ -1,0 +1,28 @@
+diff --git a/net/rfkill/rfkill-bt.c b/net/rfkill/rfkill-bt.c
+index e76de540804c..97fc9f235c04 100644
+--- a/net/rfkill/rfkill-bt.c
++++ b/net/rfkill/rfkill-bt.c
+@@ -486,7 +486,10 @@ static struct proc_dir_entry *bluetooth_dir, *sleep_dir;
+ static ssize_t bluesleep_read_proc_lpm(struct file *file, char __user *buffer,
+ 				       size_t count, loff_t *data)
+ {
+-	return sprintf(buffer, "unsupported to read\n");
++	static const char message[] = "unsupported to read\n";
++
++	return simple_read_from_buffer(buffer, count, data, message,
++				      sizeof(message) - 1);
+ }
+ 
+ static ssize_t bluesleep_write_proc_lpm(struct file *file,
+@@ -500,7 +503,10 @@ static ssize_t bluesleep_read_proc_btwrite(struct file *file,
+ 					   char __user *buffer, size_t count,
+ 					   loff_t *data)
+ {
+-	return sprintf(buffer, "unsupported to read\n");
++	static const char message[] = "unsupported to read\n";
++
++	return simple_read_from_buffer(buffer, count, data, message,
++				      sizeof(message) - 1);
+ }
+ 
+ static ssize_t bluesleep_write_proc_btwrite(struct file *file,

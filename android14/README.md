@@ -11,7 +11,7 @@ repository at commit `b4ffdcfebcf96b491864d4923533ade7856e7a7c`.
 
 ## Current phase
 
-**r21 official package built; flash validation pending**
+**r22 validated; independent peers narrow Bluetooth failure to board-side BR/EDR**
 
 The selected baseline is Radxa's public Android 14 RK3588 BSP tree, based on
 Rockchip Android 14 RKR6 and Linux 6.1. Phase 1 completed the AGIBOT product,
@@ -51,10 +51,24 @@ reverse direction. Do not make another HCD-only revision.
 
 r21 is a controlled whole-baseline rollback to the only known Classic-receive
 source state.  It restores the r16 91,900-byte HCD, removes the six r18 scan
-overrides, and restores the r16 BT_WAKE deassert policy.  The remote projects
-were changed with normal Git reverts and compared empty against their r16
-trees.  The official update image and build record are documented in
-`docs/47-r21-r16-bluetooth-baseline.md`.
+overrides, and restores the r16 BT_WAKE deassert policy.  Post-flash validation
+confirms boot, display, Ethernet, Wi-Fi, USB, UVC camera, MediaStore, HDMI
+audio, RTC, Chinese locale, and the 30-minute timeout.  It also identified a
+Rockchip kernel proc-read defect that can panic the board when validation reads
+`/proc/bluetooth/sleep/btwrite`; the complete evidence and root cause are in
+`docs/48-r21-flash-validation.md`.  r22 changes only those unsafe proc read
+handlers, so future Bluetooth testing cannot be invalidated by the debug command
+itself.
+
+r22 is flashed and stable. Its proc-read fix prevents the Bluetooth debug path
+from panicking the kernel, but BR/EDR Classic remains broken. Independent peer
+testing in `docs/52-r22-bluetooth-deep-analysis.md` and
+`docs/53-r22-independent-ubuntu-peer-validation.md` shows that Windows and
+Ubuntu can exchange valid Classic traffic, while MB0002 receives zero Classic
+Inquiry results and does not present complete EIR/FHS data. Wi-Fi rfkill,
+`bcmdhd`, and three HCD variants were also excluded. The next discriminator is
+to reflash the SHA-256-pinned historical r16 image and repeat the Ubuntu peer
+test before making another source change.
 
 ## Product target
 
@@ -80,7 +94,8 @@ tools/          Non-building validation and traceability helpers
 
 - The full source checkout is complete on the remote build host; do not duplicate
   it in WSL or commit its contents.
-- No flashing, Maskrom operation, bootloader unlock, or board mutation.
+- No untracked board mutation; flashing and rescue operations must use the
+  documented Loader/Maskrom workflow and be recorded in `docs/`.
 - No full Android source checkout or large generated image is committed here.
 - No claim that the product configuration is bootable yet.
 
