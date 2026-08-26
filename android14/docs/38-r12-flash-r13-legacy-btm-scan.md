@@ -63,3 +63,28 @@ E:\AIPorject\101\android14-flash\releases\2026-08-26-r13-bluetooth-legacy-btm-sc
 
 The image SHA-256 was calculated independently on the build server and again
 after transfer to Windows; both values matched.
+
+## r13 flash verification
+
+RKDevTool v3.37 completed the r13 flash at 100% and reported `下载固件成功`.
+Android completed boot and both installed payload hashes matched the build:
+
+- Installed APEX SHA-256: `7A917B280C8E31D69F2A9ACA0BB243FFB70A2FFC86EECB07BF2C1A4763F95715`
+- Installed JNI SHA-256: `0200DDC044213132B7AF525366AB16681B3730DBA83D021E3FED8EC1EFB330F1`
+
+The first real Settings pairing scan confirmed that patch `0025` changed the
+command from extended `0x2041` to legacy `0x200b`. However, the controller also
+failed to respond to `LE_SET_SCAN_PARAMETERS (0x200b)`. After the five-second
+HCI timeout, the Bluetooth process aborted and restarted from PID `2321` to
+PID `2507`:
+
+```text
+Timed out waiting for 0x200b (LE_SET_SCAN_PARAMETERS)
+assertion 'false' failed - Done waiting for debug information after HCI timeout
+Fatal signal 6 (SIGABRT)
+```
+
+No `0xfd57`, `0xfd59`, or `0x2041` failure occurred. r13 is therefore a useful
+diagnostic build but does not pass Bluetooth discovery acceptance. The next
+change must investigate why AP6275P does not complete either standard scan
+parameter command instead of selecting another scan opcode.
