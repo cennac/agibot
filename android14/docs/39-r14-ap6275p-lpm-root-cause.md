@@ -60,3 +60,34 @@ After building and flashing r14:
    `0xfd59` timeout and no fatal signal.
 5. Confirm at least one actual remote device appears before testing pairing.
 
+## Build artifact
+
+The Broadcom patch passed `git apply --check` and was committed in the remote
+project as:
+
+```text
+8322435 broadcom: disable controller LPM on AGIBOT AP6275P
+```
+
+Both 32-bit and 64-bit `libbt-vendor` targets were recompiled and linked. The
+vendor and super images were then rebuilt, followed by the BSP's official
+`./build.sh -u -J8` Rockchip packaging flow. The log contains `Make firmware
+OK!`, `Make update image ok!`, and `Make gpt image ok!`.
+
+```text
+Build log:
+/data/agibot-android14-build/logs/2026-08-26-r14-bluetooth-lpm-disable-build.log
+
+Local image:
+E:\AIPorject\101\android14-flash\releases\2026-08-26-r14-bluetooth-lpm-disable-official\agibot-mb0002-android14-r14-bluetooth-lpm-disable-official-update.img
+```
+
+- Image size: `2134964810` bytes
+- Image SHA-256: `55FAE401B7EF82E50E5F0E75266DEDA36DFF00A80AF46C12644E75D6283FBED3`
+- Vendor library SHA-256: `53035DDB5EE327268F416B2BCD5E71F51FB5148CC3B5E8B213C929F9202BD724`
+- APEX SHA-256: `7A917B280C8E31D69F2A9ACA0BB243FFB70A2FFC86EECB07BF2C1A4763F95715`
+- JNI SHA-256: `0200DDC044213132B7AF525366AB16681B3730DBA83D021E3FED8EC1EFB330F1`
+
+The image hash was independently calculated on the build server and after the
+copy to Windows; both values matched. The built vendor library also contains
+the expected `AGIBOT AP6275P: controller low-power mode disabled` string.
