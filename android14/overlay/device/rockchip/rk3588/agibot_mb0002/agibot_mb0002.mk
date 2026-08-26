@@ -63,7 +63,13 @@ PRODUCT_PROPERTY_OVERRIDES += \
 PRODUCT_SYSTEM_PROPERTIES += \
     ro.build.author.name=Cennac \
     ro.build.author.email=cennac@163.com \
-    ro.build.author.website=cennac.com
+    ro.build.author.website=cennac.com \
+    bluetooth.core.classic.inq_scan_type=0 \
+    bluetooth.core.classic.inq_scan_interval=1024 \
+    bluetooth.core.classic.inq_scan_window=256 \
+    bluetooth.core.classic.page_scan_type=0 \
+    bluetooth.core.classic.page_scan_interval=1024 \
+    bluetooth.core.classic.page_scan_window=256
 
 PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.usb.host.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.usb.host.xml \
