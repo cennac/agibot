@@ -91,3 +91,39 @@ E:\AIPorject\101\android14-flash\releases\2026-08-26-r14-bluetooth-lpm-disable-o
 The image hash was independently calculated on the build server and after the
 copy to Windows; both values matched. The built vendor library also contains
 the expected `AGIBOT AP6275P: controller low-power mode disabled` string.
+
+## Flash and runtime verification
+
+RKDevTool v3.37 flashed the normalized r14 image through Loader mode. The tool
+reported 100% followed by `下载固件成功`, and Android completed boot normally.
+The installed vendor library, APEX, and JNI hashes all matched the build hashes
+above. Enabling Bluetooth emitted the expected LPM-disable message.
+
+Bluetooth was left idle for 30 seconds without manually touching `btwrite`.
+During that idle period `bt_default_wake` returned low, the Bluetooth process
+remained PID `2319`, and no HCI timeout occurred. One Settings pairing session
+was then run for 30 seconds from that idle state.
+
+```text
+Bluetooth PID before scan: 2319
+Bluetooth PID after scan:  2319
+0x200b timeout:             none
+0x2041 timeout:             none
+0xfd57 timeout:             none
+0xfd59 timeout:             none
+HCI timeout/fatal signal:   none
+```
+
+The Settings UI remained on the pairing page with its scan progress indicator.
+The Bluetooth manager's internal history confirms that the controller received
+real LE advertisements: completed 10-second LE scan cycles reported 4, 5, 7,
+and 5 results. Each parallel classic inquiry ended with `HCI_SUCCESS` and zero
+classic results. Settings did not render a named device, which is consistent
+with nearby anonymous/non-pairable BLE advertisements and does not indicate a
+transport failure.
+
+After leaving the pairing page, discovery stopped cleanly, the search state
+returned to `BTA_DM_SEARCH_IDLE`, and PID `2319` remained active. r14 therefore
+passes Bluetooth initialization, idle recovery, scan command completion,
+process stability, and actual BLE receive validation. Pairing and profile use
+still require a known external device placed in discoverable mode.
