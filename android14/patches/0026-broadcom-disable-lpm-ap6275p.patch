@@ -1,0 +1,46 @@
+From 0000000000000000000000000000000000000026 Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 15:40:00 +0800
+Subject: [PATCH] broadcom: disable controller LPM on AGIBOT AP6275P
+
+The AP6275P initializes correctly but stops responding to HCI commands after
+the controller enters UART low-power mode. The Rockchip kernel exposes the
+btwrite wake node, but the Android HCI transport does not assert BT_WAKE before
+the first discovery command. Manually asserting btwrite makes the same legacy
+scan command complete without a Bluetooth process restart.
+
+Keep controller sleep disabled for the AGIBOT product. This follows the
+existing CYW car-product workaround while limiting the behavior to MB0002.
+---
+ src/hardware.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/src/hardware.c b/src/hardware.c
+index 1589fae..a564c1b 100644
+--- a/src/hardware.c
++++ b/src/hardware.c
+@@ -1327,6 +1327,8 @@ uint8_t hw_lpm_enable(uint8_t turn_on)
+     HC_BT_HDR  *p_buf = NULL;
+     uint8_t     *p;
+     uint8_t     ret = FALSE;
++    char        product_device[PROPERTY_VALUE_MAX] = {0};
++    bool        is_agibot_mb0002;
+ 
+     if (bt_vendor_cbacks)
+         p_buf = (HC_BT_HDR *) bt_vendor_cbacks->alloc(BT_HC_HDR_SIZE + \
+@@ -1342,6 +1344,12 @@ uint8_t hw_lpm_enable(uint8_t turn_on)
+ 
+         if (turn_on)
+         {
++            property_get("ro.product.device", product_device, "");
++            is_agibot_mb0002 = !strcmp(product_device, "agibot_mb0002");
++            if (is_agibot_mb0002) {
++                lpm_param.sleep_mode = 0;
++                ALOGW("AGIBOT AP6275P: controller low-power mode disabled");
++            }
+             // @Rockchip car fix
+             if (wifi_type[0] == 0)
+                 check_wifi_chip_type_string(wifi_type);
+-- 
+2.53.0
+

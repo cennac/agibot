@@ -1,0 +1,62 @@
+# Android 14 r14 AP6275P low-power root cause
+
+Date: 2026-08-26
+
+## Root cause
+
+r13 proved that switching from extended scan command `0x2041` to legacy scan
+command `0x200b` did not by itself fix discovery. Both commands timed out only
+after Bluetooth had initialized and remained idle.
+
+The Broadcom vendor HAL enables controller UART low-power mode with vendor
+command `0xfc27`. On this Rockchip kernel, writes to
+`/proc/bluetooth/sleep/lpm` are accepted but the handler is an empty stub. The
+separate `/proc/bluetooth/sleep/btwrite` handler controls the AP6275P BT_WAKE
+GPIO. At failure time `bt_default_wake` was low and the controller did not
+respond to the first scan command.
+
+## Discriminating runtime test
+
+With the unchanged r13 payload, ADB root manually wrote `1` to the kernel
+`btwrite` node. The debug GPIO state changed from low to high. Settings pairing
+was then launched inside the wake window.
+
+```text
+PID before: 2706
+PID after:  2706
+bt_default_wake: out hi
+```
+
+The pairing page remained active with its scan progress indicator. There was no
+`0x200b` timeout, HCI timeout, fatal signal, or Bluetooth process restart. This
+isolates the failure to the low-power wake path rather than the LE scan opcode.
+
+An earlier non-root write was denied and did not alter GPIO state. Its following
+scan repeated the known timeout and is not evidence for or against the wake
+hypothesis.
+
+## r14 source change
+
+Patch `0026-broadcom-disable-lpm-ap6275p.patch` changes the Broadcom vendor HAL
+only for `ro.product.device=agibot_mb0002`. When Android requests controller LPM,
+the HAL sends `sleep_mode=0` in `Write Sleep Mode (0xfc27)` and emits:
+
+```text
+AGIBOT AP6275P: controller low-power mode disabled
+```
+
+The change keeps the controller awake and avoids dependence on the incomplete
+host-wake integration. Existing UART, legacy scan, and unsupported vendor
+offload fixes remain unchanged.
+
+## Acceptance
+
+After building and flashing r14:
+
+1. Confirm the r14 vendor library hash and the LPM-disable log.
+2. Leave Bluetooth idle for at least 30 seconds before discovery.
+3. Run one Settings pairing scan for at least 30 seconds.
+4. Require one stable Bluetooth PID with no `0x200b`, `0x2041`, `0xfd57`, or
+   `0xfd59` timeout and no fatal signal.
+5. Confirm at least one actual remote device appears before testing pairing.
+
