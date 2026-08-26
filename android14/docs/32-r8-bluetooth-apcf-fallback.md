@@ -62,6 +62,11 @@ bluetooth: disable APCF after controller rejection
 5. LE advertising reports should still arrive through the ordinary scan path.
 6. Pair one real BLE or classic device if one is available.
 
+Actual result: the payload and downgrade callback were present, but real
+Settings discovery still aborted on the pending `0xfd57` command. See
+`33-r8-flash-and-validation.md`. r9 must skip the initial APCF probe rather
+than downgrade after its response.
+
 ## Build
 
 Remote build completed successfully on 2026-08-26. The incremental Android

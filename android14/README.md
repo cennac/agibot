@@ -11,7 +11,7 @@ repository at commit `b4ffdcfebcf96b491864d4923533ade7856e7a7c`.
 
 ## Current phase
 
-**r8 official image built; Bluetooth APCF fallback awaits flash validation**
+**r8 flashed; core platform passes, Bluetooth APCF probe still aborts**
 
 The selected baseline is Radxa's public Android 14 RK3588 BSP tree, based on
 Rockchip Android 14 RKR6 and Linux 6.1. Phase 1 completed the AGIBOT product,
@@ -32,11 +32,11 @@ audio routing, Ethernet, Wi-Fi, USB, GPU, camera still capture, and storage pass
 Bluetooth can now stay enabled, but real discovery/pairing reproducibly aborts
 on unsupported `LE_ADV_FILTER` offload.
 
-r8 adds the focused APCF runtime downgrade in
-`docs/32-r8-bluetooth-apcf-fallback.md`: if the controller rejects extended
-APCF feature discovery, the stack clears its filter capability and falls back to
-ordinary LE scanning. The official r8 update image has been built and archived
-locally; on-device discovery and pairing tests are the next step.
+r8 added an APCF runtime downgrade in `docs/32-r8-bluetooth-apcf-fallback.md`.
+It was flashed and the callback executes, but the initial vendor probe still
+leaves a pending HCI command; real discovery reproducibly aborts. Full results
+are in `docs/33-r8-flash-and-validation.md`. All other tested platform functions
+pass. r9 must disable APCF before startup probing so the command is never sent.
 
 ## Product target
 
