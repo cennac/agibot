@@ -11,7 +11,7 @@ repository at commit `b4ffdcfebcf96b491864d4923533ade7856e7a7c`.
 
 ## Current phase
 
-**r16 flashed; platform stable, Bluetooth discovery restored, pairing still times out**
+**r18 flashed and stable; r19 AP6275P firmware correction in progress**
 
 The selected baseline is Radxa's public Android 14 RK3588 BSP tree, based on
 Rockchip Android 14 RKR6 and Linux 6.1. Phase 1 completed the AGIBOT product,
@@ -24,16 +24,18 @@ revalidated the serial U-Boot-to-Maskrom rescue path. See
 `docs/16-maskrom-full-flash.md`. Runtime driver validation is recorded in
 `docs/17-driver-validation.md`; it identifies the media DTS, Android UVC camera
 HAL, and unused Wi-Fi/Bluetooth integration as the next repair targets.
-The full stack has since reached r16. r16 reverts only the r15 BCM4362A2 HCD
-change while retaining the controller OTP address, disabled controller LPM,
-legacy scan path, vendor BLE offload clamps, three-line author information, and
-Gallery support image. Runtime validation is recorded in
-`docs/42-r16-flash-validation.md`: boot, HDMI display/audio, Ethernet, USB
-keyboard/UVC camera, RTC, storage, author metadata, Gallery indexing, and Wi-Fi
-scanning pass. Bluetooth rediscovers the Windows peer, but two pairing attempts
-still stop at `HCI_ERR_PAGE_TIMEOUT` before a PIN prompt. Wi-Fi association
-remains environmentally inconclusive because `cc181003` was absent from both
-Android and Windows scans.
+The full stack has since reached r18. r18 retains the controller OTP address,
+disabled controller LPM, legacy scan path, vendor BLE offload clamps,
+three-line author information, and Gallery support image. It also keeps
+BT_WAKE asserted and uses standard, wider Classic inquiry/page scan windows.
+Runtime HCI validation proves those scan parameters reach the controller, but
+Android receives no Classic Inquiry results from independently visible peers
+and direct Windows pairing still ends in `HCI_ERR_PAGE_TIMEOUT`.
+
+r19 replaces the mismatched 91,900-byte AP6398-labelled HCD with the original
+59,061-byte AP6275P firmware extracted from the MB0002 vendor reference system.
+The diagnosis and single-variable repair are recorded in
+`docs/45-r19-ap6275p-reference-firmware.md`.
 
 ## Product target
 
