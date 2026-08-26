@@ -1,0 +1,43 @@
+From 0000000000000000000000000000000000000022 Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 14:30:00 +0800
+Subject: [PATCH] bluetooth: force legacy LE scan for AP6275P
+
+After APCF is disabled, the AP6275P still advertises extended scanning but
+does not complete LE_SET_EXTENDED_SCAN_PARAMETERS (0x2041). The HCI timeout
+aborts com.android.bluetooth when Settings starts discovery.
+
+Use the Bluetooth 4.x legacy scanning commands for this board. This preserves
+ordinary discovery without relying on the controller's broken extended scan
+implementation.
+---
+ system/gd/hci/le_scanning_manager.cc | 14 +++-----------
+ 1 file changed, 3 insertions(+), 11 deletions(-)
+
+diff --git a/system/gd/hci/le_scanning_manager.cc b/system/gd/hci/le_scanning_manager.cc
+index 3b1c1d06a4..1111111111 100644
+--- a/system/gd/hci/le_scanning_manager.cc
++++ b/system/gd/hci/le_scanning_manager.cc
+@@ -187,17 +187,9 @@
+     le_scanning_interface_ = hci_layer_->GetLeScanningInterface(
+         module_handler_->BindOn(this, &LeScanningManager::impl::handle_scan_results));
+     periodic_sync_manager_.Init(le_scanning_interface_, module_handler_);
+-    /* Check to see if the opcode is supported and C19 (support for extended advertising). */
+-    if (controller_->IsSupported(OpCode::LE_SET_EXTENDED_SCAN_PARAMETERS) &&
+-        controller->SupportsBleExtendedAdvertising()) {
+-      api_type_ = ScanApiType::EXTENDED;
+-      interval_ms_ = kDefaultLeExtendedScanInterval;
+-      window_ms_ = kDefaultLeExtendedScanWindow;
+-    } else if (controller_->IsSupported(OpCode::LE_EXTENDED_SCAN_PARAMS)) {
+-      api_type_ = ScanApiType::ANDROID_HCI;
+-    } else {
+-      api_type_ = ScanApiType::LEGACY;
+-    }
++    // AP6275P advertises extended scanning but times out on opcode 0x2041.
++    // Use the standard Bluetooth 4.x scan commands for reliable discovery.
++    api_type_ = ScanApiType::LEGACY;
+     // AGIBOT AP6275P advertises APCF but rejects vendor opcode 0xfd57.
+     // Skip the asynchronous probe so it cannot block the HCI command queue.
+     is_filter_supported_ = false;
+-- 
+2.34.1
