@@ -64,7 +64,11 @@ bluetooth: disable APCF after controller rejection
 
 ## Build
 
-Remote build started from:
+Remote build completed successfully on 2026-08-26. The incremental Android
+build took 7 minutes 20 seconds; the official update package was completed at
+12:38 CST.
+
+Build host:
 
 ```text
 192.168.88.66
@@ -76,3 +80,31 @@ Build log:
 ```text
 /data/agibot-android14-build/logs/2026-08-26-r8-bluetooth-apcf-build.log
 ```
+
+Output checks:
+
+```text
+rockdev/Image-agibot_mb0002/update.img
+Size:   2134977098 bytes
+SHA256: E1832A06C336B79ABEFE86F39AD837908B97A2CF79EA98B1AB890DE1F063134E
+
+system/apex/com.android.btservices.apex
+SHA256: f9336206aa4f889a39603766e79b17f8c4c38a7874535683aa5c0b15b022275f
+
+apex/com.android.btservices/lib64/libbluetooth_jni.so
+SHA256: 6d82373b0784191de8b8511728bd4e2e5cf3c794b40b913fba9f8e6e36b8725c
+```
+
+The new `libbluetooth_jni.so` contains the two expected
+`disabling APCF support` log strings. The build log has no fatal build error
+and records `Making update.img OK`, `Make update image ok!`, and
+`Make gpt image ok!`.
+
+Normalized local release:
+
+```text
+E:\AIPorject\101\android14-flash\releases\2026-08-26-r8-bluetooth-apcf-fallback-official\agibot-mb0002-android14-r8-bluetooth-apcf-fallback-official-update.img
+```
+
+`SHA256SUMS.txt` is stored beside the image. Flashing and runtime validation
+remain pending.
