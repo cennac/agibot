@@ -56,3 +56,22 @@ runtime behavior is changed. The build is rerun from the failed target.
 
 The retry completed successfully and produced the official update image.
 Flash and runtime discovery validation remain pending.
+
+## r11 flash and runtime result
+
+The flashed APEX and JNI hashes matched the r11 build. APCF remained disabled,
+and the scan attempt emitted neither `0xfd57` nor `0x2041`, validating both the
+r10 APCF clamp and r11 legacy scan selection.
+
+Discovery still failed because the same controller capability response also
+incorrectly advertises energy reporting:
+
+```text
+Timed out waiting for 0xfd59 (LE_ENERGY_INFO)
+assertion 'false' failed - Done waiting for debug information after HCI timeout
+```
+
+Bluetooth PID changed from 2311 to 2466. The sender is the legacy
+`BTM_BleGetEnergyInfo()` path, gated by `cmn_ble_vsc_cb.energy_support`. r11 is
+therefore `tested-failed`; the next change must clamp `energy_support` to zero
+at the vendor capability source, alongside the APCF fields.
