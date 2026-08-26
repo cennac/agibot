@@ -104,8 +104,28 @@ Build log:
 /data/agibot-android14-build/logs/2026-08-26-r7-bluetooth-camera-build.log
 ```
 
-The build was started in the background at 2026-08-26 11:28 CST. Completion,
-image normalization and hashes must be appended only after packaging succeeds.
+The build started in the background at 2026-08-26 11:24 CST. The vendor and
+super image stage completed successfully in 7 minutes 31 seconds, followed by
+successful official `update.img` packaging.
+
+Output checks:
+
+```text
+vendor/etc/external_camera_config.xml: Orientation degree="270"
+vendor/lib64/libbt-vendor.so SHA-256:
+3dd5e82642cd08ce9136970145553c75ce94125ca11cc5e3d14a81afac33c74b
+```
+
+Normalized Windows release:
+
+```text
+E:\AIPorject\101\android14-flash\releases\2026-08-26-r7-bluetooth-camera-orientation-official\agibot-mb0002-android14-r7-bluetooth-camera-orientation-official-update.img
+Size: 2134977098 bytes
+SHA-256: 47E1B15642587049DF93D0A7C5B023CB6E2514ADDFB74F3EE34789D1B5329B5B
+```
+
+The remote and local image hashes match. Flashing and runtime validation remain
+pending; source and image construction alone cannot prove controller behavior.
 
 ## Required r7 validation
 
