@@ -1,0 +1,29 @@
+From 0000000000000000000000000000000000000020 Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 13:10:00 +0800
+Subject: [PATCH] bluetooth: skip APCF probe for AGIBOT AP6275P
+
+The AGIBOT AP6275P controller reports APCF but rejects LE_ADV_FILTER
+READ_EXTENDED_FEATURES (0xfd57) with INVALID_HCI_COMMAND_PARAMETERS.
+Disable APCF before the asynchronous probe for this target; ordinary LE
+scanning remains available.
+---
+ system/gd/hci/le_scanning_manager.cc | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
+
+diff --git a/system/gd/hci/le_scanning_manager.cc b/system/gd/hci/le_scanning_manager.cc
+index fd13238cb3..0000000000 100644
+--- a/system/gd/hci/le_scanning_manager.cc
++++ b/system/gd/hci/le_scanning_manager.cc
+@@ -201,6 +201,3 @@
+-    is_filter_supported_ = controller_->IsSupported(OpCode::LE_ADV_FILTER);
+-    if (is_filter_supported_) {
+-      le_scanning_interface_->EnqueueCommand(
+-          LeAdvFilterReadExtendedFeaturesBuilder::Create(),
+-          module_handler_->BindOnceOn(this, &impl::on_apcf_read_extended_features_complete));
+-    }
++    // AGIBOT AP6275P advertises APCF but rejects vendor opcode 0xfd57.
++    // Skip the asynchronous probe so it cannot block the HCI command queue.
++    is_filter_supported_ = false;
+-- 
+2.34.1
