@@ -46,3 +46,17 @@ legacy LE discovery and normal Bluetooth profiles are retained.
 5. No `0xfd57`, `0x2041`, `0xfd59`, HCI timeout, or fatal signal occurs.
 6. At least one nearby Bluetooth device is discovered, followed by a pairing
    attempt when a suitable test peripheral is available.
+
+## Build result
+
+- Remote Bluetooth commit: `02452c9d05`
+- Build log: `/data/agibot-android14-build/logs/2026-08-26-r12-bluetooth-vendor-offload-clamp-build.log`
+- Result: `build completed successfully`; `Make update image ok!`
+- Local image: `E:\AIPorject\101\android14-flash\releases\2026-08-26-r12-bluetooth-vendor-offload-clamp-official\agibot-mb0002-android14-r12-bluetooth-vendor-offload-clamp-official-update.img`
+- Size: `2,134,968,906` bytes
+- Image SHA-256: `73CF1ADCB2BF85CC80F42767A999F107CACC982F44B495710C4501F89CF2BF9C`
+- APEX SHA-256: `F958D7FD5D75C49AC646C0FF9D13B6B2DD696BAC2448DF5F797D80006502FA36`
+- JNI SHA-256: `574F891580ED39ACC2549F70450A42592A9084A765753315C5E2AB42E276F7D0`
+
+Both capability parsers were recompiled, and the JNI contains both unique r12
+diagnostic strings. Flash and runtime validation are pending.
