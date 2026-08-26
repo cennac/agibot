@@ -11,7 +11,7 @@ repository at commit `b4ffdcfebcf96b491864d4923533ade7856e7a7c`.
 
 ## Current phase
 
-**r19 rejected; r20 AP6275P 0034.0041 image built and verified**
+**r20 flashed and stable except for rejected Classic Bluetooth**
 
 The selected baseline is Radxa's public Android 14 RK3588 BSP tree, based on
 Rockchip Android 14 RKR6 and Linux 6.1. Phase 1 completed the AGIBOT product,
@@ -42,6 +42,12 @@ r20 updates only the Bluetooth HCD to the newer AP6275P `0034.0041` firmware
 published for the Khadas VIM4. The candidate provenance, runtime isolation,
 and build acceptance criteria are recorded in
 `docs/46-r20-ap6275p-0034-0041-firmware.md`.
+
+Post-flash HCI validation shows that r20 preserves stable initialization, OTP
+address, BLE reception, Wi-Fi, and the rest of the platform, but it does not
+restore BR/EDR. Both the r18 wide scan configuration and the r16 defaults
+produce zero Classic results, and Windows cannot discover Android in the
+reverse direction. Do not make another HCD-only revision.
 
 ## Product target
 
