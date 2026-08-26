@@ -75,6 +75,30 @@ Patch `0034-vendor-ap6275p-reference-firmware.patch` changes only this HCD.
 The remote vendor repository commit is `8052e68`. r18 framework, OTP address,
 LPM, BT_WAKE, scan compatibility, author, and product changes are retained.
 
+## Build and official image
+
+The incremental partition build and standard Rockchip packaging flow completed
+successfully. The log contains `Making update.img OK`, `Make update image ok`,
+and `Make gpt image ok`:
+
+```text
+/data/agibot-android14-build/logs/2026-08-26-r19-ap6275p-reference-firmware-build.log
+```
+
+The final product staging file was checked after the build and retained the
+AP6275P reference firmware hash. The official image was copied to:
+
+```text
+E:\AIPorject\101\android14-flash\releases\2026-08-26-r19-ap6275p-reference-firmware-official\agibot-mb0002-android14-r19-ap6275p-reference-firmware-official-update.img
+```
+
+The build-host and Windows hashes match exactly:
+
+```text
+Size:    2,136,402,506 bytes
+SHA-256: fd3b071b0bd653fb885aabfce81322491392e29e023615858229260d33eeada9
+```
+
 ## Acceptance
 
 1. Firmware download must complete and Bluetooth must remain ON.
