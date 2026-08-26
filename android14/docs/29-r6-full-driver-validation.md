@@ -27,8 +27,8 @@ Date: 2026-08-26
 | Bluetooth | FAIL | Enable request succeeds but adapter remains OFF. HCI opens `/dev/ttyS6`, then Framework binding times out and the Bluetooth service dies. |
 | USB enumeration | PASS | USB 2/3 hubs, keyboard `1c4f:0002`, and camera `1bcf:0b09` enumerate. No USB mass-storage device was connected, so media read/write was not tested. |
 | Camera preview | PARTIAL | External provider exposes camera ID 100 and continuously returns frames; preview has an image. The image is upside down (`Facing: Front`, `Orientation: 90`). |
-| Camera still capture | FAIL | Camera2 shutter test did not create a JPEG under `/sdcard/DCIM`. |
-| Camera video recording | NOT TESTED | Still capture and orientation must be fixed first. |
+| Camera still capture | PASS | Camera2 encoded and published a 189,902-byte JPEG at `/sdcard/Pictures/IMG_20260826_032031.jpg`. The initial `DCIM`-only check inspected the wrong output directory. |
+| Camera video recording | NOT TESTED | Orientation must be fixed first. |
 | GPU | PASS | SurfaceFlinger actively reports Mali-G610, OpenGL ES 3.2; `/dev/mali0` and render node 128 are present. |
 | NPU | PARTIAL | `/dev/dri/renderD129` exists and reports RKNPU driver v0.9.8. No RKNN test model/runtime binary was present for an inference test. |
 | Hardware codecs | PARTIAL | Rockchip C2 AVC/HEVC/VP9/AV1 decoders and AVC/HEVC encoders are declared. No known media test clip was available for end-to-end decode/encode. |
@@ -108,12 +108,10 @@ ExtCamDevSsn: processCaptureResult (continuous frames)
 Required follow-up:
 
 1. Correct the external-camera orientation metadata or transform for this board's physical mounting.
-2. Diagnose Camera2 still-capture submission and JPEG output; no file was generated in `DCIM`.
-3. After still capture passes, verify video recording, playback, audio synchronization and repeated open/close cycles.
+2. Verify video recording, playback, audio synchronization and repeated open/close cycles after the orientation fix.
 
 ## Artifacts
 
 - Author screenshot: `E:\AIPorject\101\_tmp\r6-author-settings.png`
 - Camera preview screenshot: `E:\AIPorject\101\_tmp\r6-camera-screen2.png`
 - Wi-Fi connected screenshot: `E:\AIPorject\101\_tmp\r6-wifi-connected.png`
-
