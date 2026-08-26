@@ -1,0 +1,53 @@
+From b5eb7bb8095ac5ef299d3799958e77f700f68805 Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 10:06:42 +0800
+Subject: [PATCH 1/2] bcmdhd:build-AP6275P-PCIe-driver
+
+---
+ Makefile | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/Makefile b/Makefile
+index 0dd9eca..03f6abb 100644
+--- a/Makefile
++++ b/Makefile
+@@ -2,6 +2,8 @@
+ 
+ CONFIG_AP6XXX = m
+ export CONFIG_AP6XXX
++CONFIG_BCMDHD_PCIE = y
++export CONFIG_BCMDHD_PCIE
+ obj-$(CONFIG_AP6XXX) += bcmdhd/
+ 
+ CONFIG_AIC_WLAN_SUPPORT = y
+-- 
+2.53.0
+
+
+From 450d955bb8c987c20c5c8c9f0b7c8d58ac33e2a1 Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 10:25:11 +0800
+Subject: [PATCH 2/2] bcmdhd:build-AP6275P-PCIe-only
+
+---
+ Makefile | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/Makefile b/Makefile
+index 03f6abb..0ffffab 100644
+--- a/Makefile
++++ b/Makefile
+@@ -4,6 +4,10 @@ CONFIG_AP6XXX = m
+ export CONFIG_AP6XXX
+ CONFIG_BCMDHD_PCIE = y
+ export CONFIG_BCMDHD_PCIE
++CONFIG_BCMDHD_SDIO =
++export CONFIG_BCMDHD_SDIO
++CONFIG_BCMDHD_USB =
++export CONFIG_BCMDHD_USB
+ obj-$(CONFIG_AP6XXX) += bcmdhd/
+ 
+ CONFIG_AIC_WLAN_SUPPORT = y
+-- 
+2.53.0
+

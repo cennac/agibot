@@ -1,0 +1,24 @@
+From 9c03bd488b41c9aac545cb8726e71c8d0a4beb73 Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 10:06:41 +0800
+Subject: [PATCH] ueventd:grant-bluetooth-access-to-ttyS6
+
+---
+ rootdir/ueventd.rockchip.rc | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/rootdir/ueventd.rockchip.rc b/rootdir/ueventd.rockchip.rc
+index d998aea7..52ebc4e5 100644
+--- a/rootdir/ueventd.rockchip.rc
++++ b/rootdir/ueventd.rockchip.rc
+@@ -60,6 +60,7 @@ import /vendor/etc/ueventd.car.rc
+ /dev/ttyS0                0660   bluetooth  system
+ /dev/ttyS1                0660   bluetooth  system
+ /dev/ttyS2                0660   bluetooth  system
++/dev/ttyS6                0660   bluetooth  system
+ /dev/rtk_btusb            0660   bluetooth  system
+ /dev/aic_btusb            0666   bluetooth  system
+ 
+-- 
+2.53.0
+

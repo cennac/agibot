@@ -38,10 +38,9 @@ PRODUCT_MODEL := MB0002 V2
 PRODUCT_CHARACTERISTICS := tablet
 PRODUCT_AAPT_PREF_CONFIG := xhdpi
 
-# Keep ambiguous board peripherals out of Phase 1. The external USB camera and
-# AP6275P Bluetooth are validated board features; the internal ISP remains
-# disabled.
-BOARD_CAMERA_SUPPORT := false
+# Enable the camera product stack so Rockchip's AIDL external provider is
+# packaged. The board DTS still leaves unvalidated internal ISP sensors off.
+BOARD_CAMERA_SUPPORT := true
 BOARD_GRAVITY_SENSOR_SUPPORT := false
 BOARD_GYROSCOPE_SENSOR_SUPPORT := false
 BOARD_PROXIMITY_SENSOR_SUPPORT := false
