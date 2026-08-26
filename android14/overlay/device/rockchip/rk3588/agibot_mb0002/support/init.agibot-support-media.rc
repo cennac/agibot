@@ -1,0 +1,8 @@
+# Keep the AGIBOT support image visible to Gallery apps through shared storage.
+on property:sys.boot_completed=1
+    mkdir /data/media/0/Pictures 0770 media_rw media_rw
+    mkdir /data/media/0/Pictures/AGIBOT 0770 media_rw media_rw
+    copy /product/etc/agibot/support-a-coffee.png /data/media/0/Pictures/AGIBOT/support-a-coffee.png
+    chown media_rw media_rw /data/media/0/Pictures/AGIBOT/support-a-coffee.png
+    chmod 0660 /data/media/0/Pictures/AGIBOT/support-a-coffee.png
+    restorecon_recursive /data/media/0/Pictures/AGIBOT

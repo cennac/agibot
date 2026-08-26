@@ -66,4 +66,6 @@ PRODUCT_SYSTEM_PROPERTIES += \
     ro.build.author.website=cennac.com
 
 PRODUCT_COPY_FILES += \
-    frameworks/native/data/etc/android.hardware.usb.host.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.usb.host.xml
+    frameworks/native/data/etc/android.hardware.usb.host.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.usb.host.xml \
+    $(LOCAL_PATH)/support/support-a-coffee.png:$(TARGET_COPY_OUT_PRODUCT)/etc/agibot/support-a-coffee.png \
+    $(LOCAL_PATH)/support/init.agibot-support-media.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/init.agibot-support-media.rc

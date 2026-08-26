@@ -1,0 +1,35 @@
+From ae18ea7c97b9fe43c4c2576eba18d7353f38291e Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 16:05:33 +0800
+Subject: [PATCH] Settings: format AGIBOT author details on separate lines
+
+---
+ res/values-zh-rCN/strings.xml | 2 +-
+ res/values/strings.xml        | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/res/values-zh-rCN/strings.xml b/res/values-zh-rCN/strings.xml
+index b95a8fa77f..7669526740 100644
+--- a/res/values-zh-rCN/strings.xml
++++ b/res/values-zh-rCN/strings.xml
+@@ -4847,5 +4847,5 @@
+     <string name="sr_off">已关闭</string>
+     <!-- ======================================== -->
+     <string name="agibot_system_author_title">系统作者</string>
+-    <string name="agibot_system_author_summary" translatable="false">Cennac · cennac@163.com · cennac.com</string>
++    <string name="agibot_system_author_summary" translatable="false">Cennac\ncennac@163.com\ncennac.com</string>
+ </resources>
+diff --git a/res/values/strings.xml b/res/values/strings.xml
+index 32e22e1e85..52fa603375 100644
+--- a/res/values/strings.xml
++++ b/res/values/strings.xml
+@@ -12410,5 +12410,5 @@
+     <string name="sr_off">Off</string>
+     <!-- ======================================== -->
+     <string name="agibot_system_author_title">System author</string>
+-    <string name="agibot_system_author_summary" translatable="false">Cennac · cennac@163.com · cennac.com</string>
++    <string name="agibot_system_author_summary" translatable="false">Cennac\ncennac@163.com\ncennac.com</string>
+ </resources>
+-- 
+2.53.0
+
