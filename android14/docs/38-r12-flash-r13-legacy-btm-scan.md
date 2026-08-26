@@ -40,3 +40,26 @@ advertising.
 
 Acceptance requires two 30-second Settings scans with one stable Bluetooth
 PID, no HCI timeout/fatal signal, and actual device discovery.
+
+## r13 build artifact
+
+The remote build and official Rockchip image packaging completed successfully
+on `192.168.88.66` under `/data/agibot-android14-build/aosp`. The build log is:
+
+```text
+/data/agibot-android14-build/logs/2026-08-26-r13-bluetooth-legacy-btm-scan-build.log
+```
+
+The final artifact was archived locally as:
+
+```text
+E:\AIPorject\101\android14-flash\releases\2026-08-26-r13-bluetooth-legacy-btm-scan-official\agibot-mb0002-android14-r13-bluetooth-legacy-btm-scan-official-update.img
+```
+
+- Image size: `2134964810` bytes
+- Image SHA-256: `E74DB06F6AD97A48AEEAFF9661DD03AEB880BCDFCF6EB38852F308FA7116879E`
+- APEX SHA-256: `7A917B280C8E31D69F2A9ACA0BB243FFB70A2FFC86EECB07BF2C1A4763F95715`
+- JNI SHA-256: `0200DDC044213132B7AF525366AB16681B3730DBA83D021E3FED8EC1EFB330F1`
+
+The image SHA-256 was calculated independently on the build server and again
+after transfer to Windows; both values matched.
