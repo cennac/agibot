@@ -11,7 +11,7 @@ repository at commit `b4ffdcfebcf96b491864d4923533ade7856e7a7c`.
 
 ## Current phase
 
-**r18 flashed and stable; r19 AP6275P firmware correction in progress**
+**r19 rejected; r20 AP6275P 0034.0041 firmware build in progress**
 
 The selected baseline is Radxa's public Android 14 RK3588 BSP tree, based on
 Rockchip Android 14 RKR6 and Linux 6.1. Phase 1 completed the AGIBOT product,
@@ -32,10 +32,16 @@ Runtime HCI validation proves those scan parameters reach the controller, but
 Android receives no Classic Inquiry results from independently visible peers
 and direct Windows pairing still ends in `HCI_ERR_PAGE_TIMEOUT`.
 
-r19 replaces the mismatched 91,900-byte AP6398-labelled HCD with the original
+r19 replaced the mismatched 91,900-byte AP6398-labelled HCD with the original
 59,061-byte AP6275P firmware extracted from the MB0002 vendor reference system.
-The diagnosis and single-variable repair are recorded in
-`docs/45-r19-ap6275p-reference-firmware.md`.
+The firmware initialized reliably, but Classic Inquiry and Page still failed.
+Runtime tests also excluded the powered-off Wi-Fi dongle, loaded `bcmdhd`
+module, and r18 scan-window properties as the primary cause.
+
+r20 updates only the Bluetooth HCD to the newer AP6275P `0034.0041` firmware
+published for the Khadas VIM4. The candidate provenance, runtime isolation,
+and build acceptance criteria are recorded in
+`docs/46-r20-ap6275p-0034-0041-firmware.md`.
 
 ## Product target
 
