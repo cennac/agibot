@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000021 Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 14:05:00 +0800
+Subject: [PATCH] bluetooth: clamp AP6275P APCF vendor capability
+
+The AP6275P vendor capability response advertises APCF support with 16
+filters, but the controller does not implement the Android LE_ADV_FILTER
+vendor command correctly. The GD scanning manager override does not cover the
+legacy BTM advertising filter implementation, which consumes the same raw
+capability response and continues to send opcode 0xfd57.
+
+Clamp the legacy capability at its source so BTIF, Java feature reporting,
+BTM initialization, and every BTM APCF entry point consistently use the
+existing unsupported path. Ordinary controller-based LE scanning is not
+affected.
+---
+ system/stack/btm/btm_ble_gap.cc | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/system/stack/btm/btm_ble_gap.cc b/system/stack/btm/btm_ble_gap.cc
+index 04f6994f87..0000000000 100644
+--- a/system/stack/btm/btm_ble_gap.cc
++++ b/system/stack/btm/btm_ble_gap.cc
+@@ -699,0 +700,8 @@
++  // AP6275P reports APCF support but rejects Android vendor opcode 0xfd57.
++  // Clamp the capability before BTIF or legacy BTM can initialize offload.
++  if (btm_cb.cmn_ble_vsc_cb.filter_support != 0 ||
++      btm_cb.cmn_ble_vsc_cb.max_filter != 0) {
++    LOG(WARNING) << "AGIBOT AP6275P: disabling unsupported APCF offload";
++  }
++  btm_cb.cmn_ble_vsc_cb.filter_support = 0;
++  btm_cb.cmn_ble_vsc_cb.max_filter = 0;
++
+-- 
+2.34.1
