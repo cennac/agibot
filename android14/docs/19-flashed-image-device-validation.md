@@ -130,7 +130,7 @@ Rockit access to the absent `/dev/video_state` performance-control interface.
 Local test artifacts are under:
 
 ```text
-E:\AIPorject\101\android14-flash\media-author-20260825\tests
+E:\AIPorject\101\android14-flash\validation\r2-media-author\tests
 ```
 
 Important files include `hdmi-restored.png`, `h264-t2.png`, `h264-t4.png`,

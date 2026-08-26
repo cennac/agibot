@@ -38,8 +38,8 @@ PRODUCT_MODEL := MB0002 V2
 PRODUCT_CHARACTERISTICS := tablet
 PRODUCT_AAPT_PREF_CONFIG := xhdpi
 
-# Keep optional/ambiguous board peripherals out of Phase 1. The external USB
-# camera is intentionally enabled above; the unvalidated internal ISP remains
+# Keep ambiguous board peripherals out of Phase 1. The external USB camera and
+# AP6275P Bluetooth are validated board features; the internal ISP remains
 # disabled.
 BOARD_CAMERA_SUPPORT := false
 BOARD_GRAVITY_SENSOR_SUPPORT := false
@@ -48,6 +48,9 @@ BOARD_PROXIMITY_SENSOR_SUPPORT := false
 BOARD_LIGHT_SENSOR_SUPPORT := false
 BOARD_HAVE_BLUETOOTH_AIC_USB := false
 BOARD_HAVE_BLUETOOTH_AIC := false
+BOARD_BLUETOOTH_SUPPORT := true
+BOARD_HAVE_BLUETOOTH := true
+BOARD_BLUETOOTH_LE_SUPPORT := true
 
 PRODUCT_PROPERTY_OVERRIDES += \
     ro.sf.lcd_density=240 \

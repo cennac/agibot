@@ -1,0 +1,155 @@
+From 9a3fc9a48f4c77d21a2fc8fee51c9c1b75f96656 Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 09:05:03 +0800
+Subject: [PATCH] arm64: dts: enable AGIBOT RTC and AP6275P wireless
+
+---
+ .../dts/rockchip/rk3588-agibot-mb0002-v2.dts  | 104 +++++++++++++++++-
+ 1 file changed, 102 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588-agibot-mb0002-v2.dts b/arch/arm64/boot/dts/rockchip/rk3588-agibot-mb0002-v2.dts
+index 0e9b5469dd00..c24f7fc424d1 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588-agibot-mb0002-v2.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3588-agibot-mb0002-v2.dts
+@@ -3,8 +3,9 @@
+  * AGIBOT MB0002 V2 board device tree
+  *
+  * Phase 1 brings up eMMC, HDMI0, USB input, dual GMAC, console, and the
+- * board's minimum power tree. Wireless, cameras, panels, and other optional
+- * peripherals are intentionally left disabled until their wiring is verified.
++ * board's minimum power tree. The AP6275P wireless module, HYM8563 RTC, USB
++ * hubs, and other validated board peripherals are enabled after their wiring
++ * was checked against the vendor 5.10 device tree and Armbian/LEDE testing.
+  */
+ 
+ /dts-v1/;
+@@ -52,6 +53,40 @@ vcc_1v1_nldo_s3: vcc-1v1-nldo-s3 {
+ 		vin-supply = <&vcc5v0_sys>;
+ 	};
+ 
++	vcc3v3_pcie30: vcc3v3-pcie30 {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc3v3_pcie30";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		enable-active-high;
++		gpios = <&gpio3 RK_PC4 GPIO_ACTIVE_HIGH>;
++		startup-delay-us = <7500>;
++		vin-supply = <&vcc12v_dcin>;
++	};
++
++	wireless_bluetooth: wireless-bluetooth {
++		compatible = "bluetooth-platdata";
++		clocks = <&hym8563>;
++		clock-names = "ext_clock";
++		uart_rts_gpios = <&gpio1 RK_PA2 GPIO_ACTIVE_LOW>;
++		pinctrl-names = "default", "rts_gpio";
++		pinctrl-0 = <&uart6m1_rtsn &bt_gpio>;
++		pinctrl-1 = <&uart6_rts_gpio>;
++		BT,reset_gpio = <&gpio1 RK_PA6 GPIO_ACTIVE_HIGH>;
++		BT,wake_gpio = <&gpio3 RK_PB2 GPIO_ACTIVE_HIGH>;
++		BT,wake_host_irq = <&gpio2 RK_PC4 GPIO_ACTIVE_HIGH>;
++		status = "okay";
++	};
++
++	wireless_wlan: wireless-wlan {
++		compatible = "wlan-platdata";
++		wifi_chip_type = "ap6275p";
++		pinctrl-names = "default";
++		pinctrl-0 = <&wifi_host_wake_irq &wifi_poweren_gpio>;
++		WIFI,host_wake_irq = <&gpio3 RK_PC5 GPIO_ACTIVE_HIGH>;
++		status = "okay";
++	};
++
+ 	hdmi0_sound: hdmi0-sound {
+ 		status = "okay";
+ 		compatible = "rockchip,hdmi";
+@@ -194,6 +229,25 @@ pca9555_21: pca9555@21 {
+ 	};
+ };
+ 
++&i2c6 {
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2c6m0_xfer>;
++
++	hym8563: rtc@51 {
++		compatible = "haoyu,hym8563";
++		reg = <0x51>;
++		#clock-cells = <0>;
++		clock-frequency = <32768>;
++		clock-output-names = "hym8563";
++		pinctrl-names = "default";
++		pinctrl-0 = <&hym8563_int>;
++		interrupt-parent = <&gpio3>;
++		interrupts = <RK_PD2 IRQ_TYPE_LEVEL_LOW>;
++		wakeup-source;
++	};
++};
++
+ &rknpu {
+ 	rknpu-supply = <&vdd_npu_s0>;
+ 	mem-supply = <&vdd_npu_mem_s0>;
+@@ -448,6 +502,16 @@ &combphy2_psu {
+ 	status = "okay";
+ };
+ 
++&combphy1_ps {
++	status = "okay";
++};
++
++&pcie2x1l0 {
++	reset-gpios = <&gpio1 RK_PB4 GPIO_ACTIVE_HIGH>;
++	vpcie3v3-supply = <&vcc3v3_pcie30>;
++	status = "okay";
++};
++
+ &u2phy0 {
+ 	status = "okay";
+ };
+@@ -486,6 +550,42 @@ &usbdrd3_1 {
+ 	status = "okay";
+ };
+ 
++&uart6 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart6m1_xfer>;
++	status = "okay";
++};
++
++&pinctrl {
++	wireless-bluetooth {
++		uart6_rts_gpio: uart6-rts-gpio {
++			rockchip,pins = <1 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++
++		bt_gpio: bt-gpio {
++			rockchip,pins = <1 RK_PA6 RK_FUNC_GPIO &pcfg_pull_none>,
++					 <3 RK_PB2 RK_FUNC_GPIO &pcfg_pull_up>,
++					 <2 RK_PC4 RK_FUNC_GPIO &pcfg_pull_down>;
++		};
++	};
++
++	wireless-wlan {
++		wifi_host_wake_irq: wifi-host-wake-irq {
++			rockchip,pins = <3 RK_PC5 RK_FUNC_GPIO &pcfg_pull_down>;
++		};
++
++		wifi_poweren_gpio: wifi-poweren-gpio {
++			rockchip,pins = <3 RK_PC4 RK_FUNC_GPIO &pcfg_pull_up>;
++		};
++	};
++
++	hym8563 {
++		hym8563_int: hym8563-int {
++			rockchip,pins = <3 RK_PD2 RK_FUNC_GPIO &pcfg_pull_up>;
++		};
++	};
++};
++
+ &usbdrd_dwc3_1 {
+ 	dr_mode = "host";
+ 	status = "okay";
+-- 
+2.53.0
+

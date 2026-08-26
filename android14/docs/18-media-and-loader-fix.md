@@ -83,7 +83,7 @@ For Maskrom, the standard complete-image upgrade path remains preferred and
 has already been regression-tested twice. The known image is:
 
 ```text
-E:\AIPorject\101\android14-flash\full-zh-rknn-20260825\agibot-mb0002-android14-zh-rknn-20260825.img
+E:\AIPorject\101\android14-flash\releases\2026-08-25-r1-zh-rknn-validated\agibot-mb0002-android14-r1-zh-rknn-validated-update.img
 SHA-256: 5bf4260e5fdef6d40d5675ce334398dc58acd1806a43889a7fdb695fe3cde1f4
 ```
 

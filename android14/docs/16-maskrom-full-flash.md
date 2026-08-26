@@ -35,7 +35,7 @@ Build results:
 The local preservation copy is:
 
 ```text
-E:\AIPorject\101\android14-flash\full-zh-rknn-20260825\agibot-mb0002-android14-zh-rknn-20260825.img
+E:\AIPorject\101\android14-flash\releases\2026-08-25-r1-zh-rknn-validated\agibot-mb0002-android14-r1-zh-rknn-validated-update.img
 ```
 
 Its local SHA-256 matched the build host. The system `build.prop` reports:

@@ -2,5 +2,5 @@
 <resources>
     <!-- Do not force a portrait default for HDMI monitor/TV usage. -->
     <bool name="def_accelerometer_rotation">false</bool>
-    <integer name="def_screen_off_timeout">60000</integer>
+    <integer name="def_screen_off_timeout">1800000</integer>
 </resources>

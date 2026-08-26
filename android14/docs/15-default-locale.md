@@ -88,7 +88,7 @@ Final image:
 Local preservation copy:
 
 ```text
-E:\AIPorject\101\android14-flash\default-locale-images\system-default-locale-zh-CN-20260825.img
+E:\AIPorject\101\android14-flash\components\default-locale-2026-08-25\system-zh-cn.img
 ```
 
 Only `system.img` was rebuilt and preserved for this change. `boot`, `vendor`,
