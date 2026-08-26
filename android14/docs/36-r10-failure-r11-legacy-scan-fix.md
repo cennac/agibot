@@ -36,3 +36,10 @@ extended scanning implementation.
 
 Acceptance requires two Settings discovery rounds with a stable Bluetooth PID,
 no `0xfd57` or `0x2041` timeout, and visible scan results.
+
+## First r11 build correction
+
+The first build correctly reached `le_scanning_manager.cc` but stopped because
+the forced legacy policy left two extended-scan default constants unused and
+the module builds with `-Werror`. Patch `0023` removes those two constants; no
+runtime behavior is changed. The build is rerun from the failed target.
