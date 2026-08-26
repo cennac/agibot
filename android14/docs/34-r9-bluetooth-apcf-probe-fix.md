@@ -38,7 +38,18 @@ c37750b004 bluetooth: skip APCF probe for AGIBOT AP6275P
    HCI log must contain no `LE_ADV_FILTER`/`0xfd57`, the Bluetooth process PID
    must remain stable, and ordinary scan results must be observed.
 
+## Build result
+
+- Build host: `cennac@192.168.88.66`
+- Build log: `/data/agibot-android14-build/logs/2026-08-26-r9-bluetooth-apcf-probe-build.log`
+- Result: `build completed successfully`; `Make update image ok!`
+- Remote image: `/data/agibot-android14-build/aosp/rockdev/Image-agibot_mb0002/update.img`
+- Local image: `E:\AIPorject\101\android14-flash\releases\2026-08-26-r9-bluetooth-apcf-probe-official\agibot-mb0002-android14-r9-bluetooth-apcf-probe-official-update.img`
+- Size: `2,134,964,810` bytes
+- SHA-256: `0CD4122CB940889A32187EC854BDA834A31E5B8A94B2548A018F24180ACB63DF`
+
 ## Status
 
-Source patch applied and committed remotely. r9 has not yet been built or
-flashed; runtime validation is pending.
+Source patch is committed and pushed, and the official r9 image built and
+verified. It has not been flashed yet; Bluetooth runtime validation is
+pending.
