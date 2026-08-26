@@ -11,7 +11,7 @@ repository at commit `b4ffdcfebcf96b491864d4923533ade7856e7a7c`.
 
 ## Current phase
 
-**r8 flashed; core platform passes, Bluetooth APCF probe still aborts**
+**r16 flashed; platform stable, Bluetooth discovery restored, pairing still times out**
 
 The selected baseline is Radxa's public Android 14 RK3588 BSP tree, based on
 Rockchip Android 14 RKR6 and Linux 6.1. Phase 1 completed the AGIBOT product,
@@ -24,19 +24,16 @@ revalidated the serial U-Boot-to-Maskrom rescue path. See
 `docs/16-maskrom-full-flash.md`. Runtime driver validation is recorded in
 `docs/17-driver-validation.md`; it identifies the media DTS, Android UVC camera
 HAL, and unused Wi-Fi/Bluetooth integration as the next repair targets.
-The full stack has since reached r7. r7 disabled UART hardware flow control for
-AP6275P Bluetooth, changed external-camera orientation metadata to 270 degrees,
-and was flashed successfully with the official Rockchip update image. Runtime
-validation is recorded in `docs/31-r7-flash-full-validation.md`: boot, display,
-audio routing, Ethernet, Wi-Fi, USB, GPU, camera still capture, and storage pass.
-Bluetooth can now stay enabled, but real discovery/pairing reproducibly aborts
-on unsupported `LE_ADV_FILTER` offload.
-
-r8 added an APCF runtime downgrade in `docs/32-r8-bluetooth-apcf-fallback.md`.
-It was flashed and the callback executes, but the initial vendor probe still
-leaves a pending HCI command; real discovery reproducibly aborts. Full results
-are in `docs/33-r8-flash-and-validation.md`. All other tested platform functions
-pass. r9 must disable APCF before startup probing so the command is never sent.
+The full stack has since reached r16. r16 reverts only the r15 BCM4362A2 HCD
+change while retaining the controller OTP address, disabled controller LPM,
+legacy scan path, vendor BLE offload clamps, three-line author information, and
+Gallery support image. Runtime validation is recorded in
+`docs/42-r16-flash-validation.md`: boot, HDMI display/audio, Ethernet, USB
+keyboard/UVC camera, RTC, storage, author metadata, Gallery indexing, and Wi-Fi
+scanning pass. Bluetooth rediscovers the Windows peer, but two pairing attempts
+still stop at `HCI_ERR_PAGE_TIMEOUT` before a PIN prompt. Wi-Fi association
+remains environmentally inconclusive because `cc181003` was absent from both
+Android and Windows scans.
 
 ## Product target
 

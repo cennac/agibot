@@ -105,6 +105,9 @@ android14/patches/0031-vendor-revert-r15-bcm4362a2-firmware.patch
 r16 requires one post-flash Windows test: confirm PC discovery, issue one
 pairing request, and require a Windows PIN prompt plus `BOND_BONDED`.
 
+The completed r16 flash validation is recorded in
+`docs/42-r16-flash-validation.md`.
+
 ## r16 build result
 
 The remote build on `cennac@192.168.88.66` completed successfully on
