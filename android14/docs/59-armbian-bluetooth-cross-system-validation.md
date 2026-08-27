@@ -279,6 +279,66 @@ After the test, `bcmdhd` and `wlan0` were restored. The board was rebooted and
 verified on the normal HCD SHA-256, build 1017, active attach and Bluetooth
 services, unblocked Wi-Fi, and an operational `wlan0` interface.
 
+## Valid cross-controller DTM result
+
+The earlier Intel receiver-test rejection was caused by controller state, not
+by a lack of DTM support. Ubuntu's BlueZ service was runtime-masked, the Intel
+controller was brought down and up, and HCI Reset was issued before starting a
+legacy LE Receiver Test on channel 20 (2442 MHz). The command completed with
+status `0x00`.
+
+The DUT was independently reset at HCI level and entered the matching LE
+Transmitter Test with a 37-byte PRBS9 payload. A duplicate start returned
+`Command Disallowed`, confirming that the first transmitter test remained
+active. After the test interval:
+
+```text
+DUT LE Test End:    status 0x00, controller field 0x85e1
+Peer LE Test End:   status 0x00, received packets 0
+```
+
+The packet-count field is only normative for receiver mode, so the DUT's
+`0x85e1` field is not treated as a calibrated transmitted-packet count. The
+peer result is valid: the Intel controller remained in receiver mode until a
+successful Test End and decoded zero DUT packets on the matching channel.
+
+This is the first direct cross-controller RF result. It is stronger evidence
+than ordinary discovery because it removes names, EIR, scan policy, BlueZ, and
+Android from the path.
+
+## Explicit maximum-power advertising
+
+With BlueZ stopped, standard Bluetooth 5.1 extended-advertising commands were
+sent directly to the DUT. The host requested `+20 dBm`; `LE Set Extended
+Advertising Parameters` returned status `0x00` and selected `+15 dBm`. The
+controller then accepted the `AGIBOT-MAX` advertising data and enable command,
+both with status `0x00`.
+
+After the Ubuntu peer was power-cycled at HCI management level to restore both
+LE and BR/EDR reception, it detected multiple LE devices and the Windows
+Classic controller but did not detect `B0:02:47:43:EA:3B` or `AGIBOT-MAX`.
+Therefore the failure is not caused by a low default advertising-power choice.
+
+## Build 41, Wi-Fi-off, maximum-power combination
+
+The most favorable remaining software combination was tested with another
+real cold boot:
+
+```text
+HCD SHA-256: 3e4a1eddaf80f3e45f99e9c77b3cd84c85f605540da5f4f92300b80bca6d67ec
+Firmware:    BCM43752A2 UART 37.4MHz Ampak AP6275P [0034.0041]
+Build:       0041
+Wi-Fi:       bcmdhd unloaded, wlan0 absent
+LE power:    controller-selected +15 dBm
+```
+
+All extended-advertising commands succeeded. Ubuntu again received multiple LE
+devices and Windows BR/EDR at about -70 dBm, but no DUT event. The build-1017
+HCD had already been restored on disk before this RF test. The board was then
+rebooted and verified on build 1017 with active Bluetooth services, unblocked
+Wi-Fi, and `wlan0` up. Ubuntu's runtime Bluetooth-service mask was also removed
+and its service verified active and enabled.
+
 ## Final repair boundary
 
 The repository's MB0002 board photograph shows the AP6275P beside two external
@@ -291,5 +351,8 @@ test is to attach known-good 2.4 GHz antennas to both ports or measure Bluetooth
 DTM output at each connector.
 
 No remaining evidence supports another Android framework, HCD, UART, Wi-Fi
-coexistence, or scan-policy change. Until the antenna and RF path are physically
-tested, further software-only changes would not be evidence-based.
+coexistence, scan-policy, or transmit-power change. The valid DTM zero-packet
+result and the failed `+15 dBm` test make the antenna, matching network, module
+soldering, or module-internal BT RF output the repair boundary. The next action
+must be a known-good antenna on both ports or a 2.4 GHz measurement at the
+connectors; further software-only changes would not be evidence-based.
