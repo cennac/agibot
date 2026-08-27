@@ -57,7 +57,7 @@ E:\AIPorject\101\android14-flash\releases\2026-08-26-r16-bluetooth-r14-firmware-
 agibot-mb0002-android14-r16-bluetooth-r14-firmware-otp-official-update.img
 
 r16 embedded boot.img:
-size    39,800,832 bytes
+size    39,751,680 bytes
 SHA-256 8c11394c81d473ca1a01bff78681006402c5a3568a0af62cf1a2ca7c6107ba7f
 ```
 
@@ -185,9 +185,12 @@ board was still running r22. The historical r16 experiment remains pending.
 
 Before the next flash, RKDevTool's selected firmware path must be confirmed as
 the r16 file above and the tool's upgrade log should be started with a local
-trace that records that exact path. After boot, verify that the boot partition
-SHA-256 is `8c11394c81d473ca1a01bff78681006402c5a3568a0af62cf1a2ca7c6107ba7f`
-before any Bluetooth result is accepted as r16 evidence.
+trace that records that exact path. After boot, compare only the first
+39,751,680 bytes of the boot partition with the embedded r16 `boot.img`; its
+SHA-256 must be
+`8c11394c81d473ca1a01bff78681006402c5a3568a0af62cf1a2ca7c6107ba7f`.
+The full partition read may include trailing padding and therefore must not be
+compared byte-for-byte with this shorter embedded image.
 
 ## Evidence
 

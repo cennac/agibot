@@ -76,6 +76,14 @@ identity check and repeated peer test are recorded in
 is still pending, and any future flash must verify the embedded boot hash
 before interpreting Bluetooth behavior.
 
+The exact r16 image was subsequently restored and verified by its embedded boot
+hash. It still received zero Classic results from Ubuntu and was not visible in
+Ubuntu's reverse capture while Windows appeared as the positive control. This
+closes the r16 regression theory; see
+`docs/55-r16-ubuntu-peer-discriminator.md`. Further work should prioritize the
+AP6275P controller/RF/board path rather than another Android scan-property
+revision.
+
 ## Product target
 
 - Normal Android 14 tablet/desktop form factor, not Android TV.
