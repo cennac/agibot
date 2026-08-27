@@ -89,6 +89,12 @@ release candidate. Reuse the already-built official r22 artifact rather than
 creating an artificial r23 rebuild; see
 `docs/56-r22-release-candidate-after-board-repair.md`.
 
+Post-repair r22 validation found real progress but not a complete Bluetooth
+fix: Android now receives a complete Windows Classic Extended Inquiry Result,
+while Ubuntu still cannot discover MB0002 in the reverse direction. See
+`docs/57-r22-board-repair-validation.md`. The remaining work is the board's
+outgoing Classic discoverable/EIR/page path, not another framework scan change.
+
 ## Product target
 
 - Normal Android 14 tablet/desktop form factor, not Android TV.
