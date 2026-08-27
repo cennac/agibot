@@ -356,3 +356,44 @@ result and the failed `+15 dBm` test make the antenna, matching network, module
 soldering, or module-internal BT RF output the repair boundary. The next action
 must be a known-good antenna on both ports or a 2.4 GHz measurement at the
 connectors; further software-only changes would not be evidence-based.
+
+## Armbian follow-up: DT ownership and runtime TX confirmation (2026-08-27)
+
+The board was rechecked after the image-archive cleanup on the current Armbian
+system (`192.168.88.89`). The result is useful for separating a missing platform
+GPIO driver from the actual RF path:
+
+```text
+/proc/device-tree/wireless-bluetooth/status: disabled
+gpio1_A6 (BT_REG_ON): output, active-high, [used], high
+gpio3_B2 (BT_WAKE):   output, active-high, [used], high
+gpio1_A0/A1/A2:       UART6 TX/RX/RTS muxed and claimed by feb90000.serial
+gpio2_C4 (HOST_WAKE): mux unclaimed; this is module-to-host input, not TX enable
+hym8563:              32768 Hz, enable_count=1, prepare_count=1
+```
+
+The disabled Bluetooth platform node is intentional in this Armbian route: its
+vendor platform driver is not loaded, while the custom `agibot-bt-attach` service
+holds `ttyS6` with H4/BCM and no CRTSCTS. Enabling the node would reintroduce the
+known CTS/serdev conflict; it is not a safe TX repair. The two power/wake lines
+are already provided by DT gpio-hogs, so there is no unowned SoC-side `BT_TX_EN`
+GPIO to enable.
+
+An additional local advertisement test set the name to `AGIBOT-TX-VERIFY` and
+enabled legacy advertising. HCI TX bytes increased from about 83.5 KiB to 84.9
+KiB in three seconds; the peer at `192.168.88.66` simultaneously received other
+LE devices and Windows BR/EDR but no DUT event. This confirms that the host and
+controller are sending HCI advertising commands even though no over-the-air
+packet is decoded by the peer.
+
+The only untested *combination* (`btc_mode=0` plus
+`btc_prisel_ant_mask=0x2`) cannot be applied live on this PCIe bcmdhd build:
+`dhdutil` reads `btc_mode=1`, but both writes return `Operation not supported`.
+The attempted write therefore changed no state; the original value remains
+`btc_mode=1`. Rebuilding or rebooting solely for this rejected iovar is not
+justified by the existing DTM result.
+
+This follow-up leaves the repair boundary unchanged: attach known-good 2.4 GHz
+antennas to both `ANT6300`/`ANT6301`, then repeat the DTM test; if packet count
+remains zero, measure each connector with a spectrum analyzer or inspect/replace
+the AP6275P module and its matching network.
