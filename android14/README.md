@@ -70,6 +70,12 @@ Inquiry results and does not present complete EIR/FHS data. Wi-Fi rfkill,
 to reflash the SHA-256-pinned historical r16 image and repeat the Ubuntu peer
 test before making another source change.
 
+A later attempted r16 return actually booted r22 again; the boot-partition
+identity check and repeated peer test are recorded in
+`docs/54-r22-reflash-validation-and-identity-check.md`. The r16 discriminator
+is still pending, and any future flash must verify the embedded boot hash
+before interpreting Bluetooth behavior.
+
 ## Product target
 
 - Normal Android 14 tablet/desktop form factor, not Android TV.
