@@ -100,6 +100,59 @@ LE transmitter path. The controller accepts host advertising and Classic scan
 enable commands, but no externally detectable Bluetooth transmission is
 observed.
 
+## Post-repair BT_WAKE A/B
+
+The r17 permanent-high wake experiment predated the user's board-side repair,
+so the same state was tested once against the new explicit BLE TX discriminator.
+The running r22 baseline initially showed:
+
+```text
+GPIO3_B2 / bt_default_wake: out low
+```
+
+Writing `1` to `/proc/bluetooth/sleep/btwrite` changed the live GPIO to
+`out high`. Android again started `MB0002-R22-TXTEST` successfully, including
+advertiser ID 0 and controller status 0. A fresh 25-second Ubuntu LE scan still
+received many independent advertisers but no MB0002 advertisement.
+
+```text
+E:\AIPorject\101\_tmp\ble-tx-diagnostic\ubuntu-ble-scan-btwake-high.log
+size:    12,955 bytes
+SHA-256: 70b30318efc19f34d83a27dcb0a6e118deece2632ef0550cb5f9e5ef4ee2a8c5
+```
+
+BT_WAKE was restored low after the test. Keeping it high is therefore not an
+r23 repair for the remaining TX failure.
+
+## Antenna-path finding
+
+The archived MB0002 top-side board photograph shows both SMA connectors beside
+the shielded AP6275P module, `ANT6300` and `ANT6301`, with no antennas fitted.
+The hardware inventory had previously identified both as the module's RF
+connectors but did not resolve their chain assignment.
+
+The board AP6275P NVRAM supplies additional evidence:
+
+```text
+aa2g=3
+txchain=3
+rxchain=3
+btc_prisel_ant_mask=0x2
+btc_mode=1
+```
+
+Both Wi-Fi chains are enabled. The Bluetooth coexistence priority mask selects
+the second chain bit, making the connector associated with chain 1 the first
+antenna path to inspect. The current files do not prove whether chain 1 is the
+silkscreened `ANT6300` or `ANT6301`, so this must be resolved by continuity,
+module documentation, or a safe antenna-swap A/B rather than assumption.
+
+The highest-value physical test is to fit known-good 50-ohm dual-band antennas
+to both SMA ports. If only one antenna is available, test `ANT6301` first based
+on the chain-mask hypothesis, then move the same antenna to `ANT6300` and repeat
+the identical BLE advertisement scan. An open, damaged, or wrong-chain antenna
+path can explain weak nearby reception combined with an undetectable TX signal.
+
 ## Verdict
 
 Original Ubuntu was probably not a working board-specific Bluetooth baseline:
@@ -111,7 +164,8 @@ EIR, UART baud-rate, BT_WAKE, or single-HCD hypothesis. Both Classic
 discoverability and an explicit BLE advertisement fail in the outbound
 direction while the board receives Classic and BLE traffic. The strongest
 remaining cause is the AP6275P Bluetooth RF TX path, including module TX/PA
-supply, antenna/RF switch path, soldering, or module damage.
+supply, missing/wrong antenna, antenna/RF switch path, soldering, or module
+damage.
 
 Do not create r23 by repeating the previously tested framework properties,
 HCD swaps, or BT_WAKE variants. The next useful action is a board-level TX
