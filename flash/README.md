@@ -1,6 +1,8 @@
 # flash — AgiBot MB0002 (RK3588) Armbian 刷机
 
-把 `armbian-build` 编译出的 Armbian 镜像刷进板载 **eMMC**。
+把 `armbian-build` 编译出的 Armbian 镜像刷进板载 **eMMC**。长期保存的整盘镜像统一
+位于 `E:\AIPorject\101\agibot-releases\armbian\`；本目录只保留刷机工具和测试脚本。
+归档分类及当前稳定基线见 [`../docs/IMAGE-ARCHIVE.md`](../docs/IMAGE-ARCHIVE.md)。
 
 > **硬性前提**:镜像头部必须包含 AGIBOT 专用 U-Boot 标识
 > `rk3588-agibot-mb0002-v2`。2026-08-14 之前使用
@@ -12,7 +14,7 @@
 
 | 文件 | 位置 | 说明 |
 |---|---|---|
-| 整盘镜像 `Armbian-...minimal.img` | `../armbian-build/output/images/` | 自建产物,~1.67 GiB,kernel 6.1.115 / jammy / vendor |
+| 整盘镜像 `Armbian-...minimal.img` | `E:\AIPorject\101\agibot-releases\armbian\validated\...` | 优先选择已实机验收版本；新构建先归入 `candidates` |
 | `rk3588_spl_loader_v1.16.113.bin` | **本目录(已入库)** | MASKROM 转 LOADER 的临时下载器，不定义 GPT 或板级 U-Boot |
 
 loader SHA256 = `4cc43c2ff29e08b5491b4d52528346aa7da6948128c17e670ff8a000029c9408`(487 872 字节)
@@ -24,7 +26,7 @@ loader SHA256 = `4cc43c2ff29e08b5491b4d52528346aa7da6948128c17e670ff8a000029c940
 
 > **2026-08-17 实测定案:此法为正解**(用户实测 Loader@0xCCCCCCCC + 整盘 img@0x0 +
 > 强制按地址刷写一次成功),拆分件(head/rootfs/config.cfg)已清理,需要时用
-> 方法二的脚本随时可再生。刷机时直接选本目录的 `Armbian-*.img`。
+> 方法二的脚本随时可再生。刷机时从 `agibot-releases/armbian/validated/` 选择整盘镜像。
 
 先运行方法二中的生成脚本完成 U-Boot 板型校验。只有脚本输出下面一行时，
 整盘写入才允许继续：
@@ -43,7 +45,7 @@ RKDevTool 底部状态栏显示 `Found One MASKROM Device`。
 | 项 | 名称 | 地址 | 文件 |
 |---|---|---|---|
 | 1 | `Loader` | `0xCCCCCCCC` | 本目录 `rk3588_spl_loader_v1.16.113.bin` |
-| 2 | `image`  | `0x00000000` | `../armbian-build/output/images/Armbian-...minimal.img`(整盘) |
+| 2 | `image`  | `0x00000000` | `E:\AIPorject\101\agibot-releases\armbian\validated\...\Armbian-...minimal.img`(整盘) |
 
 两项都勾选 → 点 **「执行」**。
 
@@ -125,7 +127,8 @@ rkdeveloptool rd                                    # 重启
 
 ### SD 卡 dd(不碰 eMMC,最稳的验证方式)
 ```bash
-sudo dd if=../armbian-build/output/images/Armbian-...minimal.img of=/dev/sdX bs=4M status=progress conv=fsync
+sudo dd if=/mnt/e/AIPorject/101/agibot-releases/armbian/validated/.../Armbian-...minimal.img \
+  of=/dev/sdX bs=4M status=progress conv=fsync
 ```
 插卡,板子置 SD 启动。镜像本身能跑后再刷 eMMC。
 
@@ -155,7 +158,8 @@ bash start-build.sh   # 编译(含代理 / NO_HOST_RELEASE_CHECK / 后台日志)
 # 产物: armbian-build/output/images/Armbian-...minimal.img
 ```
 
-重建后方法一直接用新整盘 img;方法二重跑 `gen-armbian-cfg.py` 即自动重新拆分。
+重建后先用 `scripts/archive-image.ps1` 归入 `candidates/` 并核对 SHA-256；方法一直接使用
+归档后的整盘 img。方法二通过 `gen-armbian-cfg.py --img <归档镜像>` 重新生成拆分件。
 
 ---
 

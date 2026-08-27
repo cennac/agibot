@@ -117,7 +117,7 @@
 - 文件:`Agibot-Armbian_26.08.0-trunk_Agibot_jammy_vendor_6.1.115_minimal.img`
 - 大小:`1,832,910,848` bytes（1.71 GiB）
 - SHA-256:`df777c1e917174cd94fd779fcbbad3555d68c2a56edc5eb5898453408bb47ffa`
-- 本地刷机目录:`flash/agibot-armbian/`
+- 本地归档:`E:\AIPorject\101\agibot-releases\armbian\candidates\2026-08-18-branded-df777c1e\`
 - 发行元数据:`Vendor: Agibot-Armbian`，`Maintainer: cennac <cennac@163.com>`；
   文件名、`/etc/issue` 和构建指纹三处一致。
 - 系统文档:`/usr/share/doc/agibot/README.md`，并提供 `/root/README.md` 入口；
@@ -150,7 +150,7 @@
 - deb:`armbian-build/output/debs/linux-u-boot-agibot-vendor_...S39cd-P986b...deb`
 - 注意:同日 P9703 版(无标记节点)已弃用——fdtgrep 会剥掉无标记节点,按键无效
 
-## stable-v3-rebuild-f850f7e8(当前重新打包版,Armbian)
+## stable-v3-rebuild-f850f7e8(历史记录；本地实体已失配并隔离)
 
 - 构建 commit:`c69e8be`
 - 构建完成:2026-08-14 22:13 CST
@@ -160,11 +160,14 @@
 - U-Boot:`2017.09-S39cd-P9a41-Hbe55-Vecf7-B5da4-R448a`
 - Kernel:`6.1.115-vendor-rk35xx`
 - Userspace:Ubuntu 22.04 jammy minimal
-- 本地归档:`E:\AIPorject\101\agibot-releases\stable-v3-rebuild-f850f7e8\`
-- 标准输出:`armbian-build\output\images\...minimal.img`(NTFS hard link)
-- 刷机目录:`flash\...minimal.img`(NTFS hard link)
+- 上述大小和 SHA-256 是 2026-08-14 构建完成时记录的预期身份。
+- 2026-08-27 整理时重新计算本地实体：大小 `1,803,550,720` bytes，SHA-256
+  `c28f0b7044413db838f2861a029a038942e2823518f404825295276006be3b9a`，与历史记录不符。
+- 原归档和 `flash/` 副本为 NTFS hard link，推测后续构建原地覆盖了共同实体。
+- 隔离位置:`E:\AIPorject\101\agibot-releases\armbian\quarantine\2026-08-14-rebuild-label-mismatch-c28f0b70\`
+- 状态:**原 f850f7e8 实体已无法由本地文件确认；隔离目录禁止刷入。**
 
-### 离线验收
+### 历史离线验收记录
 
 - 构建:`FINISHED_EXIT=0`,fatal/error=0。
 - LBA64 `RKNS`,LBA1 `EFI PART`,rootfs ext4 `EF53`。
@@ -181,22 +184,22 @@
   本镜像为修启动挂死删了节点。恢复方案见 UBOOT-BRINGUP.md「按键恢复实验」。
   实机结果中的启动/回归项均不含按键验证。
 - 失败显示 v4/v5 的 VOP/HDMI PHY 实验属性不存在。
-- `flash/armbian-head.img` 与整盘前 16MiB 逐字节一致:
+- 当时的 `flash/armbian-head.img` 与整盘前 16MiB 逐字节一致:
   `63710dedbe23f0e2e13de566222a84674ccbb6b06c48d393234f536954571316`。
-- `flash/armbian-rootfs.img` 与整盘其余区间逐字节一致:
+- 当时的 `flash/armbian-rootfs.img` 与整盘其余区间逐字节一致:
   `b8833ffa671f2bbd3cd333b6648232c2b431e194d88b01313c4e765f16abc301`。
 
 ### 实机状态
 
-该版与下面的实机验证版使用相同稳定 U-Boot/DTB 配置,但当前板子仍等待显示 v5
-事故后的物理复位恢复,因此**本重新打包版尚未单独做实机冷启动验收**。恢复流程见
-[DISPLAY-DTB-INCIDENT.md](DISPLAY-DTB-INCIDENT.md)。
+该版从未单独完成实机冷启动验收，且本地实体已经失配，不再是可刷候选版本。当前回滚
+只使用下面的 `2dc05ed4` 实机验证版。迁移出的拆分文件来源也无法重新确认，已放入
+`armbian/derived/2026-08-18-split-unknown-source/`。
 
 ## stable-v3-2dc05ed4(实机验证版/回滚基线)
 
 - 构建 commit:`7b41c83` 对应稳定配置
 - SHA-256:`2dc05ed4e388cb8187d2c4a92f8cc1de45926c70cd0a4b3a11c6b8cac411da91`
-- 本地归档:`E:\AIPorject\101\agibot-releases\stable-v3-2dc05ed4\`
+- 本地归档:`E:\AIPorject\101\agibot-releases\armbian\validated\2026-08-14-stable-v3-2dc05ed4\`
 - 状态:**已刷入并实机验证**
 
 实机结果:

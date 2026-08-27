@@ -36,6 +36,7 @@
 > OpenWrt/LEDE 路线见 **[§13 / openwrt/README.md](openwrt/README.md)**。
 > 板子怎么进 Maskrom/Loader、怎么刷、按键干嘛的、调试怎么不崩板……常见操作问答见 **[FAQ.md](docs/FAQ.md)**。
 > 镜像 SHA、离线/实机验收状态及废弃版本见 **[RELEASES.md](docs/RELEASES.md)**。
+> 本机镜像的唯一归档目录、命名和迁移规则见 **[IMAGE-ARCHIVE.md](docs/IMAGE-ARCHIVE.md)**。
 > 显示 DTB 实验事故、当前板端恢复步骤和后续 HDMI/DP 分阶段规则见 **[DISPLAY-DTB-INCIDENT.md](docs/DISPLAY-DTB-INCIDENT.md)**。
 
 ## 板卡 3D 标注图
