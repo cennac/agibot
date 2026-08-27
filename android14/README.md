@@ -84,6 +84,11 @@ closes the r16 regression theory; see
 AP6275P controller/RF/board path rather than another Android scan-property
 revision.
 
+After the reported board-side repair, the unchanged r22 source tree remains the
+release candidate. Reuse the already-built official r22 artifact rather than
+creating an artificial r23 rebuild; see
+`docs/56-r22-release-candidate-after-board-repair.md`.
+
 ## Product target
 
 - Normal Android 14 tablet/desktop form factor, not Android TV.
