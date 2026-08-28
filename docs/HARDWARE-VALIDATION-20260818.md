@@ -106,7 +106,10 @@ J2600 刷机口才是 HUSB311 控制的 `fc000000` OTG Type-C，其 DTS Source P
 
 #### CAN 控制器与外部回环结果
 
-- 当前板上安装 `can-utils 2020.11.0-1`；minimal/jammy 和 desktop/noble 构建配置均加入 `PACKAGE_LIST_ADDITIONAL="can-utils"`，后续新固件默认自带 `candump`、`cansend`、`cangen` 等工具。
+- 当时板上手动安装了 `can-utils 2020.11.0-1`。2026-08-28 复查确认:
+  `PACKAGE_LIST_ADDITIONAL` 在当前 Armbian 框架中已废弃,没有把包安装进
+  `df777c1e` 镜像;后续已改为 `config/boards/agibot.conf` 的
+  `PACKAGE_LIST_BOARD`,见 `BUILT-IN-DIAGNOSTICS-20260828.md`。
 - pinmux 实机确认：can0 使用 GPIO0_B7/GPIO0_C0，can1 使用 GPIO4_B2/GPIO4_B3，均被对应控制器正确 claim。
 - 500 kbit/s 内部回环：can0 收到 `456#A1A2A3A4`，can1 收到 `654#B1B2B3B4`，两路均保持 ERROR-ACTIVE，证明控制器、驱动和 SocketCAN 路径正常。
 - J9702↔J9703 外部回环：同向和交换差分线两种接法下，`can0→can1` 与 `can1→can0` 均超时。2026-08-18 又显式使用 `loopback off` 在 125/250/500/1000 kbit/s 四种常见速率上双向复测，仍全部超时并进入 ERROR-PASSIVE；每轮结束均恢复为 DOWN/STOPPED。

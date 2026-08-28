@@ -215,7 +215,8 @@ BOOT_FDT_FILE="rockchip/rk3588-agibot-mb0002-v2.dtb"   # ★ 决定 armbianEnv.t
 BOOT_SCENARIO="spl-blobs"
 BOOT_SUPPORT_SPI="no"                      # ★ AGIBOT 不走 SPI,改 no 否则报 tpl/u-boot-tpl.bin 缺失
 DEFAULT_CONSOLE="both"                     # 串口 ttyFIQ0 + HDMI tty1
-PACKAGE_LIST_ADDITIONAL="can-utils"        # 默认提供 candump/cansend/cangen
+PACKAGE_LIST_BOARD="alsa-utils bluez can-utils device-tree-compiler edid-decode i2c-tools iperf3 libdrm-tests lm-sensors mmc-utils nvme-cli pciutils rfkill stress-ng usbutils v4l-utils"
+                                           # 现场硬件诊断工具;PACKAGE_LIST_ADDITIONAL 已废弃
 IMAGE_PARTITION_TABLE="gpt"
 ```
 

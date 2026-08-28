@@ -8,6 +8,7 @@
 # Build artifacts
 output/
 .tmp/
+/artifacts/
 *.log
 __pycache__/
 *.pyc

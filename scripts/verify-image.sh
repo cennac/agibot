@@ -97,6 +97,25 @@ debugfs -R "cat etc/issue" "$TMP/v.ext4" 2>/dev/null | grep -q '^Agibot-Armbian 
 	&& check "/etc/issue 发行者 Agibot-Armbian" OK || check "/etc/issue 发行者 Agibot-Armbian" FAIL
 debugfs -R "stat root/README.md" "$TMP/v.ext4" 2>/dev/null | grep -q '/usr/share/doc/agibot/README.md' \
 	&& check "/root/README.md 文档入口" OK || check "/root/README.md 文档入口" FAIL
+
+echo ">>> (4) 内置硬件诊断包"
+DPKG_STATUS="$TMP/dpkg-status"
+debugfs -R "dump var/lib/dpkg/status $DPKG_STATUS" "$TMP/v.ext4" >/dev/null 2>&1
+package_installed() {
+	awk -v pkg="$1" '
+		/^Package: / { in_package = ($0 == "Package: " pkg); installed = 0 }
+		in_package && /^Status: install ok installed$/ { installed = 1 }
+		installed { exit 0 }
+		END { exit !installed }
+	' "$DPKG_STATUS"
+}
+for pkg in alsa-utils bluez can-utils device-tree-compiler edid-decode i2c-tools iperf3 libdrm-tests lm-sensors mmc-utils nvme-cli pciutils rfkill stress-ng usbutils v4l-utils; do
+	if package_installed "$pkg"; then
+		check "诊断包 $pkg" OK
+	else
+		check "诊断包 $pkg" FAIL
+	fi
+done
 echo -n "  hostname: "; debugfs -R "cat etc/hostname" "$TMP/v.ext4" 2>/dev/null
 echo -n "  fdtfile:  "; debugfs -R "cat boot/armbianEnv.txt" "$TMP/v.ext4" 2>/dev/null | grep fdtfile || echo "(无 fdtfile 行)"
 
