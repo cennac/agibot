@@ -125,8 +125,13 @@
   VPU/NPU、双网口和日志治理历程。
 - 离线验收:`verify-image.sh` 12/12，`check-session-fixes.sh` 22/22；DTB、
   GMAC `rx_delay=0`、ACM8625P DSP、initramfs、服务、发行身份与文档全部通过。
-- 状态:**构建和镜像内容验证完成，尚未单独刷入本品牌版**。其硬件功能内容与
-  已上板验证的 `rx-delay-clean` 版一致，仅增加发行身份和系统内 README。
+- 2026-08-28 实机验证:刷入后启动为 `agibot/192.168.88.89`;
+  `postflash-test.sh --scan --net --stress` 结果 **PASS=34/FAIL=0/WARN=3**。
+  WiFi `cc181003` 连接为 `192.168.88.184`,DNS/HTTPS 正常;8 核 30 秒满载
+  后最高 39.8°C。详细记录见
+  `ARMBIAN-DF777C1E-BOARD-VALIDATION-20260828.md`。
+- 状态:**构建、镜像内容、实机启动与核心硬件回归通过**。蓝牙仅验证到
+  attach/HCI 注册,未完成配对;音频/视频/摄像头未做长时间内容级播放测试。
 
 ### 2026-08-18 重编(DMC 修复 + NPU 固化 + 全部当日修复,构建 commit 19ed37f)
 
