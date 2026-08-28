@@ -141,7 +141,8 @@ flash/
 ├── README.md                          本文档
 ├── rk3588_spl_loader_v1.16.113.bin    RK3588 loader(入库,固定不变)
 ├── gen-armbian-cfg.py                 方法二:自动拆分 img + 生成 config.cfg
-└── dump-cfg-any.py                    config.cfg 校验/排查工具
+├── dump-cfg-any.py                    config.cfg 校验/排查工具
+└── postflash-test.sh                  回归脚本源码;构建后为板上 agibot-test
 ```
 > 整盘 img、head.img、rootfs.img、config.cfg **都不入库**——由 `gen-armbian-cfg.py` 从你编译出的 img 现场生成;方法一直接用整盘 img,连生成都不需要。
 
@@ -160,6 +161,14 @@ bash start-build.sh   # 编译(含代理 / NO_HOST_RELEASE_CHECK / 后台日志)
 
 重建后先用 `scripts/archive-image.ps1` 归入 `candidates/` 并核对 SHA-256；方法一直接使用
 归档后的整盘 img。方法二通过 `gen-armbian-cfg.py --img <归档镜像>` 重新生成拆分件。
+
+新镜像刷写并启动后,直接在板上执行:
+
+```bash
+sudo agibot-test --scan --net --stress
+```
+
+命令来自 `flash/postflash-test.sh`,日志写入 `/var/log/rk3588_test_*.log`。
 
 ---
 

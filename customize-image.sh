@@ -13,6 +13,11 @@ cp -a "$OVER"/etc/. /etc/ 2>/dev/null || true
 cp -a "$OVER"/lib/. /lib/ 2>/dev/null || true
 cp -a "$OVER"/usr/. /usr/ 2>/dev/null || true
 cp -a "$OVER"/root/. /root/ 2>/dev/null || true
+if [ -f /root/postflash-test.sh ]; then
+	chmod 0755 /root/postflash-test.sh
+	cp /root/postflash-test.sh /usr/local/sbin/agibot-test
+	chmod 0755 /usr/local/sbin/agibot-test
+fi
 if [ -f /usr/share/doc/agibot/README.md ]; then
 	chmod 0644 /usr/share/doc/agibot/README.md
 	ln -sfn /usr/share/doc/agibot/README.md /root/README.md

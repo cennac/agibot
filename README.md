@@ -83,7 +83,7 @@
 │   ├── rk3588_spl_loader_v1.16.113.bin   # ★ 正确的 RK3588 loader(别用 RKDevTool 自带的 MiniLoaderAll)
 │   ├── gen-armbian-cfg.py      # 拆分 img → head/rootfs + 生成 config.cfg
 │   ├── dump-cfg-any.py         # config.cfg 查看
-│   ├── postflash-test.sh       # 板端回归测试(CAN/UART/GPIO/watchdog/NPU/温度)
+│   ├── postflash-test.sh       # 板端回归测试源码,构建后固化为 /usr/local/sbin/agibot-test
 │   ├── npu_test.py             # RKNN resnet18 smoke + FPS
 │   └── README.md               # 完整刷机方案
 ├── scripts/                    # 辅助脚本(install-deps / preflight / build-status / verify-image)

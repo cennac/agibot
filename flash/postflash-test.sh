@@ -4,7 +4,8 @@
 #  RK3588 (Agibot MB0002 V2) 刷机后全功能回归测试
 #  设计:每项“存在即测、不存在标记 SKIP/MISSING”,非交互、不破坏数据、
 #        不擅自配置外设(CAN/UART/GPIO/看门狗只检测,不乱写)。
-#  用法: sudo bash rk3588_postflash_test.sh [--stress] [--scan] [--net] [--npu-model <path>]
+#  用法: sudo agibot-test [--stress] [--scan] [--net] [--npu-model <path>]
+#        (源码位置: /root/postflash-test.sh;旧镜像可手动执行本仓库脚本)
 #    --stress        附带短时压力 + 温度观察(需 stress-ng)
 #    --scan          允许 i2cdetect 扫总线(默认跳过,避免动到外设)
 #    --net           允许 ping 外网(默认只 ping 网关)
@@ -22,7 +23,7 @@ while [ $# -gt 0 ]; do
     --npu-model)
       [ $# -ge 2 ] || { echo "--npu-model 缺少路径"; exit 1; }
       OPT_NPU_MODEL="$2"; shift 2;;
-    -h|--help) sed -n '2,18p' "$0"; exit 0;;
+    -h|--help) sed -n '2,13p' "$0"; exit 0;;
     *) echo "未知参数: $1(用 --help 查看)"; exit 1;;
   esac
 done
@@ -57,6 +58,19 @@ rdev() { [ -e "$1" ] && [ -c "$1" ]; }   # 字符设备
 out "${C_B}RK3588 刷机后回归测试  开始: $(date)${C_RST}"
 out "日志: ${C_C}$LOG${C_RST}"
 [ "$(id -u)" -ne 0 ] && warn "非 root 运行,部分项(/dev、hwclock、i2c)可能无权限 —— 建议用 sudo"
+
+# =============================================================================
+section "0. 内置诊断工具"
+DIAG_MISSING=0
+for tool in amixer bluetoothctl candump dtc edid-decode hciconfig i2cdetect \
+            iperf3 lsusb lspci mmc modetest nvme rfkill sensors stress-ng v4l2-ctl; do
+  if has "$tool"; then ok "$tool"; else warn "缺 $tool(镜像包清单不完整?)"; DIAG_MISSING=$((DIAG_MISSING+1)); fi
+done
+if [ "$DIAG_MISSING" -eq 0 ]; then
+  ok "硬件诊断工具清单完整"
+else
+  warn "诊断工具缺 $DIAG_MISSING 个;对应专项测试可能降级"
+fi
 
 # =============================================================================
 section "1. 系统 / 板级 ID"
@@ -160,7 +174,13 @@ GW=$(ip route 2>/dev/null | awk '/default/{print $3; exit}')
 if [ -n "$GW" ]; then
   if ping -c 2 -W 1 "$GW" >/dev/null 2>&1; then ok "网关 $GW 可达"; else fail "网关 $GW 不可达"; fi
   if [ "$OPT_NET" = "1" ]; then
-    if ping -c 2 -W 2 1.1.1.1 >/dev/null 2>&1; then ok "外网(1.1.1.1)可达"; else warn "外网不可达(检查 DNS/防火墙)"; fi
+    if ping -c 2 -W 2 1.1.1.1 >/dev/null 2>&1; then
+      ok "外网(1.1.1.1)可达"
+    elif ping -c 2 -W 2 223.5.5.5 >/dev/null 2>&1; then
+      ok "外网(223.5.5.5)可达"
+    else
+      warn "外网不可达(检查路由/防火墙)"
+    fi
   else info "(外网测试已跳过,加 --net 开启)"; fi
 else warn "无默认路由(未配 IP?)"; fi
 

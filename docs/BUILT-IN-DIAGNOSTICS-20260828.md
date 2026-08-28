@@ -65,3 +65,16 @@ agibot-test --scan --net --stress
 
 本文件先记录方案与配置修正;对应镜像尚未重新构建,不能把 `df777c1e`
 旧镜像的测试结果等效为新包清单的验证结果。
+
+## 回归命令固化方式
+
+`flash/postflash-test.sh` 仍是唯一源码版本。`setup.sh` 装配 userpatches 时
+把它复制到 `overlay/root/postflash-test.sh`;`customize-image.sh` 再复制为:
+
+```text
+/usr/local/sbin/agibot-test
+```
+
+这样避免在仓库里维护两份回归脚本。脚本启动时会先检查 17 个常用诊断命令;
+`--net` 外网探测优先 `1.1.1.1`,失败后使用 `223.5.5.5` 备选,避免把当前
+网络对 Cloudflare ICMP 的策略误判为板卡故障。

@@ -97,7 +97,8 @@ python tools/_ser.py "reset" 3
    - **Loader** `@0xCCCCCCCC` → `flash/rk3588_spl_loader_v1.16.113.bin`
    - **image** `@0x00000000` → 整盘 `.img`(armbian 或 openwrt,等同 dd,不必拆分)
 3. 「执行」,等进度走完,板子自动重启进新系统
-4. 板端回归测试:`flash/postflash-test.sh`
+4. 板端回归测试:`sudo agibot-test --scan --net --stress`
+   (旧镜像可手动执行仓库里的 `flash/postflash-test.sh`)
 
 使用 `python flash/gen-armbian-cfg.py --img <新镜像>` 的拆分方式时，每次都会重新生成
 `armbian-head.img` 和 `armbian-rootfs.img`。不要手工复用旧拆分件：不同构建的整盘镜像

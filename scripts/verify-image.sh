@@ -116,6 +116,13 @@ for pkg in alsa-utils bluez can-utils device-tree-compiler edid-decode i2c-tools
 		check "诊断包 $pkg" FAIL
 	fi
 done
+for target in root/postflash-test.sh usr/local/sbin/agibot-test; do
+	if debugfs -R "stat $target" "$TMP/v.ext4" 2>/dev/null | grep -q Inode; then
+		check "回归工具 $target" OK
+	else
+		check "回归工具 $target" FAIL
+	fi
+done
 echo -n "  hostname: "; debugfs -R "cat etc/hostname" "$TMP/v.ext4" 2>/dev/null
 echo -n "  fdtfile:  "; debugfs -R "cat boot/armbianEnv.txt" "$TMP/v.ext4" 2>/dev/null | grep fdtfile || echo "(无 fdtfile 行)"
 

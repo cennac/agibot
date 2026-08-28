@@ -75,6 +75,7 @@ cp -r config/. "$UP/config/"
 cp config-agibot.conf config-agibot-desktop.conf config-example.conf "$UP/"
 cp customize-image.sh "$UP/"
 cp -r overlay "$UP/"
+install -m 0755 flash/postflash-test.sh "$UP/overlay/root/postflash-test.sh"
 cp -r kernel "$UP/"
 cp -r u-boot "$UP/"
 

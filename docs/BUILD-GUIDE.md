@@ -369,7 +369,7 @@ lspci                                 # WiFi(14c3:0608)/USB3(VL805)
 dmesg | grep -iE "mali|rknn|gpu"      # GPU / NPU
 ```
 
-> 仓库回归脚本,刷完跑全套:**`flash/postflash-test.sh`**(CAN/UART/GPIO/watchdog/NPU/温度,非破坏性,日志写 `/var/log`)和 **`flash/npu_test.py`**(RKNN resnet18 smoke + FPS 采样)。用法见 [flash/README.md](../flash/README.md)。
+> 仓库回归脚本会固化成 **`agibot-test`**(CAN/UART/GPIO/watchdog/NPU/温度,非破坏性,日志写 `/var/log`);源码仍由 `flash/postflash-test.sh` 单点维护。板端执行 `sudo agibot-test --scan --net --stress`,用法见 [flash/README.md](../flash/README.md)。
 
 ### 写入 eMMC
 
