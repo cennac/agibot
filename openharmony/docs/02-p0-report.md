@@ -94,3 +94,34 @@ Rockchip vendor 补丁 + 板级层,可在 66 容器内可复现编译。P1(agibo
 2. `device/board/opc/agibot` + `vendor/opc/agibot` 板级层(拷 opi5plus 模板);
 3. dts 标签验证 + 首版 agibot 镜像;
 4. maskrom 刷机(android14/docs/16 流程),串口+HDMI 验收 ArkUI。
+
+---
+
+## P1 首版 agibot 镜像(2026-09-30 17:05,AGIBOT4 rc=0)
+
+`./build.sh --product-name agibot --ccache` 全量通过(70890 目标),产物在
+66:`/data/openharmony/oh/out/agibot/packages/phone/images/`
+(system.img 1.6G / vendor.img 268M / sys_prod / chip_prod / userdata /
+updater / ramdisk / boot_linux.img(含 rk3588-agibot-mb0002-v2.dtb 内核 6.6.101)/
+uboot.img(OPC OH 版)/ **MiniLoaderAll.bin=原厂 SPL v1.16.113 487872B**)。
+
+板级层落地过程中的三处模板修正(均已反映在服务器
+`device/board/opc/agibot` + `vendor/opc/agibot`,待整理为正式补丁回仓):
+1. `*opi5plus*`/`orangepi5plus`/`rk3588-orangepi-5-plus` 三种形态的引用与
+   文件名(etc/para/hardware_*.para 等)需全量改名;
+2. `make-ohos.sh` 板表新增 `agibot arm64 0xfeb50000 rk3588-agibot-mb0002-v2
+   Image agibot_oh_defconfig` 行,`build_kernel.sh` 调用参数同步;
+3. loader 采用混合方案:agibot 原厂 SPL(DDR 初始化正确)+ OPC u-boot
+   (OH 启动逻辑)。
+
+dts 一次通过 dtc,核对单 V1-V5 全部满足;V2(bcmdhd 在 vendor 补丁内,1121 处)
+已证。**尚未实机验证**——待 maskrom 刷机(流程见 android14/docs/16)。
+
+### 已知限制(刷机前必读)
+
+- u-boot 为 OPi5Plus 版:DDR 已由原厂 SPL 初始化,但 uboot 阶段外设
+  (GMAC/eMMC 时序参数)如异常,需换 agibot 自编译 u-boot(仓库 u-boot/ +
+  android14 patches 0001-0003 素材在)
+- 6 个系统 hap 摘除(权限弹窗/系统对话框等,见 P0 报告第 7 条)
+- ACM8625P 音频、USB hub reset 驱动未启用(dts 按纪律暂缓)
+- AP6275P 固件三件套需在刷机验证时确认 bcmdhd 加载路径(overlay/lib/firmware/ap6275p/)
