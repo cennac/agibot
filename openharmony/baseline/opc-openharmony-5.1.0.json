@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "baseline": {
+    "name": "opc-openharmony-5.1.0-release",
+    "display_name": "OPC OpenHarmony 5.1.0 Release (Orange Pi 5 Plus RK3588 port)",
+    "status": "RFC — revisions not yet locked; fill during P0",
+    "oh_version": "5.1.0 Release",
+    "kernel_version": "linux-5.10 (Rockchip vendor-based OPC fork)",
+    "reference_board": "Orange Pi 5 Plus (RK3588)",
+    "purpose": "source baseline for AGIBOT MB0002 V2 OpenHarmony port; OPC reference images are not flashable on AGIBOT",
+    "manifest": {
+      "url": "https://gitee.com/ohos-porting-communities/manifest.git",
+      "branch": "OpenHarmony-5.1.0-Release",
+      "manifest_file": "TBD",
+      "revision": "TBD"
+    },
+    "opc_repos": [
+      {
+        "logical_path": "vendor/opc",
+        "url": "https://gitcode.com/ohos-porting-communities/vendor_opc.git",
+        "revision": "TBD",
+        "note": "Gitee容量受限,OPC板级三仓已迁GitCode"
+      },
+      {
+        "logical_path": "device/board/opc",
+        "url": "https://gitcode.com/ohos-porting-communities/device_board_opc.git",
+        "revision": "TBD"
+      },
+      {
+        "logical_path": "device/soc/opc",
+        "url": "https://gitcode.com/ohos-porting-communities/device_soc_opc.git",
+        "revision": "TBD"
+      },
+      {
+        "logical_path": "kernel/linux/linux-5.10-opi",
+        "url": "https://gitee.com/ohos-porting-communities/linux_5.10_opi.git",
+        "revision": "TBD",
+        "branch": "OpenHarmony-5.1.0-Release"
+      }
+    ],
+    "host_requirements": {
+      "container": "ubuntu:22.04 (66 host is Ubuntu 26.04)",
+      "disk_min_gb": 300,
+      "disk_recommended_gb": 512,
+      "ram_min_gb": 32,
+      "ram_link_stage_peak_gb": 24,
+      "ram_recommended_gb": 64
+    },
+    "known_build_fixes": [
+      "git apply device/board/opc/common/patches/001-build.diff inside build/",
+      "remove init_feature_loader from vendor/opc/<board>/config.json",
+      "replace sanitizer_check_list.gni with the RK3568 hihope vendor version"
+    ],
+    "locked_at": null
+  }
+}
