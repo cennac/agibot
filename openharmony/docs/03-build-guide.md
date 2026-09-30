@@ -95,6 +95,10 @@ docker exec oh-build bash /data/make_agibot_layer.sh   # 由 opi5plus 模板生�
 # 1) make-ohos.sh 板表加行:agibot arm64 0xfeb50000 rk3588-agibot-mb0002-v2 Image agibot_oh_defconfig
 # 2) build_kernel.sh:./make-ohos.sh agibot enable_ramdisk;DEFCONFIG_FILE=agibot_oh_defconfig
 # 3) loader/MiniLoaderAll.bin 换为仓库 flash/rk3588_spl_loader_v1.16.113.bin(487872B)
+# 4) WiFi 固件:仓库 overlay/lib/firmware/ap6275p/ 四件套 + 通用名别名
+#    (fw_bcmdhd.bin/nvram.txt)拷入 firmware/,BUILD.gn 加 6 个
+#    ohos_prebuilt_etc(vendor_base_dir + etc/firmware,对应 defconfig 的
+#    /vendor/etc/firmware 搜索路径)并挂进 group("firmware") deps
 ```
 
 ## 8. 坑速查(踩过的全录)
