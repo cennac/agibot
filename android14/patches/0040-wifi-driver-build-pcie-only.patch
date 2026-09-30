@@ -1,0 +1,12 @@
+diff --git a/external/wifi_driver/bcmdhd/Makefile b/external/wifi_driver/bcmdhd/Makefile
+index 6a9f2d5e4e1f..000000000000 100644
+--- a/external/wifi_driver/bcmdhd/Makefile
++++ b/external/wifi_driver/bcmdhd/Makefile
+@@ -43,4 +43,7 @@ CONFIG_AP6XXX ?= m
+ #CONFIG_BCMDHD_SDIO := y
+ #CONFIG_BCMDHD_PCIE := y
+ #CONFIG_BCMDHD_USB := y
++override CONFIG_BCMDHD_SDIO :=
++override CONFIG_BCMDHD_USB :=
++override CONFIG_BCMDHD_PCIE := y
+ 
