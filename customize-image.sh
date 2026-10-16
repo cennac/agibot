@@ -117,4 +117,10 @@ chmod 0755 /usr/local/sbin/agibot-bt-setup 2>/dev/null || true
 chmod 0644 /etc/systemd/system/agibot-bt-setup.service 2>/dev/null || true
 systemctl enable agibot-bt-setup.service 2>/dev/null || true
 
+# 11) 重生成 initrd:overlay 注入的 initramfs 钩子(ACM8625P DSP 固件)与全部
+#     /etc、firmware 变更,都要等 update-initramfs 重跑后才进 initrd;
+#     内核包安装阶段生成的那份早于本脚本,不含这些内容
+chmod 0755 /etc/initramfs-tools/hooks/agibot-acm-firmware 2>/dev/null || true
+update-initramfs -u || echo "update-initramfs 失败 — initrd 将不含 ACM 固件"
+
 exit 0
