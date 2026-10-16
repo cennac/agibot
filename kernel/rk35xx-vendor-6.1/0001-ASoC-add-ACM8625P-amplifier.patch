@@ -583,7 +583,7 @@ index 0000000..a3dbe7a
 +#endif
 +
 +static struct i2c_driver acm8625p_i2c_driver = {
-+	.probe		= acm8625p_i2c_probe,
++	.probe_new	= acm8625p_i2c_probe,
 +	.remove		= acm8625p_i2c_remove,
 +	.id_table	= acm8625p_i2c_id,
 +	.driver		= {
