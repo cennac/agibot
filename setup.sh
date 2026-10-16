@@ -84,6 +84,7 @@ cp -r u-boot "$UP/"
 # 这里基于框架"当前"配置生成覆盖(跟随 submodule 版本,不锁死整份配置),仅打开这一个开关。
 KCFG_SRC="$SUB/config/kernel/linux-rk35xx-vendor.config"
 KCFG_DST="$UP/config/kernel/linux-rk35xx-vendor.config"
+mkdir -p "$UP/config/kernel"
 if [ -f "$KCFG_SRC" ]; then
 	sed 's/^# CONFIG_SND_SOC_ACM8625P is not set$/CONFIG_SND_SOC_ACM8625P=y/' "$KCFG_SRC" > "$KCFG_DST"
 	grep -q '^CONFIG_SND_SOC_ACM8625P=y$' "$KCFG_DST" || echo 'CONFIG_SND_SOC_ACM8625P=y' >> "$KCFG_DST"
