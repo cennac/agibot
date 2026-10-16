@@ -1,0 +1,26 @@
+diff --git a/tools/moe/experts.py b/tools/moe/experts.py
+index 697cebf..3412865 100644
+--- a/tools/moe/experts.py
++++ b/tools/moe/experts.py
+@@ -236,7 +236,7 @@ def verify(args: argparse.Namespace) -> int:
+ 
+     with ExitStack() as stack:
+         sources = [stack.enter_context(path.open("rb")) for path in model_paths]
+-        experts: dict[str, Any] = {}
++        expert_files: dict[str, Any] = {}
+         for entry in entries:
+             source = expected_by_name.get(entry["tensor_name"])
+             if source is None:
+@@ -247,10 +247,10 @@ def verify(args: argparse.Namespace) -> int:
+             if args.metadata_only:
+                 continue
+ 
+-            experts = experts.get(entry["repacked_file"])
++            experts = expert_files.get(entry["repacked_file"])
+             if experts is None:
+                 experts = stack.enter_context((manifest_path.parent / entry["repacked_file"]).open("rb"))
+-                experts[entry["repacked_file"]] = experts
++                expert_files[entry["repacked_file"]] = experts
+             size = entry["bytes_per_expert"]
+             for expert in range(metadata["expert_count"]):
+                 sources[source["source_shard_index"]].seek(source["source_offset"] + expert * size)
