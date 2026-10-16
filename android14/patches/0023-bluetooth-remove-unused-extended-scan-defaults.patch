@@ -1,0 +1,22 @@
+From 0000000000000000000000000000000000000023 Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 14:10:00 +0800
+Subject: [PATCH] bluetooth: remove unused extended scan defaults
+
+The AGIBOT AP6275P legacy scan policy removes the only users of the extended
+scan default interval and window constants. Remove them to satisfy the
+Bluetooth module's -Werror build.
+---
+ system/gd/hci/le_scanning_manager.cc | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/system/gd/hci/le_scanning_manager.cc b/system/gd/hci/le_scanning_manager.cc
+index 1111111111..2222222222 100644
+--- a/system/gd/hci/le_scanning_manager.cc
++++ b/system/gd/hci/le_scanning_manager.cc
+@@ -45,1 +44,0 @@
+-constexpr uint16_t kDefaultLeExtendedScanWindow = 4800;
+@@ -49,1 +47,0 @@
+-constexpr uint16_t kDefaultLeExtendedScanInterval = 4800;
+-- 
+2.34.1

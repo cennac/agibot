@@ -1,0 +1,30 @@
+From 56f55a8254c4342030e0c9b20f44fab1391a8f22 Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 10:06:41 +0800
+Subject: [PATCH] agibot:package-external-camera-provider
+
+---
+ agibot_mb0002/agibot_mb0002.mk | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/agibot_mb0002/agibot_mb0002.mk b/agibot_mb0002/agibot_mb0002.mk
+index fcc071e..0f99d6a 100644
+--- a/agibot_mb0002/agibot_mb0002.mk
++++ b/agibot_mb0002/agibot_mb0002.mk
+@@ -38,10 +38,9 @@ PRODUCT_MODEL := MB0002 V2
+ PRODUCT_CHARACTERISTICS := tablet
+ PRODUCT_AAPT_PREF_CONFIG := xhdpi
+ 
+-# Keep ambiguous board peripherals out of Phase 1. The external USB camera and
+-# AP6275P Bluetooth are validated board features; the internal ISP remains
+-# disabled.
+-BOARD_CAMERA_SUPPORT := false
++# Enable the camera product stack so Rockchip's AIDL external provider is
++# packaged. The board DTS still leaves unvalidated internal ISP sensors off.
++BOARD_CAMERA_SUPPORT := true
+ BOARD_GRAVITY_SENSOR_SUPPORT := false
+ BOARD_GYROSCOPE_SENSOR_SUPPORT := false
+ BOARD_PROXIMITY_SENSOR_SUPPORT := false
+-- 
+2.53.0
+

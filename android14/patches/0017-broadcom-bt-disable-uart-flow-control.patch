@@ -1,0 +1,33 @@
+From 0000000000000000000000000000000000000017 Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 11:25:00 +0800
+Subject: [PATCH] broadcom: disable UART hardware flow control for AGIBOT
+
+AGIBOT MB0002 V2 connects the AP6275P Bluetooth controller to UART6 but
+does not route the controller's CTS signal. Enabling CRTSCTS makes the
+DesignWare UART wait forever with HCI commands left in its TX FIFO.
+
+Keep the configured stop bits but explicitly disable CRTSCTS. The board's
+UART wiring and controller were previously validated at 115200 baud with
+software-controlled raw termios and no hardware flow control.
+---
+ src/userial_vendor.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/userial_vendor.c b/src/userial_vendor.c
+index 0c76914..deba92b 100644
+--- a/src/userial_vendor.c
++++ b/src/userial_vendor.c
+@@ -254,7 +254,8 @@ int userial_vendor_open(tUSERIAL_CFG *p_cfg)
+ 
+     tcgetattr(vnd_userial.fd, &vnd_userial.termios);
+     cfmakeraw(&vnd_userial.termios);
+-    vnd_userial.termios.c_cflag |= (CRTSCTS | stop_bits);
++    vnd_userial.termios.c_cflag &= ~CRTSCTS;
++    vnd_userial.termios.c_cflag |= stop_bits;
+     tcsetattr(vnd_userial.fd, TCSANOW, &vnd_userial.termios);
+     tcflush(vnd_userial.fd, TCIOFLUSH);
+ 
+-- 
+2.53.0
+

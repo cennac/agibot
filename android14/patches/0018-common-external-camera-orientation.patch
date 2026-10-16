@@ -1,0 +1,28 @@
+From 0000000000000000000000000000000000000018 Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 11:26:00 +0800
+Subject: [PATCH] camera: correct AGIBOT external camera orientation
+
+The MB0002 V2 USB camera is physically mounted opposite the orientation
+published by the Rockchip default external-camera configuration. Camera2
+therefore renders the preview upside down. Publish 270 degrees instead of
+90 degrees so Android applies the required 180-degree correction.
+---
+ external_camera_config.xml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/external_camera_config.xml b/external_camera_config.xml
+index f967f44..98e0157 100644
+--- a/external_camera_config.xml
++++ b/external_camera_config.xml
+@@ -67,6 +67,6 @@
+             <!-- image size larger than the last entry will not be supported-->
+         </FpsList>
+         <!-- orientation -->
+-        <Orientation  degree="90"/>
++        <Orientation  degree="270"/>
+     </Device>
+ </ExternalCamera>
+-- 
+2.53.0
+

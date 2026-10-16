@@ -1,0 +1,67 @@
+#!/bin/sh
+set -eu
+
+# The board routes each USB-A VBUS switch enable through PCA9555 3-0020.
+# Offsets 0..11 are HUB1/HUB2/HUB3/HUB20 port enables from the vendor image.
+chip=""
+attempt=0
+while [ "$attempt" -lt 50 ]; do
+	for candidate in /sys/class/gpio/gpiochip*; do
+		[ -r "$candidate/label" ] || continue
+		if [ "$(cat "$candidate/label")" = "3-0020" ]; then
+			chip="$candidate"
+			break
+		fi
+	done
+	[ -n "$chip" ] && break
+	attempt=$((attempt + 1))
+	sleep 0.2
+done
+
+if [ -z "$chip" ]; then
+	echo "PCA9555 3-0020 GPIO chip was not found" >&2
+	exit 1
+fi
+
+base="$(cat "$chip/base")"
+
+# Hub logic power is independent from downstream VBUS. Wait until both
+# Genesys USB2/USB3 hub pairs have enumerated before cycling port power.
+attempt=0
+while [ "$attempt" -lt 50 ]; do
+	hub_count=0
+	for vendor_file in /sys/bus/usb/devices/*/idVendor; do
+		[ -r "$vendor_file" ] || continue
+		[ "$(cat "$vendor_file")" = "05e3" ] && hub_count=$((hub_count + 1))
+	done
+	[ "$hub_count" -ge 4 ] && break
+	attempt=$((attempt + 1))
+	sleep 0.2
+done
+
+# Export all port enables and provide an explicit off interval. This matches
+# the effective behavior of the vendor rc.local script and gives attached
+# SuperSpeed devices a clean power-on edge after the hubs are ready.
+offset=0
+while [ "$offset" -le 11 ]; do
+	gpio=$((base + offset))
+	path="/sys/class/gpio/gpio$gpio"
+	if [ ! -d "$path" ]; then
+		echo "$gpio" > /sys/class/gpio/export
+	fi
+	echo out > "$path/direction"
+	echo 0 > "$path/value"
+	offset=$((offset + 1))
+done
+sleep 0.1
+
+offset=0
+while [ "$offset" -le 11 ]; do
+	gpio=$((base + offset))
+	echo 1 > "/sys/class/gpio/gpio$gpio/value"
+	# Vendor HUB3_HOST1..4 (offsets 7..10) are enabled sequentially.
+	if [ "$offset" -ge 7 ] && [ "$offset" -le 10 ]; then
+		sleep 0.5
+	fi
+	offset=$((offset + 1))
+done

@@ -1,0 +1,172 @@
+From: Cennac <cennac@163.com>
+Date: Tue, 25 Aug 2026 00:20:00 +0800
+Subject: [PATCH] arm64: dts: enable AGIBOT RK3588 media engines
+
+Real AVC and HEVC playback selects Rockchip MPP but fails because the AGIBOT
+board DTS leaves all decoder, encoder and RGA nodes disabled. Enable the full
+media group used by the RK3588 EVB, including each required MMU and service.
+
+---
+ .../dts/rockchip/rk3588-agibot-mb0002-v2.dts | 148 ++++++++++++++++++
+ 1 file changed, 148 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588-agibot-mb0002-v2.dts b/arch/arm64/boot/dts/rockchip/rk3588-agibot-mb0002-v2.dts
+--- a/arch/arm64/boot/dts/rockchip/rk3588-agibot-mb0002-v2.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3588-agibot-mb0002-v2.dts
+@@ -213,6 +213,154 @@
+ 	status = "okay";
+ };
+ 
++&av1d {
++	status = "okay";
++};
++
++&av1d_mmu {
++	status = "okay";
++};
++
++&avsd {
++	status = "okay";
++};
++
++&iep {
++	status = "okay";
++};
++
++&iep_mmu {
++	status = "okay";
++};
++
++&jpegd {
++	status = "okay";
++};
++
++&jpegd_mmu {
++	status = "okay";
++};
++
++&jpege_ccu {
++	status = "okay";
++};
++
++&jpege0 {
++	status = "okay";
++};
++
++&jpege0_mmu {
++	status = "okay";
++};
++
++&jpege1 {
++	status = "okay";
++};
++
++&jpege1_mmu {
++	status = "okay";
++};
++
++&jpege2 {
++	status = "okay";
++};
++
++&jpege2_mmu {
++	status = "okay";
++};
++
++&jpege3 {
++	status = "okay";
++};
++
++&jpege3_mmu {
++	status = "okay";
++};
++
++&mpp_srv {
++	status = "okay";
++};
++
++&rga3_core0 {
++	status = "okay";
++};
++
++&rga3_0_mmu {
++	status = "okay";
++};
++
++&rga3_core1 {
++	status = "okay";
++};
++
++&rga3_1_mmu {
++	status = "okay";
++};
++
++&rga2 {
++	status = "okay";
++};
++
++&rkvdec_ccu {
++	status = "okay";
++};
++
++&rkvdec0 {
++	status = "okay";
++};
++
++&rkvdec0_mmu {
++	status = "okay";
++};
++
++&rkvdec1 {
++	status = "okay";
++};
++
++&rkvdec1_mmu {
++	status = "okay";
++};
++
++&rkvenc_ccu {
++	status = "okay";
++};
++
++&rkvenc0 {
++	venc-supply = <&vdd_vdenc_s0>;
++	mem-supply = <&vdd_vdenc_mem_s0>;
++	status = "okay";
++};
++
++&rkvenc0_mmu {
++	status = "okay";
++};
++
++&rkvenc1 {
++	venc-supply = <&vdd_vdenc_s0>;
++	mem-supply = <&vdd_vdenc_mem_s0>;
++	status = "okay";
++};
++
++&rkvenc1_mmu {
++	status = "okay";
++};
++
++&rkvtunnel {
++	status = "okay";
++};
++
++&vdpu {
++	status = "okay";
++};
++
++&vdpu_mmu {
++	status = "okay";
++};
++
++&vepu {
++	status = "okay";
++};
++
+ &sdhci {
+ 	bus-width = <8>;
+ 	no-sdio;
+-- 
+2.53.0

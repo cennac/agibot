@@ -1,0 +1,46 @@
+diff --git a/u-boot/arch/arm/dts/rk3588-agibot-mb0002-v2.dts b/u-boot/arch/arm/dts/rk3588-agibot-mb0002-v2.dts
+--- a/u-boot/arch/arm/dts/rk3588-agibot-mb0002-v2.dts
++++ b/u-boot/arch/arm/dts/rk3588-agibot-mb0002-v2.dts
+@@ -11,6 +11,7 @@
+ 
+ #include "rk3588.dtsi"
+ #include "rk3588-u-boot.dtsi"
++#include <dt-bindings/input/input.h>
+ 
+ / {
+ 	model = "AGIBOT MB0002 V2";
+@@ -20,4 +21,27 @@
+ 		/* eMMC is the production boot device; keep SD as recovery fallback. */
+ 		u-boot,spl-boot-order = &sdhci, &sdmmc;
+ 	};
++
++	adc-keys {
++		compatible = "adc-keys";
++		u-boot,dm-spl;
++		io-channels = <&saradc 1>;
++		io-channel-names = "buttons";
++		keyup-threshold-microvolt = <1800000>;
++		poll-interval = <100>;
++		status = "okay";
++
++		loader-key {
++			u-boot,dm-spl;
++			linux,code = <KEY_VOLUMEUP>;
++			label = "SW9200 loader";
++			press-threshold-microvolt = <1750>;
++		};
++	};
+ };
++
++&saradc {
++	vdd-microvolts = <1800000>;
++	status = "okay";
++};
+diff --git a/u-boot/configs/rk3588-agibot-mb0002.config b/u-boot/configs/rk3588-agibot-mb0002.config
+--- a/u-boot/configs/rk3588-agibot-mb0002.config
++++ b/u-boot/configs/rk3588-agibot-mb0002.config
+@@ -6,3 +6,4 @@
+ CONFIG_BASE_DEFCONFIG="rk3588_defconfig"
+ CONFIG_DEFAULT_DEVICE_TREE="rk3588-agibot-mb0002-v2"
+ CONFIG_OF_LIST="rk3588-agibot-mb0002-v2"
++CONFIG_BOOTDELAY=3

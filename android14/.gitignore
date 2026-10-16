@@ -1,0 +1,32 @@
+# Full source trees and build state must remain outside this repository.
+.repo/
+out/
+obj/
+dist/
+build-out/
+
+# Local editors and shell state.
+.vscode/
+.idea/
+*.swp
+*.tmp
+*~
+.DS_Store
+Thumbs.db
+
+# Never commit vendor blobs, firmware binaries, or flashable artifacts here.
+*.img
+*.img.*
+*.7z
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.dtb
+*.ko
+*.so
+*.bin
+*.fw
+
+# Keep generated checks reproducible from source.
+validation-report.txt

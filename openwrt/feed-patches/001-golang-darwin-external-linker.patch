@@ -1,0 +1,28 @@
+diff --git a/feeds/packages/lang/golang/golang/Makefile b/feeds/packages/lang/golang/golang/Makefile
+index 35de567b0..22f2b03d2 100644
+--- a/feeds/packages/lang/golang/golang/Makefile
++++ b/feeds/packages/lang/golang/golang/Makefile
+@@ -326,6 +326,11 @@ HOST_GO_VARS= \
+ 	CC="$(HOSTCC_NOCACHE)" \
+ 	CXX="$(HOSTCXX_NOCACHE)"
+ 
++HOST_GO_DARWIN_LDFLAGS:=
++ifeq ($(GO_HOST_OS),darwin)
++  HOST_GO_DARWIN_LDFLAGS:=GO_LDFLAGS="-linkmode external"
++endif
++
+ define Host/Configure
+ 	$(call GoCompiler/Bootstrap/CheckHost,$(BOOTSTRAP_GO_VALID_OS_ARCH))
+ 	$(call GoCompiler/Host/CheckHost,$(HOST_GO_VALID_OS_ARCH))
+@@ -342,9 +347,11 @@ define Host/Compile
+ 	$(call GoCompiler/Bootstrap-1.17/Make, \
+ 		GOROOT_BOOTSTRAP="$(BOOTSTRAP_ROOT_DIR)" \
+ 		$(HOST_GO_VARS) \
++		$(HOST_GO_DARWIN_LDFLAGS) \
+ 	)
+ 
+ 	$(call GoCompiler/Bootstrap-1.20/Make, \
+ 		GOROOT_BOOTSTRAP="$(BOOTSTRAP_1_17_BUILD_DIR)" \
+ 		$(HOST_GO_VARS) \
++		$(HOST_GO_DARWIN_LDFLAGS) \
+ 	)

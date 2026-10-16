@@ -1,0 +1,34 @@
+#!/bin/bash
+# agibot-eth-revive — eth0(fe1c0000,第一物理口)PHY 首次自协商卡死的开机自愈
+#
+# 2026-08-18 实测:换用 armbian 标准 U-Boot 后(旧 P986b 会预初始化 PHY),
+# RTL8211F PHY 开机初次自协商失败、载波恒无;对驱动做一次 unbind/rebind
+# (全量 PHY 复位)后 ~2 分钟内 Link Up 1Gbps。本服务开机按需触发,已通则跳过。
+IFACE=eth0
+DRIVER=/sys/bus/platform/drivers/rk_gmac-dwmac
+DEV=fe1c0000.ethernet
+
+carrier_ok() { [ "$(cat /sys/class/net/$IFACE/carrier 2>/dev/null)" = "1" ]; }
+
+revive() {
+	logger -t agibot-eth-revive "no carrier on $IFACE, re-probing $DEV"
+	echo "$DEV" > "$DRIVER/unbind" 2>/dev/null
+	sleep 3
+	echo "$DEV" > "$DRIVER/bind" 2>/dev/null
+}
+
+# 开机先给初次自协商留 30s
+sleep 30
+carrier_ok && exit 0
+revive
+# 重复位后最长等 120s(RTL8211F 慢速完成自协商的实测余量)
+for _ in $(seq 1 24); do
+	sleep 5
+	carrier_ok && { logger -t agibot-eth-revive "$IFACE link up after re-probe"; exit 0; }
+done
+# 仍无:再来一轮(极端情况)
+revive
+sleep 30
+carrier_ok && logger -t agibot-eth-revive "$IFACE link up after 2nd re-probe" \
+          || logger -t agibot-eth-revive "WARN: $IFACE still no carrier after retries"
+exit 0

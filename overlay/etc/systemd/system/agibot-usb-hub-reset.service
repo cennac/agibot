@@ -1,0 +1,12 @@
+[Unit]
+Description=AGIBOT on-board USB hub reset (vendor usbhub_rst equivalent)
+# Must run before port power cycling so devices see reset-then-power edges.
+Before=agibot-usb-port-power.service
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/agibot-usb-hub-reset
+
+[Install]
+WantedBy=sysinit.target

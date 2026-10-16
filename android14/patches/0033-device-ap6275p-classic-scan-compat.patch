@@ -1,0 +1,37 @@
+From 0000000000000000000000000000000000000033 Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 20:10:00 +0800
+Subject: [PATCH] agibot: use AP6275P compatible Classic scan parameters
+
+The AP6275P accepts the Android default interlaced Inquiry and Page scan
+configuration but does not reliably appear to remote Classic discovery and
+page attempts.  Use standard scan mode and a larger scan window on MB0002.
+
+The values were applied to a running r17 system before being made permanent.
+HCI snoop confirmed Inquiry and Page Scan Activity 0x0400/0x0100, no
+interlaced scan-type write, successful Write Scan Enable 0x03, and BT_WAKE
+remaining asserted.
+---
+ agibot_mb0002/agibot_mb0002.mk | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/agibot_mb0002/agibot_mb0002.mk b/agibot_mb0002/agibot_mb0002.mk
+index 649d762..0cb0378 100644
+--- a/agibot_mb0002/agibot_mb0002.mk
++++ b/agibot_mb0002/agibot_mb0002.mk
+@@ -63,6 +63,12 @@ PRODUCT_SYSTEM_PROPERTIES += \
+     ro.build.author.name=Cennac \
+     ro.build.author.email=cennac@163.com \
+-    ro.build.author.website=cennac.com
++    ro.build.author.website=cennac.com \
++    bluetooth.core.classic.inq_scan_type=0 \
++    bluetooth.core.classic.inq_scan_interval=1024 \
++    bluetooth.core.classic.inq_scan_window=256 \
++    bluetooth.core.classic.page_scan_type=0 \
++    bluetooth.core.classic.page_scan_interval=1024 \
++    bluetooth.core.classic.page_scan_window=256
+ 
+ PRODUCT_COPY_FILES += \
+     frameworks/native/data/etc/android.hardware.usb.host.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.usb.host.xml \
+-- 
+2.53.0

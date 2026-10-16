@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+G=/sys/kernel/config/usb_gadget/agibot
+
+# 解绑 UDC(枚举消失)并停 adbd
+if [ -d "$G" ]; then
+	echo "" > "$G/UDC" 2>/dev/null || true
+fi
+start-stop-daemon --stop --oknodo --pidfile /var/run/adbd.pid --retry 5 2>/dev/null || true

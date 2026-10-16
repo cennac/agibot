@@ -1,0 +1,54 @@
+From 0000000000000000000000000000000000000019 Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 12:30:00 +0800
+Subject: [PATCH] bluetooth: disable APCF after controller rejection
+
+The AP6275P vendor-capability response advertises advertising-packet content
+filtering, but its LE_ADV_FILTER READ_EXTENDED_FEATURES subcommand completes
+with INVALID_HCI_COMMAND_PARAMETERS. The current stack logs that status and
+keeps `is_filter_supported_` enabled. A later Settings discovery sends APCF
+ENABLE, waits for opcode 0xfd57, times out, and aborts the Bluetooth process.
+
+Treat a rejected or malformed extended-features response as an authoritative
+runtime downgrade. This keeps ordinary LE scanning usable on controllers whose
+static vendor capabilities are too optimistic.
+
+Test: manual r7 reproduction: enable Bluetooth, start Settings discovery, and
+verify no second LE_ADV_FILTER command or process restart.
+---
+ system/gd/hci/le_scanning_manager.cc | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/system/gd/hci/le_scanning_manager.cc b/system/gd/hci/le_scanning_manager.cc
+index 7301d805c1..fd13238cb3 100644
+--- a/system/gd/hci/le_scanning_manager.cc
++++ b/system/gd/hci/le_scanning_manager.cc
+@@ -1462,15 +1462,21 @@ class LeScanningManager::impl : public LeAddressManagerCallback {
+   void on_apcf_read_extended_features_complete(CommandCompleteView view) {
+     ASSERT(view.IsValid());
+     auto status_view = LeAdvFilterCompleteView::Create(view);
+     if (!status_view.IsValid()) {
+-      LOG_WARN("Can not get valid LeAdvFilterCompleteView, return");
++      LOG_WARN("Invalid LeAdvFilterCompleteView; disabling APCF support");
++      is_filter_supported_ = false;
++      is_transport_discovery_data_filter_supported_ = false;
++      is_ad_type_filter_supported_ = false;
+       return;
+     }
+     if (status_view.GetStatus() != ErrorCode::SUCCESS) {
+-      LOG_WARN(
+-          "Got a Command complete %s, status %s",
+-          OpCodeText(view.GetCommandOpCode()).c_str(),
+-          ErrorCodeText(status_view.GetStatus()).c_str());
++      LOG_WARN(
++          "Got a Command complete %s, status %s; disabling APCF support",
++          OpCodeText(view.GetCommandOpCode()).c_str(),
++          ErrorCodeText(status_view.GetStatus()).c_str());
++      is_filter_supported_ = false;
++      is_transport_discovery_data_filter_supported_ = false;
++      is_ad_type_filter_supported_ = false;
+       return;
+     }
+     auto complete_view = LeAdvFilterReadExtendedFeaturesCompleteView::Create(status_view);
+-- 
+2.34.1

@@ -1,0 +1,50 @@
+From: Cennac <cennac@163.com>
+Date: Tue, 25 Aug 2026 08:40:00 +0800
+Subject: [PATCH] Settings: show AGIBOT system author information
+
+Add a copyable, non-interactive author entry to About device. The displayed
+information matches the immutable ro.build.author properties in the product.
+
+---
+ packages/apps/Settings/res/values-zh-rCN/strings.xml | 2 ++
+ packages/apps/Settings/res/values/strings.xml        | 2 ++
+ packages/apps/Settings/res/xml/my_device_info.xml    | 9 +++++++++
+ 3 files changed, 13 insertions(+)
+
+diff --git a/res/values/strings.xml b/res/values/strings.xml
+--- a/res/values/strings.xml
++++ b/res/values/strings.xml
+@@ -12411,2 +12411,4 @@
+     <!-- ======================================== -->
++    <string name="agibot_system_author_title">System author</string>
++    <string name="agibot_system_author_summary" translatable="false">Cennac · cennac@163.com · cennac.com</string>
+ </resources>
+diff --git a/res/values-zh-rCN/strings.xml b/res/values-zh-rCN/strings.xml
+--- a/res/values-zh-rCN/strings.xml
++++ b/res/values-zh-rCN/strings.xml
+@@ -4848,2 +4848,4 @@
+     <!-- ======================================== -->
++    <string name="agibot_system_author_title">系统作者</string>
++    <string name="agibot_system_author_summary" translatable="false">Cennac · cennac@163.com · cennac.com</string>
+ </resources>
+diff --git a/res/xml/my_device_info.xml b/res/xml/my_device_info.xml
+--- a/res/xml/my_device_info.xml
++++ b/res/xml/my_device_info.xml
+@@ -111,6 +111,15 @@
+             settings:keywords="@string/keywords_model_and_hardware"
+             settings:controller="com.android.settings.deviceinfo.HardwareInfoPreferenceController"/>
+ 
++        <!-- AGIBOT Android adaptation owner -->
++        <Preference
++            android:key="agibot_system_author"
++            android:order="41"
++            android:title="@string/agibot_system_author_title"
++            android:summary="@string/agibot_system_author_summary"
++            android:selectable="false"
++            settings:enableCopying="true"/>
++
+         <!-- EID -->
+         <com.android.settings.network.telephony.TelephonyPreferenceDialog
+             android:key="eid_info"
+-- 
+2.53.0

@@ -1,0 +1,5 @@
+# LEDE 构建产物 / 临时文件(lede/ 是 git submodule,其内部 bin/build/tmp 由 submodule 自身 .gitignore 管)
+*.log
+*.img
+*.img.gz
+*.bin

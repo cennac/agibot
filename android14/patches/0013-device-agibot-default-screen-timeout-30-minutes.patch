@@ -1,0 +1,23 @@
+From dbdf095ae45edefa1de69b448e13d8260f803fd8 Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 09:23:32 +0800
+Subject: [PATCH] agibot:set-default-screen-timeout-to-30-minutes
+
+---
+ .../base/packages/SettingsProvider/res/values/config.xml        | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/agibot_mb0002/overlay/frameworks/base/packages/SettingsProvider/res/values/config.xml b/agibot_mb0002/overlay/frameworks/base/packages/SettingsProvider/res/values/config.xml
+index 1081fad..4885b16 100644
+--- a/agibot_mb0002/overlay/frameworks/base/packages/SettingsProvider/res/values/config.xml
++++ b/agibot_mb0002/overlay/frameworks/base/packages/SettingsProvider/res/values/config.xml
+@@ -2,5 +2,5 @@
+ <resources>
+     <!-- Do not force a portrait default for HDMI monitor/TV usage. -->
+     <bool name="def_accelerometer_rotation">false</bool>
+-    <integer name="def_screen_off_timeout">60000</integer>
++    <integer name="def_screen_off_timeout">1800000</integer>
+ </resources>
+-- 
+2.53.0
+

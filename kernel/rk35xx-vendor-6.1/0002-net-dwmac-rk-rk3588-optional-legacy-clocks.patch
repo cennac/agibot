@@ -1,0 +1,74 @@
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
+@@ -43,6 +43,7 @@ struct rk_gmac_ops {
+ 	void (*set_clock_selection)(struct rk_priv_data *bsp_priv, bool input,
+ 				    bool enable);
+ 	void (*integrated_phy_power)(struct rk_priv_data *bsp_priv, bool up);
++	bool legacy_clks_optional;
+ 	bool regs_valid;
+ 	u32 regs[];
+ };
+@@ -2273,5 +2274,6 @@ static const struct rk_gmac_ops rk3588_ops = {
+ 	.set_rmii_speed = rk3588_set_gmac_speed,
+ 	.set_clock_selection = rk3588_set_clock_selection,
++	.legacy_clks_optional = true,
+ 	.regs_valid = true,
+ 	.regs = {
+ 		0xfe1b0000, /* gmac0 */
+@@ -2506,6 +2508,23 @@ static const struct rk_gmac_ops rv1126_ops = {
+ 	.set_rmii_speed = rv1126_set_rmii_speed,
+ };
+ 
++static struct clk *rk_gmac_get_legacy_clk(struct rk_priv_data *bsp_priv,
++					   const char *id)
++{
++	struct device *dev = &bsp_priv->pdev->dev;
++	struct clk *clk;
++
++	if (bsp_priv->ops->legacy_clks_optional)
++		clk = devm_clk_get_optional(dev, id);
++	else
++		clk = devm_clk_get(dev, id);
++
++	if (IS_ERR(clk))
++		dev_err(dev, "cannot get clock %s\n", id);
++
++	return clk;
++}
++
+ static int rk_gmac_clk_init(struct plat_stmmacenet_data *plat)
+ {
+ 	struct rk_priv_data *bsp_priv = plat->bsp_priv;
+@@ -2515,15 +2534,11 @@ static int rk_gmac_clk_init(struct plat_stmmacenet_data *plat)
+ 
+ 	bsp_priv->clk_enabled = false;
+ 
+-	bsp_priv->mac_clk_rx = devm_clk_get(dev, "mac_clk_rx");
+-	if (IS_ERR(bsp_priv->mac_clk_rx))
+-		dev_err(dev, "cannot get clock %s\n",
+-			"mac_clk_rx");
++	bsp_priv->mac_clk_rx =
++		rk_gmac_get_legacy_clk(bsp_priv, "mac_clk_rx");
+ 
+-	bsp_priv->mac_clk_tx = devm_clk_get(dev, "mac_clk_tx");
+-	if (IS_ERR(bsp_priv->mac_clk_tx))
+-		dev_err(dev, "cannot get clock %s\n",
+-			"mac_clk_tx");
++	bsp_priv->mac_clk_tx =
++		rk_gmac_get_legacy_clk(bsp_priv, "mac_clk_tx");
+ 
+ 	bsp_priv->aclk_mac = devm_clk_get(dev, "aclk_mac");
+ 	if (IS_ERR(bsp_priv->aclk_mac))
+@@ -2562,9 +2575,8 @@ static int rk_gmac_clk_init(struct plat_stmmacenet_data *plat)
+ 			dev_err(dev, "cannot get clock %s\n", "clk_xpcs_eee");
+ 	}
+ 
+-	bsp_priv->clk_mac_speed = devm_clk_get(dev, "clk_mac_speed");
+-	if (IS_ERR(bsp_priv->clk_mac_speed))
+-		dev_err(dev, "cannot get clock %s\n", "clk_mac_speed");
++	bsp_priv->clk_mac_speed =
++		rk_gmac_get_legacy_clk(bsp_priv, "clk_mac_speed");
+ 
+ 	if (bsp_priv->clock_input) {
+ 		dev_info(dev, "clock input from PHY\n");

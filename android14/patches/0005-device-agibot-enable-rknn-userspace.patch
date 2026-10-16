@@ -1,0 +1,24 @@
+From 4c1b31c4ede938aaf6ffb377d90ce5c18cf39e4e Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Tue, 25 Aug 2026 01:28:47 +0800
+Subject: [PATCH] agibot: enable RKNN userspace support
+
+---
+ agibot_mb0002/BoardConfig.mk | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/agibot_mb0002/BoardConfig.mk b/agibot_mb0002/BoardConfig.mk
+index c38a879..2765a78 100644
+--- a/agibot_mb0002/BoardConfig.mk
++++ b/agibot_mb0002/BoardConfig.mk
+@@ -17,3 +17,7 @@ BOARD_CAMERA_SUPPORT_EXT := false
+ BOARD_HS_ETHERNET := true
+ 
+ include device/rockchip/rk3588/BoardConfig.mk
++
++# The common RK3588 config disables RKNN by default. Enable the complete
++# Rockchip Android runtime/HAL after including it so the setting is not reset.
++BOARD_RKNN_SUPPORT := true
+-- 
+2.53.0
+

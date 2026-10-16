@@ -1,0 +1,14 @@
+{
+  "name": "agibot-mb0002-interface-map",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build && node make-portable.mjs"
+  },
+  "dependencies": {
+    "three": "^0.179.1",
+    "vite": "^7.1.2"
+  }
+}

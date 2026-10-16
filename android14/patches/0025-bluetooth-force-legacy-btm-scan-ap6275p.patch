@@ -1,0 +1,57 @@
+From 0000000000000000000000000000000000000025 Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 15:30:00 +0800
+Subject: [PATCH] bluetooth: force legacy BTM scan for AP6275P
+
+The active legacy BTM discovery path selects extended scanning solely from
+standard extended-advertising support. AP6275P supports extended advertising
+but never completes LE_SET_EXTENDED_SCAN_PARAMETERS (0x2041), so Settings
+discovery aborts the Bluetooth process even after GD scanning is configured
+for legacy mode.
+
+Use legacy scan-parameters and scan-enable commands in the BTM path. Extended
+advertising remains enabled and is unaffected.
+---
+ system/stack/btm/btm_ble_gap.cc | 21 +++------------------
+ 1 file changed, 3 insertions(+), 18 deletions(-)
+
+diff --git a/system/stack/btm/btm_ble_gap.cc b/system/stack/btm/btm_ble_gap.cc
+index 3d7c8f7954..3333333333 100644
+--- a/system/stack/btm/btm_ble_gap.cc
++++ b/system/stack/btm/btm_ble_gap.cc
+@@ -2032,30 +2032,15 @@
+ 
+ static void btm_send_hci_scan_enable(uint8_t enable,
+                                      uint8_t filter_duplicates) {
+-  if (controller_get_interface()->supports_ble_extended_advertising()) {
+-    btsnd_hcic_ble_set_extended_scan_enable(enable, filter_duplicates, 0x0000,
+-                                            0x0000);
+-  } else {
+-    btsnd_hcic_ble_set_scan_enable(enable, filter_duplicates);
+-  }
++  btsnd_hcic_ble_set_scan_enable(enable, filter_duplicates);
+ }
+ 
+ void btm_send_hci_set_scan_params(uint8_t scan_type, uint16_t scan_int,
+                                   uint16_t scan_win,
+                                   tBLE_ADDR_TYPE addr_type_own,
+                                   uint8_t scan_filter_policy) {
+-  if (controller_get_interface()->supports_ble_extended_advertising()) {
+-    scanning_phy_cfg phy_cfg;
+-    phy_cfg.scan_type = scan_type;
+-    phy_cfg.scan_int = scan_int;
+-    phy_cfg.scan_win = scan_win;
+-
+-    btsnd_hcic_ble_set_extended_scan_params(addr_type_own, scan_filter_policy,
+-                                            1, &phy_cfg);
+-  } else {
+-    btsnd_hcic_ble_set_scan_params(scan_type, scan_int, scan_win, addr_type_own,
+-                                   scan_filter_policy);
+-  }
++  btsnd_hcic_ble_set_scan_params(scan_type, scan_int, scan_win, addr_type_own,
++                                 scan_filter_policy);
+ }
+ 
+ /* Scan filter param config event */
+-- 
+2.34.1

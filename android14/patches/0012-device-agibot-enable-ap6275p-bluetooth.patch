@@ -1,0 +1,68 @@
+From 55b0a7537aea7b9e52aab3d3adfd986ad538e61c Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 09:22:17 +0800
+Subject: [PATCH] agibot:enable-AP6275P-Bluetooth
+
+---
+ agibot_mb0002/BoardConfig.mk   | 6 +++---
+ agibot_mb0002/agibot_mb0002.mk | 7 +++++--
+ agibot_mb0002/bt_vendor.conf   | 5 +++++
+ 3 files changed, 13 insertions(+), 5 deletions(-)
+ create mode 100755 agibot_mb0002/bt_vendor.conf
+
+diff --git a/agibot_mb0002/BoardConfig.mk b/agibot_mb0002/BoardConfig.mk
+index e82a983..705d8dd 100644
+--- a/agibot_mb0002/BoardConfig.mk
++++ b/agibot_mb0002/BoardConfig.mk
+@@ -3,9 +3,9 @@ BOARD_USES_AB_IMAGE := false
+ BOARD_BUILD_GKI := false
+ 
+ TARGET_BOARD_CPU := RK3588
+-BOARD_BLUETOOTH_SUPPORT := false
+-BOARD_HAVE_BLUETOOTH := false
+-BOARD_BLUETOOTH_LE_SUPPORT := false
++BOARD_BLUETOOTH_SUPPORT := true
++BOARD_HAVE_BLUETOOTH := true
++BOARD_BLUETOOTH_LE_SUPPORT := true
+ BOARD_SUPPORT_HDMI_CEC := false
+ BOARD_HAVE_BLUETOOTH_AIC_USB := false
+ BOARD_HAVE_BLUETOOTH_AIC := false
+diff --git a/agibot_mb0002/agibot_mb0002.mk b/agibot_mb0002/agibot_mb0002.mk
+index e22cc0e..fcc071e 100644
+--- a/agibot_mb0002/agibot_mb0002.mk
++++ b/agibot_mb0002/agibot_mb0002.mk
+@@ -38,8 +38,8 @@ PRODUCT_MODEL := MB0002 V2
+ PRODUCT_CHARACTERISTICS := tablet
+ PRODUCT_AAPT_PREF_CONFIG := xhdpi
+ 
+-# Keep optional/ambiguous board peripherals out of Phase 1. The external USB
+-# camera is intentionally enabled above; the unvalidated internal ISP remains
++# Keep ambiguous board peripherals out of Phase 1. The external USB camera and
++# AP6275P Bluetooth are validated board features; the internal ISP remains
+ # disabled.
+ BOARD_CAMERA_SUPPORT := false
+ BOARD_GRAVITY_SENSOR_SUPPORT := false
+@@ -48,6 +48,9 @@ BOARD_PROXIMITY_SENSOR_SUPPORT := false
+ BOARD_LIGHT_SENSOR_SUPPORT := false
+ BOARD_HAVE_BLUETOOTH_AIC_USB := false
+ BOARD_HAVE_BLUETOOTH_AIC := false
++BOARD_BLUETOOTH_SUPPORT := true
++BOARD_HAVE_BLUETOOTH := true
++BOARD_BLUETOOTH_LE_SUPPORT := true
+ 
+ PRODUCT_PROPERTY_OVERRIDES += \
+     ro.sf.lcd_density=240 \
+diff --git a/agibot_mb0002/bt_vendor.conf b/agibot_mb0002/bt_vendor.conf
+new file mode 100755
+index 0000000..aaf2438
+--- /dev/null
++++ b/agibot_mb0002/bt_vendor.conf
+@@ -0,0 +1,5 @@
++# AGIBOT MB0002 V2 uses the AP6275P Bluetooth controller on UART6.
++UartPort = /dev/ttyS6
++
++# Firmware patch file location
++FwPatchFilePath = /vendor/etc/firmware/
+-- 
+2.53.0
+

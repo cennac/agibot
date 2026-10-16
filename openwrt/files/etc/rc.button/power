@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# SW9201 is the RK806 PWRON key. Keep the standard KEY_POWER event visible,
+# but match the Armbian board behavior by rebooting when the key is released.
+[ "${ACTION}" = "released" ] || exit 0
+
+logger -t agibot-button "SW9201 power key released after ${SEEN:-0}s: reboot"
+echo "SW9201 REBOOT" > /dev/console
+sync
+reboot

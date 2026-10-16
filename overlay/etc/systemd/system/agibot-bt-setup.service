@@ -1,0 +1,12 @@
+[Unit]
+Description=Agibot BT userspace one-time setup (bluez/bluetoothd, then self-disable)
+Wants=network-online.target
+After=network-online.target agibot-bt-attach.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/agibot-bt-setup
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

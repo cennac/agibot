@@ -1,0 +1,32 @@
+#!/bin/sh
+set -eu
+
+# Vendor 5.10 DT carries a `hubrst-gpio` node (compatible "usbhub_rst") whose
+# private driver pulses the two on-board Genesys hub reset lines at boot.
+# The 6.1 vendor kernel has no such driver, so GPIO4_D2/D3 (sysfs 154/155,
+# mux GPIO / pull-none) float and hub power-on state is random -- one boot an
+# EHCI-side hub never enumerates at all. This replicates the vendor behavior
+# from user space: reset low -> high, then let the kernel re-enumerate.
+#
+# Verified on the board (2026-08-17): pulsing both lines makes the DataTraveler
+# and keyboard hubs disconnect and come back cleanly.
+
+for g in 154 155; do
+	path="/sys/class/gpio/gpio$g"
+	if [ ! -d "$path" ]; then
+		echo "$g" > /sys/class/gpio/export 2>/dev/null || {
+			echo "cannot export gpio$g" >&2
+			exit 1
+		}
+	fi
+	echo out > "$path/direction"
+done
+
+echo 0 > /sys/class/gpio/gpio154/value
+echo 0 > /sys/class/gpio/gpio155/value
+sleep 0.15
+echo 1 > /sys/class/gpio/gpio154/value
+echo 1 > /sys/class/gpio/gpio155/value
+
+# Downstream devices need a moment before VBUS cycling (agibot-usb-port-power).
+sleep 1

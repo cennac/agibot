@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * AGIBOT MB0002 V2 initial display policy.
+ *
+ * Intended for the Rockchip Android 14 RKR6 Linux 6.1 DTS after labels and
+ * board includes have been reconciled. Do not include this file blindly into
+ * the 6.12-oriented Armbian/OpenWrt DTS.
+ */
+
+/*
+ * The original 5.10 tree marks HDMI0 as the only enabled display route. Keep
+ * that policy for first boot. Both DSI controllers and the second HDMI
+ * controller remain disabled until the base image is stable.
+ */
+&hdmi0 {
+	status = "okay";
+};
+
+&route_hdmi0 {
+	status = "okay";
+	logo,mode = "center";
+};
+
+&dsi0 {
+	status = "disabled";
+};
+
+&dsi1 {
+	status = "disabled";
+};
+
+&hdmi1 {
+	status = "disabled";
+};
+
+&route_dsi0 {
+	status = "disabled";
+};
+
+&route_dsi1 {
+	status = "disabled";
+};
+
+&route_hdmi1 {
+	status = "disabled";
+};

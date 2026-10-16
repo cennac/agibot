@@ -1,0 +1,107 @@
+From 70a220d9ff8e7cc96e7924bea510915fa3e6d85e Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 16:05:33 +0800
+Subject: [PATCH] broadcom: preserve AGIBOT controller OTP address
+
+---
+ src/hardware.c | 40 +++++++++++++++++++++++++---------------
+ 1 file changed, 25 insertions(+), 15 deletions(-)
+
+diff --git a/src/hardware.c b/src/hardware.c
+index 483d0cc..813ce0d 100644
+--- a/src/hardware.c
++++ b/src/hardware.c
+@@ -125,9 +125,7 @@ enum {
+     HW_CFG_DL_FW_PATCH,
+     HW_CFG_SET_UART_BAUD_2,
+     HW_CFG_SET_BD_ADDR
+-#if (USE_CONTROLLER_BDADDR == TRUE)
+     , HW_CFG_READ_BD_ADDR
+-#endif
+ };
+ 
+ /* h/w config control block */
+@@ -641,7 +639,6 @@ static uint8_t hw_config_set_bdaddr(HC_BT_HDR *p_buf)
+     return (retval);
+ }
+ 
+-#if (USE_CONTROLLER_BDADDR == TRUE)
+ /*******************************************************************************
+ **
+ ** Function         hw_config_read_bdaddr
+@@ -668,7 +665,24 @@ static uint8_t hw_config_read_bdaddr(HC_BT_HDR *p_buf)
+ 
+     return (retval);
+ }
+-#endif // (USE_CONTROLLER_BDADDR == TRUE)
++
++static uint8_t hw_config_use_controller_bdaddr(void)
++{
++#if (USE_CONTROLLER_BDADDR == TRUE)
++    return TRUE;
++#else
++    char product_device[PROPERTY_VALUE_MAX] = {0};
++
++    property_get("ro.product.device", product_device, "");
++    if (!strcmp(product_device, "agibot_mb0002"))
++    {
++        ALOGI("AGIBOT AP6275P: preserving controller OTP bdaddr");
++        return TRUE;
++    }
++
++    return FALSE;
++#endif
++}
+ 
+ typedef void (*tTIMER_HANDLE_CBACK)(union sigval sigval_value);
+ 
+@@ -780,9 +794,7 @@ void hw_config_cback(void *p_mem)
+     uint8_t     is_proceeding = FALSE;
+     int         i;
+     int         delay=100;
+-#if (USE_CONTROLLER_BDADDR == TRUE)
+     const uint8_t null_bdaddr[BD_ADDR_LEN] = {0,0,0,0,0,0};
+-#endif
+ 
+     status = *((uint8_t *)(p_evt_buf + 1) + HCI_EVT_CMD_CMPL_STATUS_RET_BYTE);
+     p = (uint8_t *)(p_evt_buf + 1) + HCI_EVT_CMD_CMPL_OPCODE;
+@@ -983,13 +995,13 @@ void hw_config_cback(void *p_mem)
+                     line_speed_to_userial_baud(UART_TARGET_BAUD_RATE) \
+                 );
+ 
+-#if (USE_CONTROLLER_BDADDR == TRUE)
+-                if ((is_proceeding = hw_config_read_bdaddr(p_buf)) == TRUE)
+-                    break;
+-#else
+-                if ((is_proceeding = hw_config_set_bdaddr(p_buf)) == TRUE)
+-                    break;
+-#endif
++                if (hw_config_use_controller_bdaddr()) {
++                    if ((is_proceeding = hw_config_read_bdaddr(p_buf)) == TRUE)
++                        break;
++                } else {
++                    if ((is_proceeding = hw_config_set_bdaddr(p_buf)) == TRUE)
++                        break;
++                }
+                 /* fall through intentionally */
+             case HW_CFG_SET_BD_ADDR:
+                 ALOGI("vendor lib fwcfg completed");
+@@ -1010,7 +1022,6 @@ void hw_config_cback(void *p_mem)
+                 is_proceeding = TRUE;
+                 break;
+ 
+-#if (USE_CONTROLLER_BDADDR == TRUE)
+             case HW_CFG_READ_BD_ADDR:
+                 p_tmp = (char *) (p_evt_buf + 1) + \
+                          HCI_EVT_CMD_CMPL_LOCAL_BDADDR_ARRAY;
+@@ -1045,7 +1056,6 @@ void hw_config_cback(void *p_mem)
+ 
+                 is_proceeding = TRUE;
+                 break;
+-#endif // (USE_CONTROLLER_BDADDR == TRUE)
+         } // switch(hw_cfg_cb.state)
+     } // if (p_buf != NULL)
+ 
+-- 
+2.53.0
+

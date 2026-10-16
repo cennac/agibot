@@ -1,0 +1,20 @@
+diff --git a/tools/Makefile b/tools/Makefile
+index d4c6958a47..56757aa21a 100644
+--- a/tools/Makefile
++++ b/tools/Makefile
+@@ -39,7 +39,6 @@ tools-y += cmake
+ tools-y += cpio
+ tools-y += dosfstools
+ tools-y += e2fsprogs
+-tools-y += elfutils
+ tools-y += erofs-utils
+ tools-y += expat
+ tools-y += fakeroot
+@@ -143,6 +142,7 @@ ifeq ($(HOST_OS),Darwin)
+   tools-y += bash
+ else
+   $(curdir)/dwarves/compile += $(curdir)/elfutils/compile
++  tools-y += elfutils
+   tools-$(if $(CONFIG_BUILD_ALL_HOST_TOOLS)$(CONFIG_DWARVES),y) += dwarves
+ endif
+ 

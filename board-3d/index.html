@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#111416" />
+    <title>AGIBOT MB0002 V2 接口地图</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="model-stage" aria-label="板卡三维模型">
+        <canvas id="scene"></canvas>
+        <div id="markers" class="markers" aria-label="接口热点"></div>
+
+        <header class="stage-header">
+          <div>
+            <p class="eyebrow">RK3588 · CL_PCBA_MB0002_V5 · 板框估算 190 × 110 mm</p>
+            <h1>AGIBOT MB0002 V2</h1>
+          </div>
+          <div class="stage-status">
+            <label class="label-toggle" for="toggle-labels">
+              <input id="toggle-labels" type="checkbox" checked />
+              <span aria-hidden="true"></span>
+              显示中文名称
+            </label>
+            <label class="label-toggle" for="toggle-model">
+              <input id="toggle-model" type="checkbox" checked />
+              <span aria-hidden="true"></span>
+              纯 3D（无贴图）
+            </label>
+          </div>
+        </header>
+
+        <div class="view-toolbar" aria-label="视图控制">
+          <button id="view-home" class="icon-button" type="button" title="复位视图" aria-label="复位视图">↺</button>
+          <button id="view-top" class="icon-button" type="button" title="俯视图" aria-label="俯视图">⌂</button>
+          <button id="view-ports" class="icon-button" type="button" title="主接口正视图" aria-label="主接口正视图">▰</button>
+          <button id="view-side" class="icon-button" type="button" title="侧视图" aria-label="侧视图">◫</button>
+          <button id="toggle-spin" class="icon-button" type="button" title="自动旋转" aria-label="自动旋转">⟳</button>
+        </div>
+
+        <div class="legend" aria-label="可信度图例">
+          <span><i class="verified"></i>在线验证</span>
+          <span><i class="documented"></i>资料/丝印</span>
+          <span><i class="unknown"></i>待确认</span>
+        </div>
+      </section>
+
+      <aside class="inspector">
+        <nav class="tabs" aria-label="信息视图">
+          <button class="tab active" type="button" data-tab="interfaces">接口</button>
+          <button class="tab" type="button" data-tab="system">在线核对</button>
+          <button class="tab" type="button" data-tab="pinmux">SoC 引脚</button>
+          <button id="toggle-inspector" class="inspector-toggle" type="button" title="收起信息面板" aria-label="收起信息面板" aria-expanded="true">›</button>
+        </nav>
+
+        <section id="interfaces-tab" class="tab-panel active">
+          <div class="filter-row">
+            <label class="search-field">
+              <span aria-hidden="true">⌕</span>
+              <input id="search" type="search" placeholder="接口、编号、信号" aria-label="搜索接口" />
+            </label>
+            <select id="confidence-filter" aria-label="筛选可信度">
+              <option value="all">全部</option>
+              <option value="verified">在线验证</option>
+              <option value="documented">资料/丝印</option>
+              <option value="unknown">待确认</option>
+            </select>
+          </div>
+
+          <div id="connector-list" class="connector-list" aria-label="接口列表"></div>
+          <article id="connector-detail" class="connector-detail" aria-live="polite"></article>
+        </section>
+
+        <section id="system-tab" class="tab-panel">
+          <div id="system-content" class="system-content"></div>
+        </section>
+
+        <section id="pinmux-tab" class="tab-panel">
+          <div id="pinmux-content" class="system-content"></div>
+        </section>
+      </aside>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

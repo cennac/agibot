@@ -1,0 +1,20 @@
+diff --git a/feeds/packages/lang/perl/patches/005-gcc15-c23-malloc-prototypes.patch b/feeds/packages/lang/perl/patches/005-gcc15-c23-malloc-prototypes.patch
+new file mode 100644
+index 000000000..b1efe062f
+--- /dev/null
++++ b/feeds/packages/lang/perl/patches/005-gcc15-c23-malloc-prototypes.patch
+@@ -0,0 +1,14 @@
++--- a/Configure
+++++ b/Configure
++@@ -7870,9 +7870,9 @@
++ #endif
++ #ifdef TRY_MALLOC
++-void *malloc();
+++void *malloc(size_t);
++ #endif
++ #ifdef TRY_FREE
++-void free();
+++void free(void *);
++ #endif
++ END
++ case "$malloctype" in

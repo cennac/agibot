@@ -1,0 +1,26 @@
+#!/bin/sh
+set -eu
+
+# AGIBOT MB0002 V2 carries four on-board Genesys hubs. Their logic resets are
+# GPIO4_D2/GPIO4_D3 (Linux global GPIOs 154/155 on RK3588). Pulse both low,
+# then high before cycling PCA9555-controlled downstream VBUS.
+
+for gpio in 154 155; do
+	path="/sys/class/gpio/gpio$gpio"
+	if [ ! -d "$path" ]; then
+		echo "$gpio" > /sys/class/gpio/export 2>/dev/null || {
+			echo "cannot export gpio$gpio" >&2
+			exit 1
+		}
+	fi
+	echo out > "$path/direction"
+done
+
+echo 0 > /sys/class/gpio/gpio154/value
+echo 0 > /sys/class/gpio/gpio155/value
+sleep 1
+echo 1 > /sys/class/gpio/gpio154/value
+echo 1 > /sys/class/gpio/gpio155/value
+
+# Hubs need a short enumeration interval before downstream power is restored.
+sleep 1

@@ -1,0 +1,24 @@
+diff --git a/target/linux/rockchip/modules.mk b/target/linux/rockchip/modules.mk
+index d38a5b3c7..df277c9fd 100644
+--- a/target/linux/rockchip/modules.mk
++++ b/target/linux/rockchip/modules.mk
+@@ -23,6 +23,7 @@ define KernelPackage/drm-rockchip
+ 	CONFIG_DRM_PANEL_SIMPLE \
+ 	CONFIG_DRM_ROCKCHIP \
+ 	CONFIG_PHY_ROCKCHIP_INNO_HDMI \
++	CONFIG_PHY_ROCKCHIP_SAMSUNG_HDPTX \
+ 	CONFIG_ROCKCHIP_ANALOGIX_DP=n \
+ 	CONFIG_ROCKCHIP_CDN_DP=n \
+ 	CONFIG_ROCKCHIP_DW_HDMI=y \
+@@ -41,8 +42,9 @@ define KernelPackage/drm-rockchip
+ 	$(LINUX_DIR)/drivers/gpu/drm/drm_dp_aux_bus.ko@lt5.19 \
+ 	$(LINUX_DIR)/drivers/gpu/drm/panel/panel-simple.ko \
+ 	$(LINUX_DIR)/drivers/gpu/drm/rockchip/rockchipdrm.ko \
+-	$(LINUX_DIR)/drivers/phy/rockchip/phy-rockchip-inno-hdmi.ko
+-  AUTOLOAD:=$(call AutoProbe,dw-hdmi-cec phy-rockchip-inno-hdmi rockchipdrm,1)
++	$(LINUX_DIR)/drivers/phy/rockchip/phy-rockchip-inno-hdmi.ko \
++	$(LINUX_DIR)/drivers/phy/rockchip/phy-rockchip-samsung-hdptx.ko
++  AUTOLOAD:=$(call AutoProbe,dw-hdmi-cec phy-rockchip-inno-hdmi phy-rockchip-samsung-hdptx rockchipdrm,1)
+ endef
+ 
+ define KernelPackage/drm-rockchip/description

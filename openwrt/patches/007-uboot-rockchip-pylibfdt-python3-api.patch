@@ -1,0 +1,44 @@
+diff --git a/package/boot/uboot-rockchip/patches/112-pylibfdt-python3-api.patch b/package/boot/uboot-rockchip/patches/112-pylibfdt-python3-api.patch
+new file mode 100644
+index 0000000000..5cd3d41441
+--- /dev/null
++++ b/package/boot/uboot-rockchip/patches/112-pylibfdt-python3-api.patch
+@@ -0,0 +1,38 @@
++--- a/scripts/dtc/pylibfdt/Makefile
+++++ b/scripts/dtc/pylibfdt/Makefile
++@@ -19,9 +19,14 @@
++ quiet_cmd_pymod = PYMOD   $@
++       cmd_pymod = unset CROSS_COMPILE; unset CFLAGS; \
++-		CC="$(HOSTCC)" LDSHARED="$(HOSTCC) -shared " \
+++		if [ "$$(uname -s)" = Darwin ]; then \
+++			PYLIBFDT_LDSHARED="$(HOSTCC) -bundle -undefined dynamic_lookup"; \
+++		else \
+++			PYLIBFDT_LDSHARED="$(HOSTCC) -shared"; \
+++		fi; \
+++		CC="$(HOSTCC)" LDSHARED="$${PYLIBFDT_LDSHARED}" \
++ 		LDFLAGS="$(HOSTLDFLAGS)" \
++ 		VERSION="$(PEP_VERSION)" \
++ 		CPPFLAGS="$(HOSTCFLAGS) -I$(LIBFDT_srcdir)" OBJDIR=$(obj) \
++ 		SOURCES="$(PYLIBFDT_srcs)" \
++ 		SWIG_OPTS="-I$(LIBFDT_srcdir) -I$(LIBFDT_srcdir)/.." \
++ 		$(PYTHON3) $< --quiet build_ext --inplace
++--- a/scripts/dtc/pylibfdt/libfdt.i_shipped
+++++ b/scripts/dtc/pylibfdt/libfdt.i_shipped
++@@ -1033,7 +1033,7 @@
++ 	PyObject *buff;
++ 
++ 	if ($1) {
++-		resultobj = PyString_FromString(
+++		resultobj = PyUnicode_FromString(
++ 			fdt_string(fdt1, fdt32_to_cpu($1->nameoff)));
++ 		buff = PyByteArray_FromStringAndSize(
++ 			(const char *)($1 + 1), fdt32_to_cpu($1->len));
++@@ -1070,7 +1070,7 @@
++ 
++ /* typemaps used for fdt_next_node() */
++ %typemap(in, numinputs=1) int *depth (int depth) {
++-   depth = (int) PyInt_AsLong($input);
+++   depth = (int) PyLong_AsLong($input);
++    $1 = &depth;
++ }
++ 

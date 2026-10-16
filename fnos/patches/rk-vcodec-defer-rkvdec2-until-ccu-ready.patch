@@ -1,0 +1,7 @@
+diff --git a/drivers/video/rockchip/mpp/mpp_rkvdec2_link.c b/drivers/video/rockchip/mpp/mpp_rkvdec2_link.c
+index 181116bc1a97..202608240001 100644
+--- a/drivers/video/rockchip/mpp/mpp_rkvdec2_link.c
++++ b/drivers/video/rockchip/mpp/mpp_rkvdec2_link.c
+@@ -1479 +1479 @@ int rkvdec2_attach_ccu(struct device *dev, struct rkvdec2_dev *dec)
+-		return -ENOMEM;
++		return -EPROBE_DEFER;

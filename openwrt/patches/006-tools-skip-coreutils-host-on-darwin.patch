@@ -1,0 +1,19 @@
+diff --git a/tools/Makefile b/tools/Makefile
+index 56757aa21a..ce28a40f9d 100644
+--- a/tools/Makefile
++++ b/tools/Makefile
+@@ -135,8 +135,10 @@ $(curdir)/util-linux/compile := $(curdir)/bison/compile $(curdir)/automake/compi
+ $(curdir)/yafut/compile := $(curdir)/cmake/compile
+ 
+ ifneq ($(HOST_OS),Linux)
+-  $(curdir)/coreutils/compile += $(curdir)/automake/compile $(curdir)/bison/compile $(curdir)/gnulib/compile
+-  $(curdir)/squashfs4/compile += $(curdir)/coreutils/compile
+-  tools-y += coreutils
++  ifneq ($(HOST_OS),Darwin)
++    $(curdir)/coreutils/compile += $(curdir)/automake/compile $(curdir)/bison/compile $(curdir)/gnulib/compile
++    $(curdir)/squashfs4/compile += $(curdir)/coreutils/compile
++    tools-y += coreutils
++  endif
+ endif
+ ifeq ($(HOST_OS),Darwin)
+   tools-y += bash

@@ -1,0 +1,27 @@
+From 0000000000000000000000000000000000000032 Mon Sep 17 00:00:00 2001
+From: Cennac <cennac@163.com>
+Date: Wed, 26 Aug 2026 18:20:00 +0800
+Subject: [PATCH] broadcom: keep AP6275P BT_WAKE asserted on AGIBOT
+
+The MB0002 AP6275P controller has controller sleep disabled, but its
+Rockchip kernel still uses /proc/bluetooth/sleep/btwrite to control the
+host-wake GPIO.  Sending the proc deassert notification after an idle HCI
+transaction leaves the controller unable to answer a remote inquiry or page.
+
+Keep the proc assertion in place for this vendor configuration.  The board
+does not use controller low-power mode, so there is no benefit in notifying
+the kernel of a deassertion and doing so breaks inbound Classic Bluetooth.
+---
+ include/vnd_rksdk.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/vnd_rksdk.txt b/include/vnd_rksdk.txt
+index 7e7f8d0..f7b75e6 100644
+--- a/include/vnd_rksdk.txt
++++ b/include/vnd_rksdk.txt
+@@ -25,2 +25,2 @@
+ PROC_BTWRITE_TIMER_TIMEOUT_MS = 0
+-BT_WAKE_VIA_PROC_NOTIFY_DEASSERT = TRUE
++BT_WAKE_VIA_PROC_NOTIFY_DEASSERT = FALSE
+-- 
+2.53.0

@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# Preserve every input-button event for discovery and later custom mappings.
+line="$(date '+%Y-%m-%dT%H:%M:%S%z') button=${BUTTON:-unknown} action=${ACTION:-unknown} seen=${SEEN:-0} seq=${SEQNUM:-0}"
+logger -t agibot-button "$line"
+echo "$line" >> /tmp/agibot-button-events.log
