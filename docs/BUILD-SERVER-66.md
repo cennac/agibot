@@ -122,6 +122,25 @@ rsync -av --partial --info=progress2 \
 
 下载完成后，先按 `.sha` 文件校验，再写入存储介质。
 
+## 6. 2026-09-28 复编(26.11.0-trunk):三个新坑与修复
+
+在 `/data/agibot-armbian`(机械大盘)上把框架更新到 **26.11.0-trunk** 复编,成功产出:
+
+```text
+Agibot-Armbian_26.11.0-trunk_Agibot_jammy_vendor_6.1.172_minimal.img(1.81 GiB)
+SHA256: a28052bf84fa84e1fb2cddc7331b39571c15638b3f3d589b2363b18ea7043d93
+```
+
+启动方式:以 root 跑 `/data/agibot-armbian/_run_build_as_root.sh`(内部 `setsid ./compile.sh agibot EXPERT=yes DOWNLOAD_MIRROR=china`,日志进 `output/build.log`;`compile.sh` 拒绝非 root,`sudo` 交互会挂,所以经 `sudo -S` 管道进 root 环境直接执行)。日志里 `PROBLEM: don't run ./compile.sh as root` 只是警告,不致命。
+
+这次撞上三个新坑,**均已固化进仓库,全新 clone 按本文流程可一次通过**:
+
+1. **bsp-cli deb 文件冲突**(rootfs 装包阶段 `trying to overwrite '/usr/lib/sysctl.d/50-default.conf'` → `paste subprocess broken pipe`):新 trunk 的 bsp-cli 与 jammy 的 `linux-sysctl-defaults` 撞文件。修复脚本已入库:`bash scripts/fix-bsp-cli-deb.sh` 剔除冲突文件后重建 deb,再重跑 start-build.sh(rootfs 缓存命中,重试很快)。**锁定 submodule(70a242f)不受此坑影响**;升级 submodule 后首次构建若报此错,跑一次该脚本即可。
+2. **kernel/u-boot 大 bundle 拉挂**(全量 kernel bundle ~3.9G 在 GHCR 镜像上必挂;ORAS 走 HTTP/2 拉 404M u-boot bundle 会 `INTERNAL_ERROR`):`start-build.sh` 已默认 `KERNEL_GIT=shallow`(shallow 仅 ~300M)+ `GODEBUG=http2client=0`(强制 ORAS 走 HTTP/1.1),均可被环境变量覆盖。
+3. **pip 拉 pylibfdt 失败**(github 抖动):先重跑;仍失败的手动兜底——把 pylibfdt wheel 装进 `armbian-build/cache/pip/` 并伪造对应 hash 文件,框架会跳过在线 pip install。
+
+网络说明:66 直连 github 时通时断(快时 ~0.7s,慢时 16s 超时),**编译仍建议带 §1 的代理**;`github.armbian.com` 保持 `no_proxy` 直连。kernel.org 的代理(192.168.88.128:7897)从 66 **不可用**,清华 tuna 内核镜像可直连。
+
 ## 仓库状态说明
 
 这次成功构建除使用上述仓库基准外，还同步了两个本地修正：`start-build.sh` 导出 `core.filemode=false`，`overlay/etc/issue` 以 `Agibot-Armbian` 开头。这两个修正已在后续提交 `4d80e09d323a44dc016afe5245fdf87889451847` 入库；从该提交之后全新 clone 可直接编译并通过品牌检查。`core.filemode=false` 主要针对 Windows/DrvFs 检出，在服务器 ext4 上无副作用。

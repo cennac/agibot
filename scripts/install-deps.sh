@@ -27,8 +27,16 @@ if [ "$PLATFORM" = macos ]; then
 fi
 
 # ---------- WSL / Linux:apt 装编译依赖 ----------
-echo ">>> apt 装编译依赖..."
-PKGS=(git curl ca-certificates build-essential qemu-user-static binfmt-support device-tree-compiler)
+# Ubuntu 24.10+ 起 qemu-user-static 变为虚拟/过渡包,真实包是 qemu-user-binfmt
+# (66 服务器 26.04 实测:装错包 binfmt 不注册,chroot 阶段才报 Exec format error)。
+# 优先 binfmt 包,老发行版(Ubuntu 22.04 / Debian 12)回退 qemu-user-static。
+if apt-cache show qemu-user-binfmt >/dev/null 2>&1; then
+	QEMU_PKG=qemu-user-binfmt
+else
+	QEMU_PKG=qemu-user-static
+fi
+echo ">>> apt 装编译依赖(qemu 包: $QEMU_PKG)..."
+PKGS=(git curl ca-certificates build-essential "$QEMU_PKG" binfmt-support device-tree-compiler)
 $SUDO apt update
 $SUDO apt install -y "${PKGS[@]}"
 

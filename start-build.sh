@@ -101,6 +101,12 @@ export GIT_CONFIG_VALUE_4="$SCRIPT_DIR/armbian-build"
 export GIT_CONFIG_KEY_5=core.filemode
 export GIT_CONFIG_VALUE_5=false
 
+# ---- 66 实战加固(2026-09-28,26.11.0-trunk 一次通过所需,均可用环境变量覆盖)----
+# KERNEL_GIT=shallow:全量 kernel bundle(~3.9G)在 GHCR 镜像上极易拉挂,shallow 仅 ~300M 且够用
+export KERNEL_GIT="${KERNEL_GIT:-shallow}"
+# ORAS(Go 程序)默认 HTTP/2 多路复用,经镜像/代理拉大 bundle 会 INTERNAL_ERROR,强制 HTTP/1.1
+export GODEBUG="${GODEBUG:-http2client=0}"
+
 # ---- 容器内:前台编译(容器 PID1 退出会杀后台进程,不能 setsid)----
 if [ -f /.dockerenv ]; then
 	echo "===== [容器] 前台编译(实时输出 + 写 output/build.log)====="

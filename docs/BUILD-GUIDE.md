@@ -400,6 +400,10 @@ SD 卡上功能正常后,把镜像烧进板载 eMMC。**完整方案见 [`flash/
 | apt 阶段 `Operation not permitted`(fchmod) | 9p 不支持 fchmod | 框架预处理 #4(patch,绕过) |
 | `github.armbian.com` 502 | 该域走代理会 502 | `no_proxy` 含 github.armbian.com(start-build.sh 已带) |
 | host release gate 拦截 / `Unsupported host` | 框架误判 WSL noble | `NO_HOST_RELEASE_CHECK=yes`(start-build.sh 已带) |
+| bsp-cli 装包报 `trying to overwrite '/usr/lib/sysctl.d/50-default.conf'` → `paste subprocess broken pipe` | 新 trunk 的 bsp-cli 与 jammy `linux-sysctl-defaults` 冲突(锁定的 70a242f 无此问题,**升级 submodule 后会撞**) | `bash scripts/fix-bsp-cli-deb.sh` 修 deb 后重跑 start-build.sh(rootfs 缓存命中,很快) |
+| kernel / u-boot 大 bundle 拉取 `INTERNAL_ERROR` 或中途挂起 | ORAS(Go)HTTP/2 经镜像/代理不稳;全量 kernel bundle ~3.9G 极易挂 | start-build.sh 已默认 `KERNEL_GIT=shallow`(~300M)+ `GODEBUG=http2client=0` |
+| pip 拉 `pylibfdt` 失败 | github 抖动 | 重跑一次;仍失败则手动装进 armbian pip 缓存并伪造 hash 跳过(步骤见 [BUILD-SERVER-66.md](BUILD-SERVER-66.md) §6 坑 3) |
+| 装了 qemu 仍 chroot `Exec format error` | Ubuntu 24.10+ 的 `qemu-user-static` 是虚拟包,binfmt 没注册 | install-deps.sh 已自动选 `qemu-user-binfmt`;手动装也要装这个包 |
 
 ---
 
@@ -452,7 +456,7 @@ RELEASE=noble                 # ★ 必须 noble，jammy 缺 libcamera/glmark2 �
 | | WSL2(主线) | Linux 原生 | macOS |
 |---|---|---|---|
 | 框架 hack patch | apply 5 处(§2) | **不 apply**(ext4 正常,fchmod hack 有害) | **不 apply** |
-| binfmt(qemu) | `wsl-binfmt-setup.sh`(坑①) | `apt install qemu-user-static` + `systemctl restart systemd-binfmt` | 不需要(Docker 内) |
+| binfmt(qemu) | `wsl-binfmt-setup.sh`(坑①) | `install-deps.sh` 自动选 `qemu-user-binfmt`(26.04+)/`qemu-user-static`(旧版)+ 重启 binfmt | 不需要(Docker 内) |
 | Docker | `PREFER_DOCKER=no` | `PREFER_DOCKER=no` | **`PREFER_DOCKER=yes`**(macOS 无 binfmt) |
 | 代理 | 自动走 Windows 网关 7897 | 继承 `http_proxy` 或检测本地 7897(脚本自动) | 同 Linux |
 | 后台 | `setsid` | `setsid` | `nohup`(脚本自动回退) |

@@ -6,11 +6,12 @@
 
 | 脚本 | 何时跑 | 作用 |
 |---|---|---|
-| `install-deps.sh` | **首次,每台机器一次** | 装 git / curl / build-essential / qemu-user-static / binfmt-support / device-tree-compiler;WSL2 另注册 binfmt + systemd override;macOS 检 Docker |
+| `install-deps.sh` | **首次,每台机器一次** | 装 git / curl / build-essential / qemu(binfmt:26.04+ 自动选 `qemu-user-binfmt`,旧版 `qemu-user-static`)/ binfmt-support / device-tree-compiler;WSL2 另注册 binfmt + systemd override;macOS 检 Docker |
 | `preflight.sh` | 编译**前** / 卡住时 | 确认 WSL2 patch 是否 apply、上次 build.log 失败阶段、缓存命中、shellcheck 直连 |
 | `build-status.sh` | 编译**进行中**(另开终端) | build.log 尾、编译进程、images/ 产物、kernel clone 进度 |
 | `verify-image.sh` | 编译**完成后** | 无需启动板子,debugfs 读 ext4 验证 dtb / firmware / service / hostname 是否进了镜像 + dtb 适配是否生效 |
 | `make-fnos-agibot.sh` | 需要做 fnOS 板级适配时 | 校验官方 Rock 5B fnOS 镜像,替换 AGIBOT 启动链与 DTB,生成可刷整盘镜像 |
+| `fix-bsp-cli-deb.sh` | rootfs 装包报 `50-default.conf` 冲突时(升级 submodule 后) | 从 bsp-cli deb 剔除与 jammy `linux-sysctl-defaults` 冲突的文件并重建,修完直接重跑 start-build.sh;锁定 70a242f 不需要 |
 
 ## 典型流程
 
