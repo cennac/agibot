@@ -1,11 +1,27 @@
 # agibot
 
-为 **AGIBOT MB0002 V2**(RK3588,双千兆)打造的可复现编译 + 刷机工具链,含两条并列路线:
+为 **AGIBOT MB0002 V2**(RK3588,双千兆)打造的可复现编译 + 刷机工具链,含五条并列 OS 路线与板端 NPU/LLM 记录:
 
-- **Armbian**(通用 Linux / 桌面,vendor 6.1 BSP 内核)—— 本 README 主体
-- **OpenWrt / LEDE**(路由 / 网关,主线 6.12 内核 + 双 GbE)—— 见 **[`openwrt/README.md`](openwrt/README.md)**
+| 路线 | 目录 | 状态 |
+|---|---|---|
+| **Armbian**(通用 Linux / 桌面,vendor 6.1 BSP)—— 本 README 主体 | 根目录 | 26.08 镜像已发布 ✔ |
+| **OpenWrt / LEDE**(路由 / 网关,主线 6.12 + 双 GbE) | [`openwrt/`](openwrt/README.md) | gmac-fix 镜像已发布 ✔ |
+| **fnOS 飞牛**(官方 rootfs + 板级启动链置换) | [`fnos/`](fnos/) · [FNOS-ADAPTATION.md](docs/FNOS-ADAPTATION.md) | v10 镜像已发布 ✔ |
+| **Android 14**(radxa rkr6 基线移植) | [`android14/`](android14/README.md) | r22 候选版 |
+| **OpenHarmony**(标准系统) | [`openharmony/`](openharmony/README.md) | P0+P1 编译通过,待实机 |
 
-两条路线刷机方式相同(RKDevTool 整盘写 eMMC,复用 `flash/`)。
+板端 MiniCPM-V / RKLLM 部署与基准记录见 [`docs/README.md`](docs/README.md)(61–65 系列)。
+
+## 成品下载(GitHub Release)
+
+镜像与模型已发布到 **[board-assets-20261016](https://github.com/cennac/agibot/releases/tag/board-assets-20261016)**:
+
+- Armbian 26.08.0(noble xfce,vendor 6.1.115)`.img.xz` — 990M
+- fnOS v10(sw9200 loader)`.img.gz` — 1.9G
+- OpenWrt sysupgrade(squashfs / ext4)`.img.gz`
+- MiniCPM-V 4.7 NPU 模型:`minicpmv47_1b_w8a8.rkllm`(LLM 半边)+ `vision_m47_fp16.rknn`(视觉半边,**两者缺一不可**)+ `mm_deploy.tar.gz`(部署运行时)
+
+各文件 SHA256 见发布页说明;模型使用方法见 [`tools/rkllm/`](tools/rkllm/README.md) 与 [docs/63](docs/63-npu-rkllm-minicpmv47-1b-20261015.md)–[65](docs/65-minicpmv47-35ba3b-rk3588-20261015.md)。
 
 ## 发行身份
 
@@ -33,11 +49,15 @@
 `git clone --recursive` → `bash scripts/install-deps.sh` → `bash setup.sh` → `bash start-build.sh` → 刷机。板级配置与 WSL2 框架 hack 已全部入库,**干净 clone 即可编译,无需手动改框架源码**;脚本自动适配 Linux / WSL2 / macOS。
 
 > 完整步骤(WSL2 四大坑、5 处框架 hack、镜像验证、刷机、跨平台):见 **[BUILD-GUIDE.md](docs/BUILD-GUIDE.md)**。
-> OpenWrt/LEDE 路线见 **[§13 / openwrt/README.md](openwrt/README.md)**。
+> OpenWrt/LEDE 路线见 **[openwrt/README.md](openwrt/README.md)**;构建服务器 66 上的复现手册见 **[BUILD-SERVER-66.md](docs/BUILD-SERVER-66.md)**。
+> fnOS 适配全记录见 **[FNOS-ADAPTATION.md](docs/FNOS-ADAPTATION.md)**。
+> Android 14 移植说明与 r 系列迭代记录见 **[android14/README.md](android14/README.md)**(阶段文档 `android14/docs/00`–`60`)。
+> OpenHarmony 路线与 P0/P1 报告见 **[openharmony/README.md](openharmony/README.md)**。
 > 板子怎么进 Maskrom/Loader、怎么刷、按键干嘛的、调试怎么不崩板……常见操作问答见 **[FAQ.md](docs/FAQ.md)**。
 > 镜像 SHA、离线/实机验收状态及废弃版本见 **[RELEASES.md](docs/RELEASES.md)**。
 > 本机镜像的唯一归档目录、命名和迁移规则见 **[IMAGE-ARCHIVE.md](docs/IMAGE-ARCHIVE.md)**。
 > 显示 DTB 实验事故、当前板端恢复步骤和后续 HDMI/DP 分阶段规则见 **[DISPLAY-DTB-INCIDENT.md](docs/DISPLAY-DTB-INCIDENT.md)**。
+> 全部文档的索引见 **[docs/README.md](docs/README.md)**。
 
 ## 板卡 3D 标注图
 
@@ -78,6 +98,18 @@
 │   ├── usr/share/doc/agibot/README.md           # 发行信息、开发历程和验证基线
 │   ├── boot/dtb/rockchip/rk3588-agibot-mb0002-v2.dtb   # 设备树,5.10 → 6.1 适配
 │   └── lib/firmware/           # Mali / AP6275P WiFi+BT / ACM8625P DSP / regulatory
+├── android14/                  # 【路线】Android 14 移植(dts / u-boot overlay / patches)
+│   ├── docs/00-60-*.md         #   从基线到 r22 的完整阶段记录
+│   └── README.md               #   路线说明与当前阶段
+├── fnos/                       # 【路线】fnOS(飞牛)适配:6.18 DTS + dtbo overlay + vcodec 补丁
+├── openharmony/                # 【路线】OpenHarmony 标准系统(baseline / dts / env-fixes / P0-P1 报告)
+├── openwrt/                    # 【路线】OpenWrt/LEDE 路由固件(主线 6.12 内核 + 双 GbE)
+│   ├── lede/                   #   coolsnowwolf/lede git submodule
+│   ├── files/.../rk3588-agibot-mb0002-v2.dts   #   主线精简路由 DTS
+│   ├── patches/                #   armv8.mk DEVICE 块 + generic-rk3588 u-boot
+│   ├── config-agibot-openwrt   #   .config 种子(全功能:LuCI/docker/passwall/sqm)
+│   ├── Dockerfile-lede / docker-lede-build.sh / macos-lede-build.sh / setup-openwrt.sh
+│   └── README.md               #   LEDE 编译/刷机/验证
 ├── board-3d/                   # 板卡交互式 3D 标注图(含可直接打开的 dist/index.html)
 ├── flash/                      # eMMC 刷机 + 板端回归测试
 │   ├── rk3588_spl_loader_v1.16.113.bin   # ★ 正确的 RK3588 loader(别用 RKDevTool 自带的 MiniLoaderAll)
@@ -86,32 +118,28 @@
 │   ├── postflash-test.sh       # 板端回归测试源码,构建后固化为 /usr/local/sbin/agibot-test
 │   ├── npu_test.py             # RKNN resnet18 smoke + FPS
 │   └── README.md               # 完整刷机方案
-├── scripts/                    # 辅助脚本(install-deps / preflight / build-status / verify-image)
+├── scripts/                    # 辅助脚本(install-deps / preflight / build-status / verify-image / make-fnos)
 │   └── README.md               # 各脚本用法
-├── openwrt/                    # 【另一条路线】OpenWrt/LEDE 路由固件(主线 6.12 内核 + 双 GbE)
-│   ├── lede/                   #   coolsnowwolf/lede git submodule
-│   ├── files/.../rk3588-agibot-mb0002-v2.dts   #   主线精简路由 DTS
-│   ├── patches/                #   armv8.mk DEVICE 块 + generic-rk3588 u-boot
-│   ├── config-agibot-openwrt   #   .config 种子(全功能:LuCI/docker/passwall/sqm)
-│   ├── Dockerfile-lede / docker-lede-build.sh / macos-lede-build.sh / setup-openwrt.sh
-│   └── README.md               #   LEDE 编译/刷机/验证
+├── tools/                      # bring-up 期调试工具(串口 _ser.py / 抹 eMMC 进 Maskrom /
+│   │                           #   U-Boot 捕获 / HDMI testboot / ADC 监控 / DTB 手术等)
+│   └── rkllm/                  #   RKLLM 模型转换/部署/基准(convert / rknn_convert_m47 / bench_35ba3b)
 ├── wsl-binfmt-setup.sh         # WSL2 qemu binfmt 注册
-├── docs/                       # ★ 全部专题文档(互链同级)
-│   ├── BUILD-GUIDE.md          #   完整编译教程(WSL2 四大坑/5 处框架 hack/跨平台)
+├── docs/                       # ★ 全部专题文档(索引见 docs/README.md)
+│   ├── BUILD-GUIDE.md          #   Armbian 完整编译教程(WSL2 四大坑/5 处框架 hack/跨平台)
 │   ├── FAQ.md                  #   板子操作问答(进 Maskrom/刷机/按键/调试安全)
 │   ├── RELEASES.md             #   镜像 SHA/验收状态/废弃版本
+│   ├── FNOS-ADAPTATION.md      #   fnOS 适配全记录
 │   ├── ARMBIAN-LINUX-BRINGUP.md #  内核 bring-up 全记录(UART/BT/USB/HDMI…)
 │   ├── UBOOT-BRINGUP.md        #   U-Boot bring-up 记录
 │   ├── ADAPT-NOTES.md          #   设备树 5.10 → 6.1 适配记录
-│   └── DISPLAY-DTB-INCIDENT.md #   显示 DTB 事故记录/U-Boot 恢复/后续规则
-├── tools/                      # bring-up 期调试工具(串口 _ser.py / 抹 eMMC 进 Maskrom /
-│                               #   U-Boot 捕获 / HDMI testboot / ADC 监控 / DTB 手术等)
+│   ├── DISPLAY-DTB-INCIDENT.md #   显示 DTB 事故记录/U-Boot 恢复/后续规则
+│   └── 61-65-*.md              #   板端 MiniCPM-V / RKLLM 记录(2026-10)
 └── scratch/                    # 本地工作残留(gitignored,不入库)
 ```
 
 ## 编译
 
-支持 **Linux / WSL2 / macOS**(Linux 需 Ubuntu 22.04+ 或 Debian 12+;macOS 需 Docker Desktop)。脚本自动检测平台,差异见 [BUILD-GUIDE §11](docs/BUILD-GUIDE.md#11-附录在-linux-原生--macos-上编译)。
+支持 **Linux / WSL2 / macOS**(Linux 需 Ubuntu 22.04+ 或 Debian 12+;macOS 需 Docker Desktop)。脚本自动检测平台,差异见 [BUILD-GUIDE §11](docs/BUILD-GUIDE.md#11-附录在-linux-原生--macos-上编译)。也可在构建服务器 66 上复现,见 [BUILD-SERVER-66.md](docs/BUILD-SERVER-66.md)。
 
 ```bash
 # 1. Clone(含 submodule)
@@ -156,22 +184,18 @@ sudo bash wsl-binfmt-setup.sh      # 每次 WSL 重启后重跑
 ```
 其余三个 WSL2 坑(fsync 卡死、代理、overlay 注入)+ 5 处框架 hack 已由 `setup.sh` / `start-build.sh` 处理,见 [BUILD-GUIDE §2](docs/BUILD-GUIDE.md)。Linux 原生 / macOS 见 [§11](docs/BUILD-GUIDE.md#11-附录在-linux-原生--macos-上编译)。
 
-## OpenWrt / LEDE 构建(另一条路线)
+## 其他路线速览
 
-除上面的 armbian 路线,本仓库还为这块**双千兆**板子提供了一条 **OpenWrt/LEDE 路由固件**路线(主线 6.12 内核 + LuCI + passwall/openclash/docker 全家桶)。完整步骤见 **[openwrt/README.md](openwrt/README.md)**,要点:
-
-```bash
-cd openwrt
-bash macos-lede-build.sh                        # macOS 本机完整编译(不使用 Docker)
-bash macos-lede-build.sh target/linux/compile   # macOS 本机只验证 DTS/内核目标
-bash docker-lede-build.sh                       # Docker 完整编译(可选)
-```
-
-产物 `openwrt/lede/bin/targets/rockchip/armv8/*agibot*sysupgrade.img.gz` 是整盘镜像,**刷机方式与 armbian 完全相同**(RKDevTool Loader@0xCCCCCCCC + image@0,复用 `flash/`)。与 armbian 的本质差异:用**主线内核 + 可编译主线 .dts**(armbian 用 vendor 6.1 BSP + 二进制 dtb)。
+- **OpenWrt / LEDE**:主线 6.12 内核 + LuCI + passwall/openclash/docker 全家桶,完整步骤见 **[openwrt/README.md](openwrt/README.md)**,66 服务器复现见 [BUILD-SERVER-66-LEDE.md](docs/BUILD-SERVER-66-LEDE.md)、macOS 本机编译见 [MACOS-LEDE-BUILD.md](docs/MACOS-LEDE-BUILD.md)。产物 `*agibot*sysupgrade.img.gz` 是整盘镜像,**刷机方式与 armbian 完全相同**(RKDevTool Loader@0xCCCCCCCC + image@0,复用 `flash/`)。
+- **fnOS 飞牛**:保留官方 rootfs/GPT/分区 UUID,只置换板级启动链与设备树;DTS 与 overlay 在 [`fnos/`](fnos/),全记录见 [FNOS-ADAPTATION.md](docs/FNOS-ADAPTATION.md),一键重制脚本 `scripts/make-fnos-agibot.sh`。
+- **Android 14**:radxa rkr6 基线移植,Bluetooth AP6275P 等驱动迭代记录在 `android14/docs/00`–`60`,入口 [android14/README.md](android14/README.md)。
+- **OpenHarmony**:标准系统移植,P0(OPi5Plus 基线)/ P1(agibot 首版镜像组)编译已通过,构建手册 [openharmony/docs/03-build-guide.md](openharmony/docs/03-build-guide.md),入口 [openharmony/README.md](openharmony/README.md)。
 
 ## 备份
 板子原厂备份为 RKFW `update.img`(8.73G),可用 RKDevTool 一键刷回。
 
 ## 相关仓库
 - armbian/build:https://github.com/armbian/build
+- coolsnowwolf/lede:https://github.com/coolsnowwolf/lede
 - RK3588 BSP 内核:https://github.com/armbian/linux-rockchip(branch: rk-6.1-rkr5.1)
+- 成品镜像与模型下载:https://github.com/cennac/agibot/releases
