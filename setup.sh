@@ -79,6 +79,19 @@ install -m 0755 flash/postflash-test.sh "$UP/overlay/root/postflash-test.sh"
 cp -r kernel "$UP/"
 cp -r u-boot "$UP/"
 
+# 内核配置覆盖:启用 ACM8625P 功放驱动(built-in,与原厂 5.10 内核一致,见 kernel/README.md)。
+# 驱动的 Kconfig 由 kernel/rk35xx-vendor-6.1/0001 补丁引入,默认为 n,框架配置不含它;
+# 这里基于框架"当前"配置生成覆盖(跟随 submodule 版本,不锁死整份配置),仅打开这一个开关。
+KCFG_SRC="$SUB/config/kernel/linux-rk35xx-vendor.config"
+KCFG_DST="$UP/config/kernel/linux-rk35xx-vendor.config"
+if [ -f "$KCFG_SRC" ]; then
+	sed 's/^# CONFIG_SND_SOC_ACM8625P is not set$/CONFIG_SND_SOC_ACM8625P=y/' "$KCFG_SRC" > "$KCFG_DST"
+	grep -q '^CONFIG_SND_SOC_ACM8625P=y$' "$KCFG_DST" || echo 'CONFIG_SND_SOC_ACM8625P=y' >> "$KCFG_DST"
+	echo "    [kernel-config] 生成 $KCFG_DST(启用 CONFIG_SND_SOC_ACM8625P=y)"
+else
+	echo "    [warn] 未找到框架内核配置 $KCFG_SRC,ACM8625P 驱动将不会启用"
+fi
+
 # 可选:复用平级旧副本的编译缓存(避免重新下载 ~15G)
 if [ "${1:-}" = "--reuse-cache" ]; then
 	OLD_CACHE="$ROOT/../armbian-build/cache"

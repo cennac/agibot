@@ -12,6 +12,15 @@ GPL-2.0 ACM8625P codec driver from:
 
 The driver is built in because the original AGIBOT 5.10 kernel also carried it
 built in, and the board's `acm8625p-sound` card depends on it during boot.
+Two pieces make that actually happen in the image build:
+
+- `setup.sh` generates `userpatches/config/kernel/linux-rk35xx-vendor.config`
+  from the framework's *current* config with `CONFIG_SND_SOC_ACM8625P=y`
+  appended (the Kconfig arrives via the patch below and defaults to `n`).
+- `overlay/etc/initramfs-tools/hooks/agibot-acm-firmware` copies the firmware
+  into the initrd; `mkinitramfs` does not include firmware for built-in
+  drivers on its own. `scripts/verify-image.sh` checks both the rootfs and
+  the initramfs copy.
 
 The matching rootfs firmware is installed as
 `overlay/lib/firmware/acm8625p_dsp_stereo_btl_48khz.bin`. ACME's proprietary

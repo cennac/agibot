@@ -1,0 +1,20 @@
+#!/bin/sh
+# initramfs hook:把 ACM8625P 功放 DSP 固件复制进 initrd。
+# 驱动按原厂 5.10 惯例 built-in(CONFIG_SND_SOC_ACM8625P=y),板级声卡在早期启动
+# 即 probe 并 request_firmware;built-in 驱动 mkinitramfs 不会自动附带固件,需本钩子。
+PREREQ=""
+
+prereqs() {
+	echo "$PREREQ"
+}
+
+case "$1" in
+	prereqs)
+		prereqs
+		exit 0
+		;;
+esac
+
+. /usr/share/initramfs-tools/hook-functions
+
+copy_file firmware /lib/firmware/acm8625p_dsp_stereo_btl_48khz.bin
