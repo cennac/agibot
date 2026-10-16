@@ -2,6 +2,8 @@
 # initramfs hook:把 ACM8625P 功放 DSP 固件复制进 initrd。
 # 驱动按原厂 5.10 惯例 built-in(CONFIG_SND_SOC_ACM8625P=y),板级声卡在早期启动
 # 即 probe 并 request_firmware;built-in 驱动 mkinitramfs 不会自动附带固件,需本钩子。
+# 注意:copy_file 在部分正常路径会返回非零,结尾必须显式 exit 0,
+# 否则 mkinitramfs 将以 "hook failed" 中止(2026-10-16 66 构建实测)。
 PREREQ=""
 
 prereqs() {
@@ -18,3 +20,9 @@ esac
 . /usr/share/initramfs-tools/hook-functions
 
 copy_file firmware /lib/firmware/acm8625p_dsp_stereo_btl_48khz.bin
+[ -e "${DESTDIR}/usr/lib/firmware/acm8625p_dsp_stereo_btl_48khz.bin" ] || {
+	mkdir -p "${DESTDIR}/usr/lib/firmware"
+	cp -p /lib/firmware/acm8625p_dsp_stereo_btl_48khz.bin "${DESTDIR}/usr/lib/firmware/"
+}
+
+exit 0
