@@ -2,7 +2,7 @@
 
 把 `armbian-build` 编译出的 Armbian 镜像刷进板载 **eMMC**。长期保存的整盘镜像统一
 位于 `E:\AIPorject\101\agibot-releases\armbian\`；本目录只保留刷机工具和测试脚本。
-归档分类及当前稳定基线见 [`../docs/IMAGE-ARCHIVE.md`](../docs/IMAGE-ARCHIVE.md)。
+归档分类及当前稳定基线见 [`../../docs/IMAGE-ARCHIVE.md`](../../docs/IMAGE-ARCHIVE.md)。
 
 > **硬性前提**:镜像头部必须包含 AGIBOT 专用 U-Boot 标识
 > `rk3588-agibot-mb0002-v2`。2026-08-14 之前使用
@@ -71,7 +71,7 @@ head/rootfs 并生成 config.cfg：
 ```bash
 # 在仓库根(flash/ 的上一层),Windows 或 WSL Python 均可
 python flash/gen-armbian-cfg.py
-#   自动找 ../armbian-build/output/images/ 下最新的 Armbian-*.img
+#   自动找 ../armbian/armbian-build/output/images/ 下最新的 Armbian-*.img
 #   拆成 flash/armbian-head.img (16MiB) + flash/armbian-rootfs.img
 #   生成 flash/config.cfg(路径已转 Windows 格式)
 # 指定 img:
@@ -154,9 +154,9 @@ flash/
 
 ```bash
 # WSL Ubuntu 内, 在仓库根
-bash setup.sh         # 装配 submodule + patch + userpatches(首次)
-bash start-build.sh   # 编译(含代理 / NO_HOST_RELEASE_CHECK / 后台日志)
-# 产物: armbian-build/output/images/Armbian-...minimal.img
+bash armbian/setup.sh         # 装配 submodule + patch + userpatches(首次)
+bash armbian/start-build.sh   # 编译(含代理 / NO_HOST_RELEASE_CHECK / 后台日志)
+# 产物: armbian/armbian-build/output/images/Armbian-...minimal.img
 ```
 
 重建后先用 `scripts/archive-image.ps1` 归入 `candidates/` 并核对 SHA-256；方法一直接使用

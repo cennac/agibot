@@ -2,7 +2,7 @@
 # install-deps.sh — 装编译 Armbian 的 host 依赖(跨平台:WSL2 / Linux / macOS)。
 # setup.sh 检测到缺失时提示跑本脚本;也可手动跑一次(每台机器一次)。
 #
-# 用法: bash scripts/install-deps.sh
+# 用法: bash armbian/scripts/install-deps.sh
 set -euo pipefail
 
 case "$(uname -s)" in
@@ -67,4 +67,4 @@ else
 	echo "[warn] binfmt 未注册,重启 WSL/系统后重试,或查 /proc/sys/fs/binfmt_misc"
 fi
 echo ""
-echo "[OK] 依赖安装完成。下一步: bash setup.sh && bash start-build.sh"
+echo "[OK] 依赖安装完成。下一步: bash armbian/setup.sh && bash armbian/start-build.sh"

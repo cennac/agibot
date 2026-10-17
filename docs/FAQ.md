@@ -1,6 +1,6 @@
 # FAQ — 板子常见操作问答
 
-按场景找答案。每条给出最快路径 + 详细的坑。刷机总方案见 [flash/README.md](../flash/README.md),
+按场景找答案。每条给出最快路径 + 详细的坑。刷机总方案见 [flash/README.md](../armbian/flash/README.md),
 Linux bring-up 见 [ARMBIAN-LINUX-BRINGUP.md](ARMBIAN-LINUX-BRINGUP.md)。
 
 ## 目录
@@ -104,7 +104,7 @@ python tools/_ser.py "reset" 3
 `armbian-head.img` 和 `armbian-rootfs.img`。不要手工复用旧拆分件：不同构建的整盘镜像
 经常大小完全相同，仅按大小判断会把旧 U-Boot 再次刷回板子。
 
-详见 [flash/README.md](../flash/README.md)。
+详见 [flash/README.md](../armbian/flash/README.md)。
 
 <a name="q5"></a>
 ## Q5 RKDevTool 报「下载 boot 失败 / Loading firmware err=-5」?

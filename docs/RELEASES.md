@@ -135,7 +135,7 @@
 
 ### 2026-08-18 重编(DMC 修复 + NPU 固化 + 全部当日修复,构建 commit 19ed37f)
 
-- minimal(jammy):`89b5b2fad67778ab10d1215c61e3561000ca06f16882ea0c6084bd47e5e996fa`(1.71 GiB,`armbian-build/output/images/`)
+- minimal(jammy):`89b5b2fad67778ab10d1215c61e3561000ca06f16882ea0c6084bd47e5e996fa`(1.71 GiB,`armbian/armbian-build/output/images/`)
 - desktop(noble+xfce):`2e175a049573eda927c3233003f6e8f0867b22184d962e2c4ff0a62094ad92d4`(5.43 GiB)
 - 内容(两镜像均镜像内 fdtget/ls 实证):**DMC/DFI 修复**(dfi 4×pclk_ddr_mon → devfreq/dmc)、
   **pcie3x4 ranges 5.10 残留清理**、**NPU 开箱即用**(librknnrt 1.5.2 + mobilenet/resnet18
@@ -152,7 +152,7 @@
 - 上板方式:SSH dd 引导区就地升级(备份在板 `/root/bootregion-pre-btn.bak`),
   非整盘重刷;rootfs/kernel 仍为 f850 系稳定件
 - 验证:不按键冷启动 ✓、按键进下载模式 ✓、回归 PASS=23/FAIL=0
-- deb:`armbian-build/output/debs/linux-u-boot-agibot-vendor_...S39cd-P986b...deb`
+- deb:`armbian/armbian-build/output/debs/linux-u-boot-agibot-vendor_...S39cd-P986b...deb`
 - 注意:同日 P9703 版(无标记节点)已弃用——fdtgrep 会剥掉无标记节点,按键无效
 
 ## stable-v3-rebuild-f850f7e8(历史记录；本地实体已失配并隔离)

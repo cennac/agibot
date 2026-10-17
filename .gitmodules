@@ -1,5 +1,5 @@
 [submodule "armbian-build"]
-	path = armbian-build
+	path = armbian/armbian-build
 	url = https://github.com/armbian/build
 	branch = main
 [submodule "openwrt/lede"]

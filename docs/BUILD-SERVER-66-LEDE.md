@@ -206,7 +206,7 @@ cd /home/cennac/agibot-armbian/openwrt/lede/bin/targets/rockchip/armv8
 sha256sum -c sha256sums
 ```
 
-刷机前将 `*agibot*sysupgrade.img.gz` 解压为整盘 `.img`，再按 `flash/README.md` 使用 AGIBOT 的 RK3588 loader 和 image@0 写入 eMMC。
+刷机前将 `*agibot*sysupgrade.img.gz` 解压为整盘 `.img`，再按 `armbian/flash/README.md` 使用 AGIBOT 的 RK3588 loader 和 image@0 写入 eMMC。
 
 ## 8. 从 Docker 缓存切换到原生编译
 

@@ -108,7 +108,7 @@ HDMI 和其他外设。
 为 0。产物与校验值：
 
 ```text
-armbian-build/output/images/Armbian-unofficial_26.08.0-trunk_Agibot_jammy_vendor_6.1.115_minimal.img
+armbian/armbian-build/output/images/Armbian-unofficial_26.08.0-trunk_Agibot_jammy_vendor_6.1.115_minimal.img
 SHA256 fd2c6b782df046ccbcc3cb93edc6c52477e930658e0a3320d617eaf1edf9c0c9
 U-Boot package hash: 2017.09-S39cd-P3f7c-Hbe55-Vecf7-B5da4-R448a
 ```

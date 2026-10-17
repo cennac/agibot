@@ -8,13 +8,14 @@
 #
 # 之后直接跑 `bash start-build.sh` 编译。
 # 用法:
-#   bash setup.sh                  # 标准装配
+#   bash armbian/setup.sh                  # 标准装配
 #   bash setup.sh --reuse-cache    # 额外:从平级旧副本 armbian-build/cache 复用编译缓存
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 SUB="armbian-build"
+REPO="$(cd "$ROOT/.." && pwd)"   # 仓库根;submodule 命令必须在根执行、路径相对根
 
 # 平台检测(决定是否 apply WSL2 专用 patch)
 detect_platform() {
@@ -32,20 +33,20 @@ echo ">>> 检测到平台: $PLATFORM"
 
 # 0. 关键依赖自检(git 用于 submodule;其余编译依赖见 scripts/install-deps.sh)
 if ! command -v git >/dev/null 2>&1; then
-	echo ">>> [!] 缺 git。先装依赖: bash scripts/install-deps.sh"
+	echo ">>> [!] 缺 git。先装依赖: bash armbian/scripts/install-deps.sh"
 	exit 1
 fi
 # 容器内跳过:Docker Desktop kernel 全局 binfmt 生效,但 /proc/.../qemu-aarch64 在容器不可见(实测 arm64 可执行)
 if [ "$PLATFORM" != macos ] && [ ! -f /.dockerenv ] && [ ! -f /proc/sys/fs/binfmt_misc/qemu-aarch64 ]; then
 	echo ">>> [提醒] qemu-aarch64 binfmt 未注册 —— 编译到 rootfs 阶段会报 'Exec format error'"
-	echo "         首次请先跑: bash scripts/install-deps.sh"
+	echo "         首次请先跑: bash armbian/scripts/install-deps.sh"
 fi
 
 # 1. 初始化 submodule(armbian/build @ 70a242f)
 #    注意 submodule 的 .git 是文件(gitdir 指针)非目录,用 -e 判存在
 if [ ! -e "$SUB/.git" ]; then
 	echo ">>> [1/3] 初始化 submodule $SUB(首次会从 github clone,约 15G 源码/工具链)..."
-	git submodule update --init --recursive "$SUB"
+	git -C "$REPO" submodule update --init --recursive "armbian/$SUB"
 else
 	echo ">>> [1/3] submodule $SUB 已存在,跳过 init"
 fi
@@ -93,9 +94,9 @@ else
 	echo "    [warn] 未找到框架内核配置 $KCFG_SRC,ACM8625P 驱动将不会启用"
 fi
 
-# 可选:复用平级旧副本的编译缓存(避免重新下载 ~15G)
+# 可选:复用仓库平级旧副本的编译缓存(避免重新下载 ~15G)
 if [ "${1:-}" = "--reuse-cache" ]; then
-	OLD_CACHE="$ROOT/../armbian-build/cache"
+	OLD_CACHE="$REPO/../armbian-build/cache"
 	if [ -d "$OLD_CACHE" ]; then
 		echo ">>> [bonus] 复用旧副本 cache: $OLD_CACHE -> $SUB/cache"
 		cp -al "$OLD_CACHE" "$SUB/cache" 2>/dev/null || cp -r "$OLD_CACHE" "$SUB/cache"

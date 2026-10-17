@@ -60,7 +60,7 @@ p1 分区根目录包含 `fnEnv.txt`、`boot.scr`、`vmlinuz-*` 和 `dtb/`。目
 生成命令：
 
 ```sh
-wsl -u root -e bash /mnt/e/AIPorject/101/agibot-armbian/scripts/make-fnos-agibot.sh
+wsl -u root -e bash /mnt/e/AIPorject/101/agibot-armbian/fnos/make-fnos-agibot.sh
 ```
 
 脚本会：
@@ -101,7 +101,7 @@ SHA-256: 4437fa3dca7facd037bcf5d7a1aaa4095620a9d8021e955d40ca231fdd76cec8
 刷机方式与现有 AGIBOT Linux 镜像相同：
 
 1. 通过 SW9200 或既有救援路径让板子进入 MASKROM/LOADER。
-2. RKDevTool 添加 `flash/rk3588_spl_loader_v1.16.113.bin`，地址 `0xCCCCCCCC`。
+2. RKDevTool 添加 `armbian/flash/rk3588_spl_loader_v1.16.113.bin`，地址 `0xCCCCCCCC`。
 3. 添加 `fnos-agibot-mb0002-v2.img`，地址 `0x00000000`。
 4. 执行写入，完成后重启。
 

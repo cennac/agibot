@@ -2,7 +2,7 @@
 
 在 **WSL2 Ubuntu** 上为 AGIBOT MB0002 V2(RK3588)编译 Armbian 固件的完整流程。本文档重点记录 **WSL2 环境的四个坑**(binfmt / fsync / 代理 / overlay 注入)及其解决方案——这些是官方文档没有、但实际会卡住你的地方。方法对其他 RK3588 板同样适用。
 
-> 本仓库(`cennac/agibot`)即这份教程的完整产物。本文以 **WSL2** 为主线(坑最多);`setup.sh` / `start-build.sh` 已自动适配 **Linux 原生 / macOS**(见 [§11](#11-附录在-linux-原生--macos-上编译))。流程:`git clone --recursive` → `bash setup.sh` → `bash start-build.sh`。
+> 本仓库(`cennac/agibot`)即这份教程的完整产物。本文以 **WSL2** 为主线(坑最多);`setup.sh` / `start-build.sh` 已自动适配 **Linux 原生 / macOS**(见 [§11](#11-附录在-linux-原生--macos-上编译))。流程:`git clone --recursive` → `bash armbian/setup.sh` → `bash armbian/start-build.sh`。
 
 ---
 
@@ -42,7 +42,7 @@ wsl --set-default Ubuntu-22.04
 进入 WSL 后安装编译依赖。本仓库有一键脚本(跨平台,装 git/curl/build-essential/qemu-user-static/binfmt-support/device-tree-compiler,并注册 binfmt + systemd override —— 即下文坑①的两步一次性做完):
 
 ```bash
-bash scripts/install-deps.sh      # 跨平台;每台机器跑一次即可
+bash armbian/scripts/install-deps.sh      # 跨平台;每台机器跑一次即可
 ```
 
 > 不想用脚本也可手动 `sudo apt install -y git curl ca-certificates`,但 binfmt(坑①)还得单独配。
@@ -63,7 +63,7 @@ bash scripts/install-deps.sh      # 跨平台;每台机器跑一次即可
 > | 4 | `rootfs/distro-specific.sh` | apt 在 9p 上 `fchmod` 报 EPERM 中断 | 绕过该 fchmod |
 > | 5 | `rootfs/apt-install.sh` | 9p 的 fchmod 告警刷屏干扰日志 | 告警降级 |
 >
-> 这 5 处已打成 **`patches/wsl2-build-hacks.patch`**(基于 submodule 锁定的 commit `70a242f`)。**不用手改**——`bash setup.sh`(第 3 节)自动 `git apply`。仅脱离 setup.sh 手工装配时才需:
+> 这 5 处已打成 **`patches/wsl2-build-hacks.patch`**(基于 submodule 锁定的 commit `70a242f`)。**不用手改**——`bash armbian/setup.sh`(第 3 节)自动 `git apply`。仅脱离 setup.sh 手工装配时才需:
 > ```bash
 > cd armbian-build && git apply ../patches/wsl2-build-hacks.patch
 > ```
@@ -91,7 +91,7 @@ EOF
 sudo apt install -y qemu-user-static binfmt-support
 
 # 用本仓库的脚本(挂载独立 binfmt_misc 并注册 aarch64/arm/riscv64/loongarch64)
-sudo bash wsl-binfmt-setup.sh
+sudo bash armbian/wsl-binfmt-setup.sh
 
 # 验证
 arch-test arm64    # 应输出 OK
@@ -104,7 +104,7 @@ ls /proc/sys/fs/binfmt_misc/qemu-aarch64   # 应存在
 
 WSL2 的 `sync` 偶发不返回(脏页已为 0,但 syscall 挂起,进程进入 D 态无法 kill)。armbian 的 `wait_for_disk_sync()` 在每个磁盘写入阶段循环调用 `sync`,一旦命中就**无限卡**(日志显示 `fsync taking more than 300s...`)。
 
-**解决:patch 掉 wait_for_disk_sync** ★ 此步即框架预处理 #1,已含在 `patches/wsl2-build-hacks.patch`,`bash setup.sh` 自动 apply。下面 sed 仅供理解原理 / 脱离 setup.sh 手工装配时参考:
+**解决:patch 掉 wait_for_disk_sync** ★ 此步即框架预处理 #1,已含在 `patches/wsl2-build-hacks.patch`,`bash armbian/setup.sh` 自动 apply。下面 sed 仅供理解原理 / 脱离 setup.sh 手工装配时参考:
 
 ```bash
 cd armbian-build
@@ -158,15 +158,15 @@ armbian 把 `userpatches/overlay` **只读 bind-mount 到 chroot 的 `/tmp/overl
 
 ```bash
 # 在编译主机(WSL/Linux/macOS),仓库根(cennac/agibot, 即本目录)
-bash setup.sh
+bash armbian/setup.sh
 ```
 
-`setup.sh` 做三件事(**幂等**,可重复跑,见 [`setup.sh`](setup.sh)):
+`setup.sh` 做三件事(**幂等**,可重复跑,见 [`setup.sh`](../armbian/setup.sh)):
 1. `git submodule update --init --recursive armbian-build` —— 拉官方 armbian/build @ 70a242f(首次约 15G 源码+工具链,走代理)
 2. `git apply patches/wsl2-build-hacks.patch` —— 打 5 处 WSL2 框架 hack(见 §2 框架预处理;先 `git checkout -- .` 重置再 apply,保证可重复)
 3. 把 `config-*.conf` / `config/` / `customize-image.sh` / `overlay/` 装进 `armbian-build/userpatches/`
 
-> 首次装配下载耗时长。若平级目录有旧副本 `../armbian-build/cache`,`bash setup.sh --reuse-cache` 可复用约 15G 缓存省下载。
+> 首次装配下载耗时长。若平级目录有旧副本 `../armbian-build/cache`,`bash armbian/setup.sh --reuse-cache` 可复用约 15G 缓存省下载。
 >
 > 装完即可跳到 [第 6 节](#6-编译)编译。userpatches 的具体内容见第 4 节(原理说明,setup.sh 已自动装好)。
 
@@ -174,7 +174,7 @@ bash setup.sh
 
 ## 4. 配置 userpatches(原理;setup.sh 已自动装配)
 
-> `bash setup.sh`(§3)已把下列文件自动装进 `armbian-build/userpatches/`。本节仅说明各文件作用,正常编译无需手动操作。
+> `bash armbian/setup.sh`(§3)已把下列文件自动装进 `armbian-build/userpatches/`。本节仅说明各文件作用,正常编译无需手动操作。
 
 本仓库根的这些文件,对应装进 `armbian-build/userpatches/` 下:
 
@@ -301,14 +301,14 @@ done
 
 ```bash
 # 仓库根
-bash start-build.sh
+bash armbian/start-build.sh
 # 跟踪日志(另开终端)
-tail -f armbian-build/output/build.log
+tail -f armbian/armbian-build/output/build.log
 # 或用仓库脚本:去色 + 进程 + images/ 产物 + kernel clone 进度,一步到位
-bash scripts/build-status.sh
+bash armbian/armbian/scripts/build-status.sh
 ```
 
-`start-build.sh` 替你做了(见 [`start-build.sh`](start-build.sh)):
+`start-build.sh` 替你做了(见 [`start-build.sh`](../armbian/start-build.sh)):
 - **代理 env**:自动探测 WSL 网关 → `http://<网关>:7897`(Clash Verge mixed-port);`no_proxy` 排除 `github.armbian.com`(该域直连 200、走代理 502)及国内镜像
 - **`NO_HOST_RELEASE_CHECK=yes`**:WSL Ubuntu 实为 noble(24.04,armbian 支持),但框架的 host-release gate 会误拦,显式跳过
 - **git resilience**:`http.lowSpeedLimit=0` / `postBuffer=1G` / `HTTP/1.1`,避免大 kernel clone 经代理时 TLS 中断(配合框架预处理 #2)
@@ -318,7 +318,7 @@ bash scripts/build-status.sh
 - 首次:下载工具链+源码 ~30min,编译内核+u-boot+rootfs ~1.5h
 - 增量(kernel/u-boot/rootfs 缓存命中):~10–20min
 
-**产物**:`armbian-build/output/images/Armbian_..._Agibot_jammy_vendor_6.1.115_minimal.img`
+**产物**:`armbian/armbian-build/output/images/Armbian_..._Agibot_jammy_vendor_6.1.115_minimal.img`
 
 > 桌面版见 [第 10 节](#10-桌面版xfce-desktop);编译中途的 5 类失败见 §2 框架预处理 + §9 故障排查。
 
@@ -326,7 +326,7 @@ bash scripts/build-status.sh
 
 ## 7. 验证镜像(无需启动板子)
 
-> ★ 已脚本化:`bash scripts/verify-image.sh` 一键跑完下面全部检查(自动找最新 img,打印 OK/FAIL 汇总)。下面是手动原理,排查具体问题时用。
+> ★ 已脚本化:`bash armbian/armbian/scripts/verify-image.sh` 一键跑完下面全部检查(自动找最新 img,打印 OK/FAIL 汇总)。下面是手动原理,排查具体问题时用。
 
 镜像 rootfs 在 offset 16MB(sector 32768)。用 `debugfs` 直接读 ext4(WSL2 losetup 不可靠,debugfs 最稳):
 
@@ -369,15 +369,15 @@ lspci                                 # WiFi(14c3:0608)/USB3(VL805)
 dmesg | grep -iE "mali|rknn|gpu"      # GPU / NPU
 ```
 
-> 仓库回归脚本会固化成 **`agibot-test`**(CAN/UART/GPIO/watchdog/NPU/温度,非破坏性,日志写 `/var/log`);源码仍由 `flash/postflash-test.sh` 单点维护。板端执行 `sudo agibot-test --scan --net --stress`,用法见 [flash/README.md](../flash/README.md)。
+> 仓库回归脚本会固化成 **`agibot-test`**(CAN/UART/GPIO/watchdog/NPU/温度,非破坏性,日志写 `/var/log`);源码仍由 `flash/postflash-test.sh` 单点维护。板端执行 `sudo agibot-test --scan --net --stress`,用法见 [(armbian/flash/README.md)](../armbian/flash/README.md)。
 
 ### 写入 eMMC
 
-SD 卡上功能正常后,把镜像烧进板载 eMMC。**完整方案见 [`flash/README.md`](../flash/README.md)**,要点:
+SD 卡上功能正常后,把镜像烧进板载 eMMC。**完整方案见 [`armbian/flash/README.md`](../armbian/flash/README.md)**,要点:
 
-- **主推:整盘写**。RKDevTool「下载镜像」页加两项 —— Loader `@0xCCCCCCCC`(用本仓库 `flash/rk3588_spl_loader_v1.16.113.bin`)+ 整盘 img `@0x00000000`,一次执行。等同整盘 dd,**不必拆分**。
+- **主推:整盘写**。RKDevTool「下载镜像」页加两项 —— Loader `@0xCCCCCCCC`(用本仓库 `armbian/flash/rk3588_spl_loader_v1.16.113.bin`)+ 整盘 img `@0x00000000`,一次执行。等同整盘 dd,**不必拆分**。
 - **备选:拆分写**(整盘单文件写报错时)。`python flash/gen-armbian-cfg.py` 自动从 img 拆 head/rootfs + 生成 config.cfg,导入 RKDevTool。
-- ⚠️ **必须用正确的 RK3588 loader**(`flash/rk3588_spl_loader_v1.16.113.bin`,SHA256 `4cc43c2f...`)。**别用 RKDevTool 自带的 `MiniLoaderAll.bin`**——多为 RK356x,会报「下载 boot 失败 / Sent(0)」,这是刷不动的头号原因(不是 USB 线)。
+- ⚠️ **必须用正确的 RK3588 loader**(`armbian/flash/rk3588_spl_loader_v1.16.113.bin`,SHA256 `4cc43c2f...`)。**别用 RKDevTool 自带的 `MiniLoaderAll.bin`**——多为 RK356x,会报「下载 boot 失败 / Sent(0)」,这是刷不动的头号原因(不是 USB 线)。
 - 刷 eMMC 前确保有原厂 update.img 备份兜底。
 
 ---
@@ -400,7 +400,7 @@ SD 卡上功能正常后,把镜像烧进板载 eMMC。**完整方案见 [`flash/
 | apt 阶段 `Operation not permitted`(fchmod) | 9p 不支持 fchmod | 框架预处理 #4(patch,绕过) |
 | `github.armbian.com` 502 | 该域走代理会 502 | `no_proxy` 含 github.armbian.com(start-build.sh 已带) |
 | host release gate 拦截 / `Unsupported host` | 框架误判 WSL noble | `NO_HOST_RELEASE_CHECK=yes`(start-build.sh 已带) |
-| bsp-cli 装包报 `trying to overwrite '/usr/lib/sysctl.d/50-default.conf'` → `paste subprocess broken pipe` | 新 trunk 的 bsp-cli 与 jammy `linux-sysctl-defaults` 冲突(锁定的 70a242f 无此问题,**升级 submodule 后会撞**) | `bash scripts/fix-bsp-cli-deb.sh` 修 deb 后重跑 start-build.sh(rootfs 缓存命中,很快) |
+| bsp-cli 装包报 `trying to overwrite '/usr/lib/sysctl.d/50-default.conf'` → `paste subprocess broken pipe` | 新 trunk 的 bsp-cli 与 jammy `linux-sysctl-defaults` 冲突(锁定的 70a242f 无此问题,**升级 submodule 后会撞**) | `bash armbian/scripts/fix-bsp-cli-deb.sh` 修 deb 后重跑 start-build.sh(rootfs 缓存命中,很快) |
 | kernel / u-boot 大 bundle 拉取 `INTERNAL_ERROR` 或中途挂起 | ORAS(Go)HTTP/2 经镜像/代理不稳;全量 kernel bundle ~3.9G 极易挂 | start-build.sh 已默认 `KERNEL_GIT=shallow`(~300M)+ `GODEBUG=http2client=0` |
 | pip 拉 `pylibfdt` 失败 | github 抖动 | 重跑一次;仍失败则手动装进 armbian pip 缓存并伪造 hash 跳过(步骤见 [BUILD-SERVER-66.md](BUILD-SERVER-66.md) §6 坑 3) |
 | 装了 qemu 仍 chroot `Exec format error` | Ubuntu 24.10+ 的 `qemu-user-static` 是虚拟包,binfmt 没注册 | install-deps.sh 已自动选 `qemu-user-binfmt`;手动装也要装这个包 |
@@ -466,8 +466,8 @@ RELEASE=noble                 # ★ 必须 noble，jammy 缺 libcamera/glmark2 �
 ```bash
 sudo apt install -y git curl ca-certificates qemu-user-static binfmt-support
 sudo systemctl restart systemd-binfmt      # 注册 qemu-aarch64(start-build.sh 会预检)
-bash setup.sh                               # 自动跳过 WSL patch
-bash start-build.sh                         # 代理:先 export http_proxy=... 或脚本检测本地 7897
+bash armbian/setup.sh                               # 自动跳过 WSL patch
+bash armbian/start-build.sh                         # 代理:先 export http_proxy=... 或脚本检测本地 7897
 ```
 > 若脚本检测不到 `http_proxy` 也没本地 7897,会直连(国内下 kernel 慢,建议 `export http_proxy=http://127.0.0.1:7897` 后再跑)。
 
@@ -475,13 +475,13 @@ bash start-build.sh                         # 代理:先 export http_proxy=... �
 - **必须装 Docker Desktop 并启动**——交叉编译 arm64 rootfs 靠 Docker 内的 qemu,macOS 本机跑不了 binfmt。`start-build.sh` 检测不到 Docker 会直接退出提示。
 - 仓库若放在**大小写不敏感**的卷(APFS 默认),部分内核源码可能冲突;建议放 case-sensitive 卷或 Docker volume。
 ```bash
-bash setup.sh                                # 自动跳过 WSL patch
-bash start-build.sh                          # 自动设 PREFER_DOCKER=yes
+bash armbian/setup.sh                                # 自动跳过 WSL patch
+bash armbian/start-build.sh                          # 自动设 PREFER_DOCKER=yes
 ```
 > macOS 首次编译在 Docker 内进行,拉镜像 + 工具链较慢。
 
 ### 三平台共用
-产物路径 `armbian-build/output/images/`、刷机(`flash/`,§8)、镜像验证(§7)三平台完全一致。`setup.sh --reuse-cache` 也都可用(复用平级 `armbian-build/cache`)。
+产物路径 `armbian/armbian-build/output/images/`、刷机(`flash/`,§8)、镜像验证(§7)三平台完全一致。`setup.sh --reuse-cache` 也都可用(复用平级 `armbian-build/cache`)。
 
 ---
 
@@ -507,9 +507,9 @@ cd docker-agibot-armbian
 ### 编译
 
 ```bash
-bash docker-build.sh            # WSL 内:build 镜像 + 进容器 setup + 前台编译
-bash docker-build.sh --shell    # 进容器交互 shell(调试 / 手动跑 setup.sh / compile.sh)
-PROXY_PORT=7890 bash docker-build.sh   # 代理端口非默认 7897 时
+bash armbian/docker-build.sh            # WSL 内:build 镜像 + 进容器 setup + 前台编译
+bash armbian/docker-build.sh --shell    # 进容器交互 shell(调试 / 手动跑 setup.sh / compile.sh)
+PROXY_PORT=7890 bash armbian/docker-build.sh   # 代理端口非默认 7897 时
 ```
 
 `docker-build.sh` 依次做:
@@ -518,7 +518,7 @@ PROXY_PORT=7890 bash docker-build.sh   # 代理端口非默认 7897 时
 - `docker run --privileged -v ~/docker-agibot-armbian:/docker-agibot-armbian`,代理经 `--add-host host.docker.internal:host-gateway` + `-e http_proxy=host.docker.internal:7897` 传入(三平台统一)
 - 容器内前台跑 `setup.sh` + `start-build.sh`(检测到 `/.dockerenv` → 前台编译不 setsid、代理走继承、跳过 WSL2 patch)
 
-`--privileged` 是必须的:armbian rootfs 阶段要 losetup / mount / chroot。产物仍在 `armbian-build/output/images/`(ext4 卷内,持久,Windows 经 `\\wsl.localhost\...` 可见)。
+`--privileged` 是必须的:armbian rootfs 阶段要 losetup / mount / chroot。产物仍在 `armbian/armbian-build/output/images/`(ext4 卷内,持久,Windows 经 `\\wsl.localhost\...` 可见)。
 
 > 当前环境已就绪两项:binfmt `qemu-aarch64` 持久有效 ✓、Docker Desktop 已装 ✓。首次只需启动 Docker Desktop + 开 WSL 集成即可。
 
@@ -560,7 +560,7 @@ DIRECT=1 bash docker-lede-build.sh              # 不传代理(feeds 已装 / ca
 
 ### 13.4 刷机 / 验证
 
-刷机与 armbian 完全相同(§8):RKDevTool「下载镜像」页 Loader@`0xCCCCCCCC` → `flash/rk3588_spl_loader_v1.16.113.bin`;image@`0x00000000` → 解压后的 `*agibot*sysupgrade.img`。
+刷机与 armbian 完全相同(§8):RKDevTool「下载镜像」页 Loader@`0xCCCCCCCC` → `armbian/flash/rk3588_spl_loader_v1.16.113.bin`;image@`0x00000000` → 解压后的 `*agibot*sysupgrade.img`。
 
 验证:UART2(1500000)串口看启动 → `ip link` 见 eth0/eth1 载波 → 浏览器访问 LuCI(192.168.1.1)→ passwall/openclash/docker 插件可用。
 
@@ -574,18 +574,18 @@ RK806@SPI2 略少见(PMIC 多在 I2C),电源树已照搬同构板;console 改主
 
 | 文件 | 作用 |
 |------|------|
-| `config-agibot.conf` | 顶层编译参数 |
-| `config/boards/agibot.conf` | 板定义(u-boot defconfig / fdtfile / boot) |
-| `customize-image.sh` | ★ overlay 注入逻辑(必须) |
-| `overlay/` | 要注入 rootfs 的 dtb/firmware/service/hostname |
-| `wsl-binfmt-setup.sh` | WSL2 qemu binfmt 注册脚本 |
+| `armbian/config-agibot.conf` | 顶层编译参数 |
+| `armbian/config/boards/agibot.conf` | 板定义(u-boot defconfig / fdtfile / boot) |
+| `armbian/customize-image.sh` | ★ overlay 注入逻辑(必须) |
+| `armbian/overlay/` | 要注入 rootfs 的 dtb/firmware/service/hostname |
+| `armbian/wsl-binfmt-setup.sh` | WSL2 qemu binfmt 注册脚本 |
 | `ADAPT-NOTES.md` | dtb 5.10→6.1 适配记录 |
-| `.gitmodules` + `armbian-build/` | armbian/build 官方框架(submodule @ 70a242f) |
-| `patches/wsl2-build-hacks.patch` | ★ 5 处 WSL2 框架 hack(§2) |
-| `setup.sh` | ★ 装配自动化:init submodule + apply patch + 装 userpatches(§3) |
-| `start-build.sh` | ★ 原生编译入口:代理 / NO_HOST_RELEASE_CHECK / git resilience / 后台(§6);容器内自动转前台 |
-| `Dockerfile` + `docker-build.sh` + `.dockerignore` | ★ Docker 编译:ubuntu:22.04 builder 镜像 + 入口(§12) |
+| `.gitmodules` + `armbian/armbian-build/` | armbian/build 官方框架(submodule @ 70a242f) |
+| `armbian/patches/wsl2-build-hacks.patch` | ★ 5 处 WSL2 框架 hack(§2) |
+| `armbian/setup.sh` | ★ 装配自动化:init submodule + apply patch + 装 userpatches(§3) |
+| `armbian/start-build.sh` | ★ 原生编译入口:代理 / NO_HOST_RELEASE_CHECK / git resilience / 后台(§6);容器内自动转前台 |
+| `armbian/Dockerfile` + `docker-build.sh` + `.dockerignore` | ★ Docker 编译:ubuntu:22.04 builder 镜像 + 入口(§12) |
 | `flash/` | 刷机:loader + gen-armbian-cfg.py + dump-cfg-any.py + postflash-test + npu_test + README(§8) |
-| `scripts/` | 辅助脚本:install-deps / preflight / build-status / verify-image(见 [scripts/README.md](../scripts/README.md)) |
+| `scripts/` | 辅助脚本:install-deps / preflight / build-status / verify-image(见 [scripts/README.md](../armbian/scripts/README.md)) |
 | `openwrt/` | 【另一条路线】OpenWrt/LEDE 路由固件(主线 6.12 + 双 GbE):lede submodule + 主线 DTS + 补丁 + Dockerfile-lede + setup/docker 脚本(见 [openwrt/README.md](../openwrt/README.md)、§13) |
 | `BUILD-GUIDE.md` | 本文档 |
